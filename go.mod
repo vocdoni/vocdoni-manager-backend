@@ -16,7 +16,7 @@ require (
 	github.com/stumble/gorocksdb v0.0.3 // indirect
 	github.com/uber/jaeger-client-go v2.21.1+incompatible // indirect
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
-	gitlab.com/vocdoni/go-dvote v0.1.1-0.20200513134248-c24816eea8e3 // indirect
+	gitlab.com/vocdoni/go-dvote v0.1.1-0.20200513134248-c24816eea8e3
 	go.uber.org/zap v1.15.0 // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/tools v0.0.0-20200513122804-866d71a3170a // indirect
