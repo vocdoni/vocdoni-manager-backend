@@ -3,10 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"gitlab.com/vocdoni/go-dvote/crypto/signature"
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
 	endpoint "gitlab.com/vocdoni/vocdoni-manager-backend/services/api-endpoint"
@@ -31,6 +35,7 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.LogOutput = *flag.String("logOutput", "stdout", "Log output (stdout, stderr or filepath)")
 	cfg.LogErrorFile = *flag.String("logErrorFile", "", "Log errors and warnings to a file")
 	cfg.SaveConfig = *flag.Bool("saveConfig", false, "overwrites an existing config file with the CLI provided flags")
+	cfg.SigningKey = *flag.String("signingKey", "", "signing private Key (if not specified, a new one will be created)")
 	cfg.API.Route = *flag.String("apiRoute", "/api", "dvote API route")
 	cfg.API.ListenHost = *flag.String("listenHost", "0.0.0.0", "API endpoint listen address")
 	cfg.API.ListenPort = *flag.Int("listenPort", 8000, "API endpoint http port")
@@ -52,7 +57,7 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("logLevel", flag.Lookup("logLevel"))
 	viper.BindPFlag("logErrorFile", flag.Lookup("logErrorFile"))
 	viper.BindPFlag("logOutput", flag.Lookup("logOutput"))
-
+	viper.BindPFlag("signingKey", flag.Lookup("signingKey"))
 	viper.BindPFlag("api.route", flag.Lookup("apiRoute"))
 	viper.BindPFlag("api.listenHost", flag.Lookup("listenHost"))
 	viper.BindPFlag("api.listenPort", flag.Lookup("listenPort"))
@@ -94,6 +99,23 @@ func newConfig() (*config.Manager, config.Error) {
 		}
 	}
 
+	// Generate and save signing key if nos specified
+	if len(cfg.SigningKey) < 32 {
+		fmt.Println("no signing key, generating one...")
+		var signer signature.SignKeys
+		err = signer.Generate()
+		if err != nil {
+			cfgError = config.Error{
+				Message: fmt.Sprintf("cannot generate signing key: %s", err),
+			}
+			return cfg, cfgError
+		}
+		_, priv := signer.HexString()
+		viper.Set("signingKey", priv)
+		cfg.SigningKey = priv
+		cfg.SaveConfig = true
+	}
+
 	if cfg.SaveConfig {
 		viper.Set("saveConfig", false)
 		if err := viper.WriteConfig(); err != nil {
@@ -123,8 +145,23 @@ func main() {
 	}
 	log.Debugf("initializing config %+v", *cfg)
 
-	_, err := endpoint.NewEndpoint(cfg)
+	signer := new(signature.SignKeys)
+	if err := signer.AddHexKey(cfg.SigningKey); err != nil {
+		log.Fatal(err)
+	}
+	pub, _ := signer.HexString()
+	log.Infof("my public key: %s", pub)
+
+	_, err := endpoint.NewEndpoint(cfg, signer)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	log.Info("startup complete")
+	// close if interrupt received
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
+	log.Warnf("received SIGTERM, exiting at %s", time.Now().Format(time.RFC850))
+	os.Exit(0)
 }

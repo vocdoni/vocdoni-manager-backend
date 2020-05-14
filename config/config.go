@@ -13,6 +13,8 @@ type Manager struct {
 	DataDir string
 	// SaveConfig overwrites the config file with the CLI provided flags
 	SaveConfig bool
+	// SigningKey is the ECDSA hexString private key for signing messages
+	SigningKey string
 }
 
 // NewConfig initializes the fields in the config stuct

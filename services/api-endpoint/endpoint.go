@@ -1,19 +1,21 @@
 package endpoint
 
 import (
+	"gitlab.com/vocdoni/go-dvote/crypto/signature"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/net"
 	"gitlab.com/vocdoni/go-dvote/types"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/router"
 )
 
 // EndPoint handles the Websocket connection
 type EndPoint struct {
-	WS *net.WebsocketHandle
+	Router *router.Router
 }
 
 // NewEndpoint creates a new websockets endpoint
-func NewEndpoint(cfg *config.Manager) (*EndPoint, error) {
+func NewEndpoint(cfg *config.Manager, signer *signature.SignKeys) (*EndPoint, error) {
 	log.Infof("creating API service")
 	pxy, err := proxy(cfg.API.ListenHost, cfg.API.ListenPort, cfg.API.Ssl.Domain, cfg.API.Ssl.DirCert)
 	if err != nil {
@@ -22,11 +24,10 @@ func NewEndpoint(cfg *config.Manager) (*EndPoint, error) {
 	ws := new(net.WebsocketHandle)
 	ws.Init(new(types.Connection))
 	ws.SetProxy(pxy)
-
 	listenerOutput := make(chan types.Message)
 	go ws.Listen(listenerOutput)
-
-	return &EndPoint{WS: ws}, nil
+	r := router.InitRouter(listenerOutput, ws, signer)
+	return &EndPoint{Router: r}, nil
 }
 
 // proxy creates a new service for routing HTTP connections using go-chi server
