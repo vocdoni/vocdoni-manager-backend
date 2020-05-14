@@ -54,11 +54,11 @@ func InitRouter(inbound <-chan dvote.Message, transport net.Transport, signer *s
 }
 
 // AddHandler adds a new function handler for serving a specific method identified by name
-func (r *Router) AddHandler(name string, handler func(RouterRequest), private bool) error {
+func (r *Router) AddHandler(method, namespace string, handler func(RouterRequest), private bool) error {
 	if private {
-		return r.registerPrivate(name, handler)
+		return r.registerPrivate(namespace, method, handler)
 	}
-	return r.registerPublic(name, handler)
+	return r.registerPublic(namespace, method, handler)
 }
 
 // Route routes requests through the Router object
@@ -69,24 +69,25 @@ func (r *Router) Route() {
 	}
 	for {
 		msg := <-r.inbound
-		request, err := r.getRequest(msg.Data, msg.Context)
+		log.Warnf("received namespace: %s", msg.Namespace)
+		request, err := r.getRequest(msg.Namespace, msg.Data, msg.Context)
 		if !request.authenticated && err != nil {
 			go r.sendError(request, err.Error())
 			continue
 		}
-		method, ok := r.methods[request.method]
+		method, ok := r.methods[msg.Namespace+request.method]
 		if !ok {
-			errMsg := fmt.Sprintf("router has no method %q", request.method)
+			errMsg := fmt.Sprintf("router has no method %s/%s", msg.Namespace, request.method)
 			go r.sendError(request, errMsg)
 			continue
 		}
 		if !method.public && !request.authenticated {
-			errMsg := fmt.Sprintf("authentication is required for %q", request.method)
+			errMsg := fmt.Sprintf("authentication is required for %s/%s", msg.Namespace, request.method)
 			go r.sendError(request, errMsg)
 			continue
 		}
 
-		log.Infof("api method %s", request.method)
+		log.Infof("api method %s/%s", msg.Namespace, request.method)
 		log.Debugf("received: %+v", request.MetaRequest)
 
 		go method.handler(request)
@@ -94,7 +95,7 @@ func (r *Router) Route() {
 }
 
 // semi-unmarshalls message, returns method name
-func (r *Router) getRequest(payload []byte, context dvote.MessageContext) (request RouterRequest, err error) {
+func (r *Router) getRequest(namespace string, payload []byte, context dvote.MessageContext) (request RouterRequest, err error) {
 	var msgStruct types.RequestMessage
 	request.context = context
 	err = json.Unmarshal(payload, &msgStruct)
@@ -107,7 +108,7 @@ func (r *Router) getRequest(payload []byte, context dvote.MessageContext) (reque
 	if request.method == "" {
 		return request, errors.New("method is empty")
 	}
-	method, ok := r.methods[request.method]
+	method, ok := r.methods[namespace+request.method]
 	if !ok {
 		return request, fmt.Errorf("method not valid (%s)", request.method)
 	}
@@ -152,19 +153,19 @@ func (r *Router) BuildReply(request RouterRequest, response types.ResponseMessag
 	}
 }
 
-func (r *Router) registerPrivate(name string, handler func(RouterRequest)) error {
-	if _, ok := r.methods[name]; ok {
-		return fmt.Errorf("duplicate method: %s", name)
+func (r *Router) registerPrivate(namespace, method string, handler func(RouterRequest)) error {
+	if _, ok := r.methods[namespace+method]; ok {
+		return fmt.Errorf("duplicate method %s for namespace %s", method, namespace)
 	}
-	r.methods[name] = registeredMethod{handler: handler}
+	r.methods[namespace+method] = registeredMethod{handler: handler}
 	return nil
 }
 
-func (r *Router) registerPublic(name string, handler func(RouterRequest)) error {
-	if _, ok := r.methods[name]; ok {
-		return fmt.Errorf("duplicate method: %s", name)
+func (r *Router) registerPublic(namespace, method string, handler func(RouterRequest)) error {
+	if _, ok := r.methods[namespace+method]; ok {
+		return fmt.Errorf("duplicate method %s for namespace %s", method, namespace)
 	}
-	r.methods[name] = registeredMethod{public: true, handler: handler}
+	r.methods[namespace+method] = registeredMethod{public: true, handler: handler}
 	return nil
 }
 

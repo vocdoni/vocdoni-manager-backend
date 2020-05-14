@@ -1416,6 +1416,8 @@ gitlab.com/vocdoni/go-dvote v0.1.0 h1:W7/QGYo3KzrLpkWd2+cEY5jhimUD1eNRrO4ZFHc+gY
 gitlab.com/vocdoni/go-dvote v0.1.0/go.mod h1:7tYnVKXOZPdeTUOatzwg67U2oQgzCxgJ/ffPvaMbC68=
 gitlab.com/vocdoni/go-dvote v0.1.1-0.20200513134248-c24816eea8e3 h1:t+9DkNLBICL0q2egUJsuNa9xUEEPbdiD8/PvLlcdmz4=
 gitlab.com/vocdoni/go-dvote v0.1.1-0.20200513134248-c24816eea8e3/go.mod h1:CTCADxrGf8o/0yAlSpA0sK+sahKwqYQJpZZ90eQQRIs=
+gitlab.com/vocdoni/go-dvote v0.1.1-0.20200514125307-ce4e81ff6f82 h1:bX73sYAuxPEBXJ30oY9rpOT62Tu3NS6UOTW2LPRv4c4=
+gitlab.com/vocdoni/go-dvote v0.1.1-0.20200514125307-ce4e81ff6f82/go.mod h1:CTCADxrGf8o/0yAlSpA0sK+sahKwqYQJpZZ90eQQRIs=
 gitlab.com/vocdoni/go-external-ip v0.0.0-20190919225616-59cf485d00da h1:qEKse/C/gOACneRkXQQZLgXjXEe8aaxzcuS60KwUX78=
 gitlab.com/vocdoni/go-external-ip v0.0.0-20190919225616-59cf485d00da/go.mod h1:IRX9TEuQAK5j8yDceSak55G0gu8S52aeK++NJuAyYSY=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=

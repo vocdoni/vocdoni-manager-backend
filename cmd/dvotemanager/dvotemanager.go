@@ -173,7 +173,7 @@ func main() {
 	if cfg.Mode == "registry" || cfg.Mode == "all" {
 		log.Infof("enabling Registry API methods")
 		reg := registry.NewRegistry(ep.Router)
-		if err := reg.RegisterMethods(); err != nil {
+		if err := reg.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}
 	}

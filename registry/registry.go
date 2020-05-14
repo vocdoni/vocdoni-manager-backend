@@ -9,12 +9,15 @@ type Registry struct {
 	Router *router.Router
 }
 
+// NewRegistry creates a new registry handler for the Router
 func NewRegistry(r *router.Router) *Registry {
 	return &Registry{Router: r}
 }
 
-func (r *Registry) RegisterMethods() error {
-	if err := r.Router.AddHandler("info", r.info, false); err != nil {
+// RegisterMethods registers all registry methods behind the given path
+func (r *Registry) RegisterMethods(path string) error {
+	r.Router.Transport.AddNamespace(path + "/registry")
+	if err := r.Router.AddHandler("info", path+"/registry", r.info, false); err != nil {
 		return err
 	}
 	return nil

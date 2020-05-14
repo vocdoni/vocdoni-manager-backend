@@ -27,10 +27,7 @@ func NewEndpoint(cfg *config.Manager, signer *signature.SignKeys) (*EndPoint, er
 	listenerOutput := make(chan types.Message)
 	go ws.Listen(listenerOutput)
 	r := router.InitRouter(listenerOutput, ws, signer)
-
 	go r.Route()
-	ws.AddProxyHandler(cfg.API.Route)
-
 	return &EndPoint{Router: r}, nil
 }
 
