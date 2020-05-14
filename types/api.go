@@ -30,6 +30,7 @@ type ResponseMessage struct {
 type MetaResponse struct {
 	Message   string `json:"message,omitempty"`
 	Ok        bool   `json:"ok"`
+	PublicKey string `json:"publicKey"`
 	Request   string `json:"request"`
 	Timestamp int32  `json:"timestamp"`
 }

@@ -1,5 +1,11 @@
 package config
 
+var Modes = map[string]bool{
+	"registry": true,
+	"manager":  true,
+	"all":      true,
+}
+
 type Manager struct {
 	// API api config options
 	API *API
@@ -9,12 +15,18 @@ type Manager struct {
 	LogOutput string
 	// ErrorLogFile for logging warning, error and fatal messages
 	LogErrorFile string
+	// Mode is the main operation mode
+	Mode string
 	// DataDir path where the gateway files will be stored
 	DataDir string
 	// SaveConfig overwrites the config file with the CLI provided flags
 	SaveConfig bool
 	// SigningKey is the ECDSA hexString private key for signing messages
 	SigningKey string
+}
+
+func (m *Manager) ValidMode() bool {
+	return Modes[m.Mode]
 }
 
 // NewConfig initializes the fields in the config stuct

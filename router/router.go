@@ -16,10 +16,10 @@ import (
 
 type registeredMethod struct {
 	public  bool
-	handler func(routerRequest)
+	handler func(RouterRequest)
 }
 
-type routerRequest struct {
+type RouterRequest struct {
 	types.MetaRequest
 
 	method        string
@@ -32,9 +32,9 @@ type routerRequest struct {
 
 // Router holds a router object
 type Router struct {
+	Transport net.Transport
 	methods   map[string]registeredMethod
 	inbound   <-chan dvote.Message
-	transport net.Transport
 	signer    *signature.SignKeys
 }
 
@@ -43,7 +43,7 @@ func NewRouter(inbound <-chan dvote.Message, transport net.Transport, signer *si
 	r := new(Router)
 	r.methods = make(map[string]registeredMethod)
 	r.inbound = inbound
-	r.transport = transport
+	r.Transport = transport
 	r.signer = signer
 	return r
 }
@@ -54,7 +54,7 @@ func InitRouter(inbound <-chan dvote.Message, transport net.Transport, signer *s
 }
 
 // AddHandler adds a new function handler for serving a specific method identified by name
-func (r *Router) AddHandler(name string, handler func(routerRequest), private bool) error {
+func (r *Router) AddHandler(name string, handler func(RouterRequest), private bool) error {
 	if private {
 		return r.registerPrivate(name, handler)
 	}
@@ -94,7 +94,7 @@ func (r *Router) Route() {
 }
 
 // semi-unmarshalls message, returns method name
-func (r *Router) getRequest(payload []byte, context dvote.MessageContext) (request routerRequest, err error) {
+func (r *Router) getRequest(payload []byte, context dvote.MessageContext) (request RouterRequest, err error) {
 	var msgStruct types.RequestMessage
 	request.context = context
 	err = json.Unmarshal(payload, &msgStruct)
@@ -122,7 +122,7 @@ func (r *Router) getRequest(payload []byte, context dvote.MessageContext) (reque
 	return request, err
 }
 
-func (r *Router) buildReply(request routerRequest, response types.ResponseMessage) dvote.Message {
+func (r *Router) BuildReply(request RouterRequest, response types.ResponseMessage) dvote.Message {
 	response.ID = request.id
 	response.Ok = true
 	response.Request = request.id
@@ -152,7 +152,7 @@ func (r *Router) buildReply(request routerRequest, response types.ResponseMessag
 	}
 }
 
-func (r *Router) registerPrivate(name string, handler func(routerRequest)) error {
+func (r *Router) registerPrivate(name string, handler func(RouterRequest)) error {
 	if _, ok := r.methods[name]; ok {
 		return fmt.Errorf("duplicate method: %s", name)
 	}
@@ -160,7 +160,7 @@ func (r *Router) registerPrivate(name string, handler func(routerRequest)) error
 	return nil
 }
 
-func (r *Router) registerPublic(name string, handler func(routerRequest)) error {
+func (r *Router) registerPublic(name string, handler func(RouterRequest)) error {
 	if _, ok := r.methods[name]; ok {
 		return fmt.Errorf("duplicate method: %s", name)
 	}
@@ -168,7 +168,7 @@ func (r *Router) registerPublic(name string, handler func(routerRequest)) error 
 	return nil
 }
 
-func (r *Router) sendError(request routerRequest, errMsg string) {
+func (r *Router) sendError(request RouterRequest, errMsg string) {
 	log.Warn(errMsg)
 	var err error
 	var response types.ResponseMessage
@@ -190,6 +190,6 @@ func (r *Router) sendError(request routerRequest, errMsg string) {
 			Context:   request.context,
 			Data:      data,
 		}
-		r.transport.Send(msg)
+		r.Transport.Send(msg)
 	}
 }

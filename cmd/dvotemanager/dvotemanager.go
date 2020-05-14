@@ -13,6 +13,7 @@ import (
 	"gitlab.com/vocdoni/go-dvote/crypto/signature"
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/registry"
 	endpoint "gitlab.com/vocdoni/vocdoni-manager-backend/services/api-endpoint"
 )
 
@@ -31,6 +32,12 @@ func newConfig() (*config.Manager, config.Error) {
 
 	// flags
 	flag.StringVar(&cfg.DataDir, "dataDir", home+"/.dvotemanager", "directory where data is stored")
+	cfg.Mode = *flag.String("mode", "all", fmt.Sprintf("operation mode: %s", func() (modes []string) {
+		for m := range config.Modes {
+			modes = append(modes, m)
+		}
+		return
+	}()))
 	cfg.LogLevel = *flag.String("logLevel", "info", "Log level (debug, info, warn, error, fatal)")
 	cfg.LogOutput = *flag.String("logOutput", "stdout", "Log output (stdout, stderr or filepath)")
 	cfg.LogErrorFile = *flag.String("logErrorFile", "", "Log errors and warnings to a file")
@@ -144,7 +151,11 @@ func main() {
 		}
 	}
 	log.Debugf("initializing config %+v", *cfg)
+	if !cfg.ValidMode() {
+		log.Fatalf("invalid mode %s", cfg.Mode)
+	}
 
+	// Signer
 	signer := new(signature.SignKeys)
 	if err := signer.AddHexKey(cfg.SigningKey); err != nil {
 		log.Fatal(err)
@@ -152,9 +163,19 @@ func main() {
 	pub, _ := signer.HexString()
 	log.Infof("my public key: %s", pub)
 
-	_, err := endpoint.NewEndpoint(cfg, signer)
+	// WS Endpoint and Router
+	ep, err := endpoint.NewEndpoint(cfg, signer)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	// User registry
+	if cfg.Mode == "registry" || cfg.Mode == "all" {
+		log.Infof("enabling Registry API methods")
+		reg := registry.NewRegistry(ep.Router)
+		if err := reg.RegisterMethods(); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	log.Info("startup complete")
