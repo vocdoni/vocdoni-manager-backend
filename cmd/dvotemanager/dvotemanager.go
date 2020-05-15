@@ -13,6 +13,7 @@ import (
 	"gitlab.com/vocdoni/go-dvote/crypto/signature"
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/registry"
 	endpoint "gitlab.com/vocdoni/vocdoni-manager-backend/services/api-endpoint"
 )
@@ -168,11 +169,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Database
 
+	db, err := database.New("host", 1234, "user", "password", "dbname", "sslmode")
+	if err != nil {
+		log.Fatal(err)
+	}
 	// User registry
 	if cfg.Mode == "registry" || cfg.Mode == "all" {
 		log.Infof("enabling Registry API methods")
-		reg := registry.NewRegistry(ep.Router)
+		reg := registry.NewRegistry(ep.Router, db)
 		if err := reg.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}

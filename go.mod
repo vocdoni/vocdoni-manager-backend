@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/appleboy/gin-jwt/v2 v2.6.2 // indirect
+	github.com/badoux/checkmail v0.0.0-20181210160741-9661bd69e9ad
 	github.com/decred/dcrd/dcrec/secp256k1 v1.0.2 // indirect
 	github.com/ethersphere/go-sw3 v0.2.1 // indirect
 	github.com/ethersphere/swarm v0.5.4 // indirect

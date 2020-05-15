@@ -3,7 +3,6 @@ package router
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -24,9 +23,10 @@ type RouterRequest struct {
 
 	method        string
 	id            string
-	authenticated bool
-	address       string
-	context       dvote.MessageContext
+	Authenticated bool
+	Address       string
+	PublicKey     string
+	Context       dvote.MessageContext
 	private       bool
 }
 
@@ -71,25 +71,17 @@ func (r *Router) Route() {
 		msg := <-r.inbound
 		log.Warnf("received namespace: %s", msg.Namespace)
 		request, err := r.getRequest(msg.Namespace, msg.Data, msg.Context)
-		if !request.authenticated && err != nil {
+		if err != nil {
 			go r.sendError(request, err.Error())
 			continue
 		}
-		method, ok := r.methods[msg.Namespace+request.method]
-		if !ok {
-			errMsg := fmt.Sprintf("router has no method %s/%s", msg.Namespace, request.method)
-			go r.sendError(request, errMsg)
+		if !request.Authenticated {
+			go r.sendError(request, "invalid authentication")
 			continue
 		}
-		if !method.public && !request.authenticated {
-			errMsg := fmt.Sprintf("authentication is required for %s/%s", msg.Namespace, request.method)
-			go r.sendError(request, errMsg)
-			continue
-		}
-
+		method := r.methods[msg.Namespace+request.method]
 		log.Infof("api method %s/%s", msg.Namespace, request.method)
 		log.Debugf("received: %+v", request.MetaRequest)
-
 		go method.handler(request)
 	}
 }
@@ -97,7 +89,7 @@ func (r *Router) Route() {
 // semi-unmarshalls message, returns method name
 func (r *Router) getRequest(namespace string, payload []byte, context dvote.MessageContext) (request RouterRequest, err error) {
 	var msgStruct types.RequestMessage
-	request.context = context
+	request.Context = context
 	err = json.Unmarshal(payload, &msgStruct)
 	if err != nil {
 		return request, err
@@ -106,19 +98,43 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 	request.id = msgStruct.ID
 	request.method = msgStruct.Method
 	if request.method == "" {
-		return request, errors.New("method is empty")
+		return request, fmt.Errorf("method is empty")
+	}
+	if len(msgStruct.Signature) < 64 {
+		return request, fmt.Errorf("no signature provided")
 	}
 	method, ok := r.methods[namespace+request.method]
 	if !ok {
 		return request, fmt.Errorf("method not valid (%s)", request.method)
 	}
+
+	// Extract publicKey and address from signature
+	msg, err := json.Marshal(msgStruct.MetaRequest)
+	if err != nil {
+		return request, fmt.Errorf("unable to marshal message to sign: %s", msg)
+	}
+	if request.PublicKey, err = signature.PubKeyFromSignature(msg, msgStruct.Signature); err != nil {
+		return request, err
+	}
+	if len(request.PublicKey) == 0 {
+		return request, fmt.Errorf("could not extract public key from signature")
+	}
+	if request.Address, err = signature.AddrFromPublicKey(request.PublicKey); err != nil {
+		return request, err
+	}
+	request.private = !method.public
+
+	// If private method, check authentication
 	if method.public {
-		request.private = false
-		request.authenticated = true
-		request.address = "00000000000000000000"
+		request.Authenticated = true
 	} else {
-		request.private = true
-		request.authenticated, request.address, err = r.signer.VerifyJSONsender(msgStruct.MetaRequest, msgStruct.Signature)
+		for _, addr := range r.signer.Authorized {
+			if fmt.Sprintf("%x", addr) == request.Address {
+				request.Authenticated = true
+				break
+			}
+		}
+
 	}
 	return request, err
 }
@@ -141,14 +157,14 @@ func (r *Router) BuildReply(request RouterRequest, response types.ResponseMessag
 		log.Error(err)
 		return dvote.Message{
 			TimeStamp: int32(time.Now().Unix()),
-			Context:   request.context,
+			Context:   request.Context,
 			Data:      []byte(err.Error()),
 		}
 	}
 	log.Debugf("response: %s", respData)
 	return dvote.Message{
 		TimeStamp: int32(time.Now().Unix()),
-		Context:   request.context,
+		Context:   request.Context,
 		Data:      respData,
 	}
 }
@@ -181,14 +197,14 @@ func (r *Router) sendError(request RouterRequest, errMsg string) {
 	if err != nil {
 		log.Error(err)
 	}
-	if request.context != nil {
+	if request.Context != nil {
 		data, err := json.Marshal(response)
 		if err != nil {
 			log.Warnf("error marshaling response body: %s", err)
 		}
 		msg := dvote.Message{
 			TimeStamp: int32(time.Now().Unix()),
-			Context:   request.context,
+			Context:   request.Context,
 			Data:      data,
 		}
 		r.Transport.Send(msg)
