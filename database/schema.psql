@@ -1,0 +1,155 @@
+-- NOTE
+-- pgcrpyto is assumed to be enabled in public needing superuser access
+-- CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+
+-------------------------------    SCHEMA DEFINITION
+-------------------------------- -------------------------------- -------------------------------- 
+
+CREATE SCHEMA IF NOT EXISTS common;
+
+
+CREATE SCHEMA IF NOT EXISTS entity;
+
+--------------------------- TABLES DEFINITION
+-------------------------------- -------------------------------- -------------------------------- 
+
+--------------------------- ENTITTIES
+
+CREATE TABLE common.entities (
+    updated timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    id text NOT NULL ,
+    address text NOT NULL,
+    email text,
+    name text,
+    managersPublicKeys text[] NOT NULL
+);
+
+CREATE INDEX entityId_hash ON common.entities USING hash (id);
+
+ALTER TABLE ONLY common.entities
+    ADD CONSTRAINT entity_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY common.entities
+    ADD CONSTRAINT entity_address_key UNIQUE (address);
+
+--------------------------- MEMBERS
+
+CREATE TYPE entity.origin AS ENUM (
+    'Token',
+    'Form',
+    'DB'
+);
+
+CREATE TABLE entity.member (
+    updated timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    id uuid DEFAULT public.gen_random_uuid() NOT NULL,
+    entityId text,
+    publicKey text, 
+    digestedPublicKey text, 
+    address text,
+    firstName text,
+    lastName text,
+    email text,
+    phone text,
+    dateOfBirth timestamp with time zone,
+    origin entity.origin,
+    consented boolean DEFAULT false NOT NULL,
+    verified timestamp with time zone,
+    pushTokenArray text[]
+    --TODO: CONSTRAINT sizes of address
+);
+
+ALTER TABLE ONLY entity.member
+    ADD CONSTRAINT member_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY entity.member
+    ADD CONSTRAINT member_publicKey_key UNIQUE (publicKey);
+
+ALTER TABLE ONLY entity.member
+    ADD CONSTRAINT member_digestedPublicKey_key UNIQUE (digestedPublicKey);
+
+ALTER TABLE ONLY entity.member
+    ADD CONSTRAINT member_entityId_fkey FOREIGN KEY (entityId) REFERENCES common.entities(id);
+
+
+CREATE INDEX memberId_hash ON entity.member USING hash (id);
+
+
+--------------------------- FILTERS
+
+CREATE TABLE entity.filters (
+    id serial NOT NULL,
+    name text NOT NULL,
+    filters jsonb NOT NULL
+);
+
+ALTER TABLE ONLY entity.filters
+    ADD CONSTRAINT filters_pkey PRIMARY KEY (id);
+
+CREATE INDEX filterId_hash ON entity.filters USING hash (id);
+
+
+--------------------------- CENSUS
+
+CREATE TABLE entity.census (
+    updated timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    filterId integer NOT NULL,
+    id text NOT NULL,
+    name text NOT NULL,
+    entityId text NOT NULL,
+    merkleRoot text, 
+    merkleTreeUri text
+);
+
+ALTER TABLE ONLY entity.census
+    ADD CONSTRAINT census_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY entity.census
+    ADD CONSTRAINT census_filterId_fkey FOREIGN KEY (filterId) REFERENCES entity.filters(id);
+
+
+-- Function: clone_schema(text, text)
+-- https://wiki.postgresql.org/wiki/Clone_schema
+-- https://stackoverflow.com/questions/12572088/duplicate-postgresql-schema-including-sequences
+-- DROP FUNCTION clone_schema(text, text);
+CREATE OR REPLACE FUNCTION clone_schema(source_schema text, dest_schema text) RETURNS void AS
+$BODY$
+ 
+DECLARE
+  object text;
+  buffer text;
+  default_ text;
+  column_ text;
+BEGIN
+  EXECUTE 'CREATE SCHEMA ' || dest_schema ;
+ 
+  -- TODO: Find a way to make this sequence's owner is the correct table.
+  FOR object IN
+    SELECT sequence_name::text FROM information_schema.SEQUENCES WHERE sequence_schema = source_schema
+  LOOP
+    EXECUTE 'CREATE SEQUENCE ' || dest_schema || '.' || object;
+  END LOOP;
+ 
+  FOR object IN
+    SELECT TABLE_NAME::text FROM information_schema.TABLES WHERE table_schema = source_schema
+  LOOP
+    buffer := dest_schema || '.' || object;
+    EXECUTE 'CREATE TABLE ' || buffer || ' (LIKE ' || source_schema || '.' || object || ' INCLUDING CONSTRAINTS INCLUDING INDEXES INCLUDING DEFAULTS)';
+ 
+    FOR column_, default_ IN
+      SELECT column_name::text, REPLACE(column_default::text, source_schema, dest_schema) FROM information_schema.COLUMNS WHERE table_schema = dest_schema AND TABLE_NAME = object AND column_default LIKE 'nextval(%' || source_schema || '%::regclass)'
+    LOOP
+      EXECUTE 'ALTER TABLE ' || buffer || ' ALTER COLUMN ' || column_ || ' SET DEFAULT ' || default_;
+    END LOOP;
+  END LOOP;
+ 
+END;
+ 
+$BODY$ LANGUAGE plpgsql VOLATILE;
+
+-- Create new schemas based on the current one
+SELECT public.clone_schema('entity','oc');
