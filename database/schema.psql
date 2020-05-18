@@ -9,8 +9,8 @@
 --------------------------- ENTITTIES
 
 CREATE TABLE entities (
-    updated timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    created timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updatedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id text NOT NULL ,
     address text NOT NULL,
     email text,
@@ -18,13 +18,20 @@ CREATE TABLE entities (
     managersPublicKeys text[] NOT NULL
 );
 
-CREATE INDEX entityId_hash ON entities USING hash (id);
-
 ALTER TABLE ONLY entities
     ADD CONSTRAINT entity_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY entities
     ADD CONSTRAINT entity_address_key UNIQUE (address);
+
+CREATE TABLE pushToken (
+    memberId uuid NOT NULL,   
+    createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    token text NOT NULL
+)
+
+ALTER TABLE ONLY pushToken
+    ADD CONSTRAINT pushToken_memberId_fkey FOREIGN KEY (memberId) REFERENCES members(id) ON DELETE CASCADE;
 
 --------------------------- MEMBERS
 
@@ -35,13 +42,13 @@ CREATE TYPE origin AS ENUM (
 );
 
 CREATE TABLE member (
-    updated timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    created timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updatedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id uuid DEFAULT public.gen_random_uuid() NOT NULL,
     entityId text,
     publicKey text, 
     digestedPublicKey text, 
-    address text,
+    streetAddress text,
     firstName text,
     lastName text,
     email text,
@@ -50,7 +57,7 @@ CREATE TABLE member (
     origin origin,
     consented boolean DEFAULT false NOT NULL,
     verified timestamp with time zone,
-    pushTokenArray text[]
+    --TODO: add JSONB with optional fields
     --TODO: CONSTRAINT sizes of address
 );
 
@@ -67,12 +74,11 @@ ALTER TABLE ONLY member
     ADD CONSTRAINT member_entityId_fkey FOREIGN KEY (entityId) REFERENCES entities(id);
 
 
-CREATE INDEX memberId_hash ON member USING hash (id);
-
-
 --------------------------- FILTERS
 
 CREATE TABLE filters (
+    updatedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id serial NOT NULL,
     entityId text NOT NULL,
     name text NOT NULL,
@@ -85,14 +91,11 @@ ALTER TABLE ONLY filters
 ALTER TABLE ONLY filters
     ADD CONSTRAINT filters_entityId_fkey FOREIGN KEY (entityId) REFERENCES entities(id);
 
-CREATE INDEX filterId_hash ON filters USING hash (id);
-
-
 --------------------------- CENSUS
 
 CREATE TABLE census (
-    updated timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    created timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updatedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     filterId integer NOT NULL,
     id text NOT NULL,
     name text NOT NULL,
