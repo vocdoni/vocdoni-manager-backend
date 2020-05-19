@@ -9,36 +9,36 @@
 --------------------------- ENTITTIES
 
 CREATE TABLE entities (
-    updatedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id text NOT NULL ,
     address text NOT NULL,
     email text,
     name text,
-    managersPublicKeys text[] NOT NULL
+    managers_public_keys text[] NOT NULL
 );
 
 ALTER TABLE ONLY entities
-    ADD CONSTRAINT entity_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT entities_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY entities
-    ADD CONSTRAINT entity_address_unique UNIQUE (address);
+    ADD CONSTRAINT entities_address_unique UNIQUE (address);
 
 --------------------------- USERS
 
 CREATE TABLE users (
-    updatedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    publicKey text NOT NULL, 
-    digestedPublicKey text NOT NULL
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    public_key text NOT NULL, 
+    digested_public_key text NOT NULL
     --TODO: CONSTRAINT sizes of address
 );
 
 ALTER TABLE ONLY users
-    ADD CONSTRAINT user_pkey PRIMARY KEY (publicKey);
+    ADD CONSTRAINT users_pkey PRIMARY KEY (public_key);
 
 ALTER TABLE ONLY users
-    ADD CONSTRAINT users_digestedPublickKey_unique UNIQUE (digestedPublicKey);
+    ADD CONSTRAINT users_digested_public_key_unique UNIQUE (digested_public_key);
 
 --------------------------- MEMBERS
 
@@ -49,17 +49,17 @@ CREATE TYPE origin AS ENUM (
 );
 
 CREATE TABLE members (
-    updatedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id uuid DEFAULT public.gen_random_uuid() NOT NULL,
-    entityId text,
-    publicKey text, 
-    streetAddress text,
-    firstName text,
-    lastName text,
+    entity_id text,
+    public_key text, 
+    street_address text,
+    first_name text,
+    last_name text,
     email text,
     phone text,
-    dateOfBirth timestamp with time zone,
+    date_of_birth timestamp with time zone,
     origin origin,
     consented boolean DEFAULT false NOT NULL,
     verified timestamp with time zone
@@ -71,35 +71,35 @@ ALTER TABLE ONLY members
     ADD CONSTRAINT members_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY members
-    ADD CONSTRAINT members_entityId_fkey FOREIGN KEY (entityId) REFERENCES entities(id) ON DELETE CASCADE;
+    ADD CONSTRAINT members_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY members
-    ADD CONSTRAINT members_publicKey_fkey FOREIGN KEY (publicKey) REFERENCES users(publicKey); -- ON DELETE CASCADE? 
+    ADD CONSTRAINT members_public_key_fkey FOREIGN KEY (public_key) REFERENCES users(public_key); -- ON DELETE CASCADE? 
 
 ALTER TABLE ONLY members
-    ADD CONSTRAINT members_entityId_publicKey_unique UNIQUE (entityId, publicKey);
+    ADD CONSTRAINT members_entity_id_public_key_unique UNIQUE (entity_id, public_key);
 
 --------------------------- PUSHTOKEN
 
-CREATE TABLE pushTokens (
-    userId text NOT NULL,  
-    createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+CREATE TABLE push_tokens (
+    user_id text NOT NULL,  
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     token text NOT NULL
 );
 
-ALTER TABLE pushTokens
-  ADD CONSTRAINT pushTokens_pkey PRIMARY KEY (token);
+ALTER TABLE push_tokens
+  ADD CONSTRAINT push_tokens_pkey PRIMARY KEY (token);
 
-ALTER TABLE ONLY pushTokens
-    ADD CONSTRAINT pushTokens_userId_fkey FOREIGN KEY (userId) REFERENCES users(publicKey) ON DELETE CASCADE;
+ALTER TABLE ONLY push_tokens
+    ADD CONSTRAINT push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(public_key) ON DELETE CASCADE;
 
 --------------------------- TARGETS
 
 CREATE TABLE targets (
-    updatedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id serial NOT NULL,
-    entityId text NOT NULL,
+    entity_id text NOT NULL,
     name text NOT NULL,
     filters jsonb NOT NULL
 );
@@ -108,39 +108,42 @@ ALTER TABLE ONLY targets
     ADD CONSTRAINT targets_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY targets
-    ADD CONSTRAINT targets_entityId_fkey FOREIGN KEY (entityId) REFERENCES entities(id) ON DELETE CASCADE;
+    ADD CONSTRAINT targets_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE;
 
 --------------------------- CENSUS
 
-CREATE TABLE census (
-    updatedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    targetId integer NOT NULL,
+CREATE TABLE censuses (
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    target_id integer NOT NULL,
     id text NOT NULL,
     name text NOT NULL,
-    entityId text NOT NULL,
-    merkleRoot text, 
-    merkleTreeUri text
+    entity_id text NOT NULL,
+    merkle_root text, 
+    merkle_tree_uri text
 );
 
-ALTER TABLE ONLY census
-    ADD CONSTRAINT census_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY censuses
+    ADD CONSTRAINT censuses_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY census
-    ADD CONSTRAINT census_targetId_fkey FOREIGN KEY (targetId) REFERENCES targets(id);
+ALTER TABLE ONLY censuses
+    ADD CONSTRAINT censuses_target_id_fkey FOREIGN KEY (target_id) REFERENCES targets(id);
 
-ALTER TABLE ONLY census
-    ADD CONSTRAINT census_entityId_fkey FOREIGN KEY (entityId) REFERENCES entities(id) ON DELETE CASCADE;
+ALTER TABLE ONLY censuses
+    ADD CONSTRAINT censuses_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE;
 
 ---------------------------- CENSUS MEMBERS
 
-CREATE TABLE censusMembers (
-  memberId uuid NOT NULL,
-  censusId text NOT NULL
+CREATE TABLE census_members (
+  member_id uuid NOT NULL,
+  census_id text NOT NULL
 );
 
-ALTER TABLE ONLY censusMembers
-    ADD CONSTRAINT censusMembers_memberId_fkey FOREIGN KEY (memberId) REFERENCES members(id) ON DELETE CASCADE;
+ALTER TABLE ONLY census_members
+    ADD CONSTRAINT census_members_pkey PRIMARY KEY (member_id, census_id);
 
-ALTER TABLE ONLY censusMembers
-    ADD CONSTRAINT censusMembers_censusId_fkey FOREIGN KEY (censusId) REFERENCES census(id) ON DELETE CASCADE;
+ALTER TABLE ONLY census_members
+    ADD CONSTRAINT census_members_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY census_members
+    ADD CONSTRAINT census_members_census_id_fkey FOREIGN KEY (census_id) REFERENCES censuses(id) ON DELETE CASCADE;

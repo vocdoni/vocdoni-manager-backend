@@ -1,0 +1,18 @@
+output   = "models"
+wipe     = true
+no_tests = true
+
+[psql]
+    dbname = "dbname"
+    host   = "host"
+    port   = port
+    # user needs to be able to CREATE tables
+    user   = "user"
+    pass   = "pass"
+    schema = "public"
+    sslmode = "disable"
+    blacklist = ["migrations", "other"]
+
+[aliases.tables.members.relationships.members_public_key_fkey]
+local = "SubscribedUsers"
+foreign = "Subscribed"
