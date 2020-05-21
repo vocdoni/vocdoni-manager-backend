@@ -1,21 +1,24 @@
--- NOTE
--- pgcrpyto is assumed to be enabled in public needing superuser access
--- CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+-- NOTES
+-- 1. pgcrpyto is assumed to be enabled in public needing superuser access
+--    CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+-- 2. All columns are defined as NOT NULL to ease communication with Golang
+
 
 
 --------------------------- TABLES DEFINITION
 -------------------------------- -------------------------------- -------------------------------- 
 
 --------------------------- ENTITTIES
+-- An Entity/Organization
 
 CREATE TABLE entities (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id text NOT NULL ,
     address text NOT NULL,
-    email text,
-    name text,
-    managers_public_keys text[] NOT NULL
+    email text NOT NULL,
+    name text NOT NULL,
+    census_managers_addresses text[] NOT NULL
 );
 
 ALTER TABLE ONLY entities
@@ -25,6 +28,7 @@ ALTER TABLE ONLY entities
     ADD CONSTRAINT entities_address_unique UNIQUE (address);
 
 --------------------------- USERS
+-- A user, i.e. someone who is defined uniquely by his public key
 
 CREATE TABLE users (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -41,6 +45,9 @@ ALTER TABLE ONLY users
     ADD CONSTRAINT users_digested_public_key_unique UNIQUE (digested_public_key);
 
 --------------------------- MEMBERS
+-- A member is a user (N to 1) that is registered to an entity 
+-- members N - 1 entities
+-- members N - 1 users
 
 CREATE TYPE origin AS ENUM (
     'Token',
@@ -52,17 +59,18 @@ CREATE TABLE members (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id uuid DEFAULT public.gen_random_uuid() NOT NULL,
-    entity_id text,
-    public_key text, 
-    street_address text,
-    first_name text,
-    last_name text,
-    email text,
-    phone text,
-    date_of_birth timestamp with time zone,
-    origin origin,
+    entity_id  text NOT NULL,
+    public_key  text NOT NULL, 
+    street_address  text NOT NULL,
+    first_name  text NOT NULL,
+    last_name  text NOT NULL,
+    email  text NOT NULL,
+    phone  text NOT NULL,
+    date_of_birth timestamp with time zone NOT NULL,
+    origin origin NOT NULL,
     consented boolean DEFAULT false NOT NULL,
-    verified timestamp with time zone
+    verified timestamp with time zone NOT NULL,
+    custom_fields jsonb NOT NULL
     --TODO: add JSONB with optional fields
     --TODO: CONSTRAINT sizes of address
 );
@@ -80,6 +88,8 @@ ALTER TABLE ONLY members
     ADD CONSTRAINT members_entity_id_public_key_unique UNIQUE (entity_id, public_key);
 
 --------------------------- PUSHTOKEN
+-- A user push token for notifications
+-- push_tokens N - 1 User
 
 CREATE TABLE push_tokens (
     user_id text NOT NULL,  
@@ -94,6 +104,8 @@ ALTER TABLE ONLY push_tokens
     ADD CONSTRAINT push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(public_key) ON DELETE CASCADE;
 
 --------------------------- TARGETS
+-- A target is a set of filters maintained by an entity
+-- targets N - 1 entities
 
 CREATE TABLE targets (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -111,6 +123,9 @@ ALTER TABLE ONLY targets
     ADD CONSTRAINT targets_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE;
 
 --------------------------- CENSUS
+-- A census is target that is exported, represinting the members that fullfil the filters of the target. 
+-- census N - 1 entities
+-- census N - 1 targets ???
 
 CREATE TABLE censuses (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -119,8 +134,8 @@ CREATE TABLE censuses (
     id text NOT NULL,
     name text NOT NULL,
     entity_id text NOT NULL,
-    merkle_root text, 
-    merkle_tree_uri text
+    merkle_root text NOT NULL, 
+    merkle_tree_uri text NOT NULL
 );
 
 ALTER TABLE ONLY censuses
@@ -133,6 +148,9 @@ ALTER TABLE ONLY censuses
     ADD CONSTRAINT censuses_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE;
 
 ---------------------------- CENSUS MEMBERS
+-- Census members is the relationship holds the members that exist in a census
+-- census_members N - 1 members
+-- census_members N - 1 census
 
 CREATE TABLE census_members (
   member_id uuid NOT NULL,
