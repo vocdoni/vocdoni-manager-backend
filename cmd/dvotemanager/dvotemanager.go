@@ -14,6 +14,7 @@ import (
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/database/pgsql"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/registry"
 	endpoint "gitlab.com/vocdoni/vocdoni-manager-backend/services/api-endpoint"
 )
@@ -136,6 +137,7 @@ func newConfig() (*config.Manager, config.Error) {
 }
 
 func main() {
+	var err error
 	// setup config
 	// creating config and init logger
 	cfg, cfgerr := newConfig()
@@ -169,12 +171,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Database
 
-	db, err := database.New("host", 1234, "user", "password", "dbname", "sslmode")
+	// Database Interface
+	var db database.Database
+
+	// Postgres with sqlx
+	db, err = pgsql.New("host", 1234, "user", "password", "dbname", "sslmode")
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	// User registry
 	if cfg.Mode == "registry" || cfg.Mode == "all" {
 		log.Infof("enabling Registry API methods")

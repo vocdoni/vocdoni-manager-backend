@@ -3,23 +3,17 @@ module gitlab.com/vocdoni/vocdoni-manager-backend
 go 1.14
 
 require (
-	github.com/appleboy/gin-jwt/v2 v2.6.2 // indirect
 	github.com/badoux/checkmail v0.0.0-20181210160741-9661bd69e9ad
-	github.com/decred/dcrd/dcrec/secp256k1 v1.0.2 // indirect
-	github.com/ethersphere/go-sw3 v0.2.1 // indirect
-	github.com/ethersphere/swarm v0.5.4 // indirect
-	github.com/gin-contrib/cors v1.3.0 // indirect
-	github.com/ipfs/go-ipfs-api v0.0.1 // indirect
-	github.com/jamesruan/sodium v0.0.0-20181216154042-9620b83ffeae // indirect
-	github.com/marcusolsson/tui-go v0.4.0 // indirect
-	github.com/robertkrimen/otto v0.0.0-20191219234010-c382bd3c16ff // indirect
-	github.com/spf13/viper v1.7.0 // indirect
-	github.com/stumble/gorocksdb v0.0.3 // indirect
-	github.com/uber/jaeger-client-go v2.21.1+incompatible // indirect
-	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
+	github.com/go-sql-driver/mysql v1.5.0 // indirect
+	github.com/google/uuid v1.1.1
+	github.com/jmoiron/sqlx v1.2.0
+	github.com/lib/pq v1.5.2
+	github.com/mattn/go-sqlite3 v1.10.0 // indirect
+	github.com/rogpeppe/rjson v0.0.0-20151026200957-77220b71d327
+	github.com/spf13/cast v1.3.1 // indirect
+	github.com/spf13/pflag v1.0.5
+	github.com/spf13/viper v1.7.0
 	gitlab.com/vocdoni/go-dvote v0.1.1-0.20200514125307-ce4e81ff6f82
-	go.uber.org/zap v1.15.0 // indirect
-	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/tools v0.0.0-20200513122804-866d71a3170a // indirect
-	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
+	nhooyr.io/websocket v1.8.5
 )

@@ -9,11 +9,11 @@ import (
 
 type Registry struct {
 	Router *router.Router
-	db     *database.Database
+	db     database.Database
 }
 
 // NewRegistry creates a new registry handler for the Router
-func NewRegistry(r *router.Router, d *database.Database) *Registry {
+func NewRegistry(r *router.Router, d database.Database) *Registry {
 	return &Registry{Router: r, db: d}
 }
 
@@ -38,13 +38,39 @@ func (r *Registry) RegisterMethods(path string) error {
 	return nil
 }
 
+func (r *Registry) send(req router.RouterRequest, resp types.ResponseMessage) {
+	r.Router.Transport.Send(r.Router.BuildReply(req, resp))
+}
+
 func (r *Registry) register(request router.RouterRequest) {
-	// check entityId exist
-	r.db.Entity(request.EntityID)
-	// check entityId registration mechanism (token or form)
-	// check token or check form fields
+	var entity *types.Entity
+	var err error
 	var response types.ResponseMessage
-	r.Router.Transport.Send(r.Router.BuildReply(request, response))
+	// check entityId exist
+	if entity, err = r.db.Entity(request.EntityID); err != nil {
+		response.SetError(err)
+		r.send(request, response)
+		return
+	}
+	if !checkMemberInfo(request.Member) {
+		response.SetError("invalid fields")
+		r.send(request, response)
+		return
+	}
+	member, err := r.db.Member(request.Member.ID)
+	if err != nil {
+		response.SetError("invalid fields")
+		r.send(request, response)
+		return
+
+	}
+	if member.EntityID != entity.ID {
+		response.SetError("invalid request")
+		r.send(request, response)
+		return
+	}
+	// check token or check form fields
+	r.send(request, response)
 }
 
 func (r *Registry) status(request router.RouterRequest) {

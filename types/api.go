@@ -14,7 +14,7 @@ type RequestMessage struct {
 type MetaRequest struct {
 	Census      *Census      `json:"census,omitempty"`
 	EntityID    string       `json:"entityId,omitempty"`
-	Filter      *Filter      `json:"filter,omitempty"`
+	Filter      *Target      `json:"filter,omitempty"`
 	ListOptions *ListOptions `json:"listOptions,omitempty"`
 	Member      *Member      `json:"member"`
 	Method      string       `json:"method"`
@@ -52,26 +52,9 @@ func (r *MetaResponse) SetError(v interface{}) {
 	r.Message = fmt.Sprintf("%s", v)
 }
 
-type Member struct {
-	DateOfBirth string `json:"dateOfBirth,omitempty"`
-	Email       string `json:"email,omitempty"`
-	FirstName   string `json:"firstName,omitempty"`
-	LastName    string `json:"lastName,omitempty"`
-	Phone       string `json:"phone,omitempty"`
-}
-
 type Status struct {
 	Registered  bool `json:"registered,omitempty"`
 	NeedsUpdate bool `json:"needsUpdate,omitempty"`
-}
-
-type Census struct {
-	Created int32  `json:"created,omitempty"`
-	ID      string `json:"id,omitempty"`
-	Name    string `json:"name,omitempty"`
-	Root    string `json:"root,omitempty"`
-	Target  string `json:"target,omitempty"`
-	URI     string `json:"uri,omitempty"`
 }
 
 type ListOptions struct {
@@ -79,9 +62,4 @@ type ListOptions struct {
 	Order  string `json:"order,omitempty"`
 	Skip   int    `json:"skip,omitempty"`
 	SortBy string `json:"sortBy,omitempty"`
-}
-
-type Filter struct {
-	Member
-	Target string `json:"target,omitempty"`
 }
