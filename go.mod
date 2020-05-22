@@ -15,5 +15,6 @@ require (
 	github.com/spf13/viper v1.7.0
 	gitlab.com/vocdoni/go-dvote v0.1.1-0.20200514125307-ce4e81ff6f82
 	golang.org/x/tools v0.0.0-20200513122804-866d71a3170a // indirect
+	google.golang.org/appengine v1.6.1
 	nhooyr.io/websocket v1.8.5
 )

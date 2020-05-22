@@ -39,7 +39,7 @@ type ResponseMessage struct {
 type MetaResponse struct {
 	Message   string  `json:"message,omitempty"`
 	Ok        bool    `json:"ok"`
-	PublicKey string  `json:"publicKey"`
+	PublicKey string  `json:"publicKey,omitempty"`
 	Request   string  `json:"request"`
 	Status    *Status `json:"status,omitempty"`
 	Timestamp int32   `json:"timestamp"`

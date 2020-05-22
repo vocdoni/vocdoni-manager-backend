@@ -14,7 +14,8 @@ import (
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/database/pgsql"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/database/testdb"
+
 	"gitlab.com/vocdoni/vocdoni-manager-backend/registry"
 	endpoint "gitlab.com/vocdoni/vocdoni-manager-backend/services/api-endpoint"
 )
@@ -176,7 +177,7 @@ func main() {
 	var db database.Database
 
 	// Postgres with sqlx
-	db, err = pgsql.New("host", 1234, "user", "password", "dbname", "sslmode")
+	db, err = testdb.New("host", 1234, "user", "password", "dbname", "sslmode")
 	if err != nil {
 		log.Fatal(err)
 	}

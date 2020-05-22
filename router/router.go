@@ -69,14 +69,13 @@ func (r *Router) Route() {
 	}
 	for {
 		msg := <-r.inbound
-		log.Warnf("received namespace: %s", msg.Namespace)
 		request, err := r.getRequest(msg.Namespace, msg.Data, msg.Context)
 		if err != nil {
-			go r.sendError(request, err.Error())
+			go r.SendError(request, err.Error())
 			continue
 		}
 		if !request.Authenticated {
-			go r.sendError(request, "invalid authentication")
+			go r.SendError(request, "invalid authentication")
 			continue
 		}
 		method := r.methods[msg.Namespace+request.method]
@@ -185,7 +184,7 @@ func (r *Router) registerPublic(namespace, method string, handler func(RouterReq
 	return nil
 }
 
-func (r *Router) sendError(request RouterRequest, errMsg string) {
+func (r *Router) SendError(request RouterRequest, errMsg string) {
 	log.Warn(errMsg)
 	var err error
 	var response types.ResponseMessage

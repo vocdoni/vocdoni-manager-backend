@@ -48,25 +48,21 @@ func (r *Registry) register(request router.RouterRequest) {
 	var response types.ResponseMessage
 	// check entityId exist
 	if entity, err = r.db.Entity(request.EntityID); err != nil {
-		response.SetError(err)
-		r.send(request, response)
+		r.Router.SendError(request, err.Error())
 		return
 	}
 	if !checkMemberInfo(request.Member) {
-		response.SetError("invalid fields")
-		r.send(request, response)
+		r.Router.SendError(request, "invalid member fields")
 		return
 	}
 	member, err := r.db.Member(request.Member.ID)
 	if err != nil {
-		response.SetError("invalid fields")
-		r.send(request, response)
+		r.Router.SendError(request, "invalid id")
 		return
 
 	}
 	if member.EntityID != entity.ID {
-		response.SetError("invalid request")
-		r.send(request, response)
+		r.Router.SendError(request, "invalid entity")
 		return
 	}
 	// check token or check form fields
