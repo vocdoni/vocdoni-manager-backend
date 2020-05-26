@@ -26,18 +26,22 @@ type EntityInfo struct {
 
 type Member struct {
 	CreatedUpdated
-	ID       uuid.UUID `json:"id" db:"id"`
-	EntityID string    `json:"entityId" db:"entityId"`
-	PubKey   string    `json:"publicKey" db:"publicKey"`
-	MemberInfo
+	ID         uuid.UUID `json:"id" db:"id"`
+	EntityID   string    `json:"entityId" db:"entity_id"`
+	PubKey     string    `json:"publicKey" db:"public_key"`
+	MemberInfo `memberinfo`
 }
 
 type MemberInfo struct {
-	DateOfBirth string `json:"dateOfBirth,omitempty" db:"dateOfBirth"`
-	Email       string `json:"email,omitempty" db:"email"`
-	FirstName   string `json:"firstName,omitempty" db:"firstName"`
-	LastName    string `json:"lastName,omitempty" db:"lastName"`
-	Phone       string `json:"phone,omitempty" db:"phone"`
+	DateOfBirth   time.Time `json:"dateOfBirth,omitempty" db:"date_of_birth"`
+	Email         string    `json:"email,omitempty" db:"email"`
+	FirstName     string    `json:"firstName,omitempty" db:"first_name"`
+	LastName      string    `json:"lastName,omitempty" db:"last_name"`
+	Phone         string    `json:"phone,omitempty" db:"phone"`
+	StreetAddress string    `json:"streetAddress,omitempty" db:"street_address"`
+	Consented     bool      `json:"consented,omitempty" db:"consented"`
+	Verified      time.Time `json:"verified,omitempty" db:"verified"`
+	CustomFields  []byte    `json:"customFields" db:"custom_fields"`
 }
 
 type User struct {

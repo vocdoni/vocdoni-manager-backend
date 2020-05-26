@@ -1,6 +1,8 @@
 package testdb
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
@@ -28,10 +30,11 @@ func (d *Database) Close() error {
 
 func (d *Database) Entity(entityID string) (*types.Entity, error) {
 	var entity types.Entity
-	entity.ID = "12345123451234"
+	entity.ID = entityID
 	entity.Address = "b662e6ac6e8300f0a03b33c4f8510121ba2d5bde"
-	entity.ManagersPubKeys = []string{"02ed03e6408e34af72a0e062a50cd9e77997c6c0eded5835b7367bb5695e844bf4"}
+	entity.CensusManagersAddresses = []string{"02ed03e6408e34af72a0e062a50cd9e77997c6c0eded5835b7367bb5695e844bf4"}
 	entity.Name = "test entity"
+	entity.Email = "entity@entity.org"
 	return &entity, nil
 }
 
@@ -48,7 +51,8 @@ func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	member.LastName = "Assange"
 	member.Phone = "+441827738192"
 	member.PubKey = "020be846bab70b4eff964d74178187832b3c7866f8509de340b6fccc53032834c6"
-	member.DateOfBirth = "18-02-1944"
+	member.DateOfBirth = time.Time{}
+	member.StreetAddress = "Yolo St. 550"
 	return &member, nil
 }
 

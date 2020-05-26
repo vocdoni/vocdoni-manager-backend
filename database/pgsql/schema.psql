@@ -67,10 +67,10 @@ CREATE TABLE members (
     email  text NOT NULL,
     phone  text NOT NULL,
     date_of_birth timestamp with time zone NOT NULL,
-    origin origin NOT NULL,
+    origin origin NOT NULL DEFAULT 'Token',
     consented boolean DEFAULT false NOT NULL,
     verified timestamp with time zone NOT NULL,
-    custom_fields jsonb NOT NULL
+    custom_fields jsonb NOT NULL DEFAULT '{}'::jsonb
     --TODO: add JSONB with optional fields
     --TODO: CONSTRAINT sizes of address
 );
@@ -113,7 +113,7 @@ CREATE TABLE targets (
     id serial NOT NULL,
     entity_id text NOT NULL,
     name text NOT NULL,
-    filters jsonb NOT NULL
+    filters jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 
 ALTER TABLE ONLY targets
