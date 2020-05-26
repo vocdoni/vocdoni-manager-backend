@@ -3,7 +3,8 @@ version: '3.5'
 services:
   postgres:
     container_name: postgres_mgr
-    image: postgres
+    container_name: postgres
+    build: ./database/pgsql/
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-vocdoni}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vocdoni}
@@ -23,6 +24,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin@vocdoni.io}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-vocdoni}
     volumes:
+       - ./pgadmin.json:/pgadmin4/servers.json
        - pgadmin:/root/.pgadmin
     ports:
       - "127.0.0.1:5050:80"

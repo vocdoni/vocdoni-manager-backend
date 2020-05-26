@@ -6,18 +6,26 @@ import (
 	"github.com/google/uuid"
 )
 
+type CreatedUpdated struct {
+	CreatedAt time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt time.Time `json:"updatedAt" db:"updated_at"`
+}
+
 type Entity struct {
-	ID string `json:"id" db:"id"`
-	EntityInfo
+	CreatedUpdated
+	ID         string `json:"id" db:"id"`
+	EntityInfo `entityinfo`
 }
 
 type EntityInfo struct {
-	Address         string   `json:"address" db:"address"`
-	Name            string   `json:"name" db:"name"`
-	ManagersPubKeys []string `json:"managersPublicKeys,omitempty" db:"managersPublicKeys"`
+	Address                 string   `json:"address" db:"address"`
+	Email                   string   `json:"email,omitempty" db:"email"`
+	Name                    string   `json:"name" db:"name"`
+	CensusManagersAddresses []string `json:"censusManagersAddresses,omitempty" db:"census_managers_addresses"`
 }
 
 type Member struct {
+	CreatedUpdated
 	ID       uuid.UUID `json:"id" db:"id"`
 	EntityID string    `json:"entityId" db:"entityId"`
 	PubKey   string    `json:"publicKey" db:"publicKey"`

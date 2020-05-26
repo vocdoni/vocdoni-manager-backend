@@ -9,6 +9,8 @@ var Modes = map[string]bool{
 type Manager struct {
 	// API api config options
 	API *API
+	// Database connection options
+	DB *DB
 	// LogLevel logging level
 	LogLevel string
 	// LogOutput logging output
@@ -33,7 +35,17 @@ func (m *Manager) ValidMode() bool {
 func NewConfig() *Manager {
 	return &Manager{
 		API: new(API),
+		DB:  new(DB),
 	}
+}
+
+type DB struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Dbname   string
+	Sslmode  string
 }
 
 type API struct {

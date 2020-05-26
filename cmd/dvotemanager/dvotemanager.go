@@ -14,7 +14,7 @@ import (
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/database/testdb"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/database/pgsql"
 
 	"gitlab.com/vocdoni/vocdoni-manager-backend/registry"
 	endpoint "gitlab.com/vocdoni/vocdoni-manager-backend/services/api-endpoint"
@@ -50,7 +50,12 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.API.ListenHost = *flag.String("listenHost", "0.0.0.0", "API endpoint listen address")
 	cfg.API.ListenPort = *flag.Int("listenPort", 8000, "API endpoint http port")
 	cfg.API.Ssl.Domain = *flag.String("sslDomain", "", "enable TLS secure domain with LetsEncrypt auto-generated certificate")
-
+	cfg.DB.Host = *flag.String("dbHost", "127.0.0.1", "DB server address")
+	cfg.DB.Port = *flag.Int("dbPort", 5432, "DB server port")
+	cfg.DB.User = *flag.String("dbUser", "user", "DB Username")
+	cfg.DB.Password = *flag.String("dbPassword", "password", "DB password")
+	cfg.DB.Dbname = *flag.String("dbName", "database", "DB database name")
+	cfg.DB.Sslmode = *flag.String("dbSslmode", "required", "DB postgres sslmode")
 	// parse flags
 	flag.Parse()
 
@@ -73,6 +78,12 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("api.listenPort", flag.Lookup("listenPort"))
 	viper.Set("api.ssl.dirCert", cfg.DataDir+"/tls")
 	viper.BindPFlag("api.ssl.domain", flag.Lookup("sslDomain"))
+	viper.BindPFlag("db.host", flag.Lookup("dbHost"))
+	viper.BindPFlag("db.port", flag.Lookup("dbPort"))
+	viper.BindPFlag("db.user", flag.Lookup("dbUser"))
+	viper.BindPFlag("db.password", flag.Lookup("dbPassword"))
+	viper.BindPFlag("db.dbName", flag.Lookup("dbName"))
+	viper.BindPFlag("db.sslMode", flag.Lookup("dbSslmode"))
 
 	// check if config file exists
 	_, err = os.Stat(cfg.DataDir + "/dvotemanager.yml")
@@ -177,10 +188,16 @@ func main() {
 	var db database.Database
 
 	// Postgres with sqlx
-	db, err = testdb.New("host", 1234, "user", "password", "dbname", "sslmode")
+	// db, err = pgsql.New("host", 1234, "user", "password", "dbname", "sslmode")
+	db, err = pgsql.New(cfg.DB.Host, cfg.DB.Port, cfg.DB.User, cfg.DB.Password, cfg.DB.Dbname, cfg.DB.Sslmode)
 	if err != nil {
 		log.Fatal(err)
 	}
+	entity, err := db.CreateEntity("0x12345123451234", "0x123847192347", "entity@entity.org", "test entity", []string{"0x0", "0x0"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	db.CreateMember(entity.ID)
 
 	// User registry
 	if cfg.Mode == "registry" || cfg.Mode == "all" {
