@@ -1,4 +1,4 @@
-package test
+package testcommon
 
 import (
 	"gitlab.com/vocdoni/go-dvote/crypto/signature"

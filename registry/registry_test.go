@@ -7,12 +7,12 @@ import (
 
 	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto/signature"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/test"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/test/testcommon"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
 
 func TestMain(t *testing.M) {
-	api := test.TestAPI{}
+	api := testcommon.TestAPI{}
 	api.Start("127.0.0.1", "", 8002)
 	reg := NewRegistry(api.EP.Router, api.DB)
 	if err := reg.RegisterMethods(""); err != nil {
@@ -26,7 +26,7 @@ func TestRegister(t *testing.T) {
 	var req types.MetaRequest
 	var s signature.SignKeys
 	s.Generate()
-	wsc, err := test.NewAPIConnection("ws://127.0.0.1:8002/registry", t)
+	wsc, err := testcommon.NewAPIConnection("ws://127.0.0.1:8002/registry", t)
 	if err != nil {
 		t.Error(err)
 	}
