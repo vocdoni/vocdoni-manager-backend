@@ -34,10 +34,20 @@ type PGMember struct {
 
 func ToPGMember(x *types.Member) *PGMember {
 	y := &PGMember{Member: *x}
-	y.CustomFields.Set(x.MemberInfo.CustomFields)
+	if x.MemberInfo.CustomFields == nil {
+		y.CustomFields.Set([]byte{})
+	} else {
+		y.CustomFields.Set(x.MemberInfo.CustomFields)
+	}
 	// y.CustomFields = pgtype.JSONB{Bytes: x.MemberInfo.CustomFields, Status: pgtype.Present}
 	return y
 }
+
+// func (m *MemberInfo) Normalize() {
+// 	if m.CustomFields == nil {
+// 		m.CustomFields = []byte{}
+// 	}
+// }
 
 func ToMember(x *PGMember) *types.Member {
 	y := x.Member

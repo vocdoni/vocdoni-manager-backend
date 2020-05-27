@@ -13,8 +13,8 @@ type CreatedUpdated struct {
 
 type Entity struct {
 	CreatedUpdated
-	ID         string `json:"id" db:"id"`
-	EntityInfo `entityinfo`
+	ID string `json:"id" db:"id"`
+	EntityInfo
 }
 
 type EntityInfo struct {
@@ -26,10 +26,10 @@ type EntityInfo struct {
 
 type Member struct {
 	CreatedUpdated
-	ID         uuid.UUID `json:"id" db:"id"`
-	EntityID   string    `json:"entityId" db:"entity_id"`
-	PubKey     string    `json:"publicKey" db:"public_key"`
-	MemberInfo `memberinfo`
+	ID       uuid.UUID `json:"id" db:"id"`
+	EntityID string    `json:"entityId" db:"entity_id"`
+	PubKey   string    `json:"publicKey" db:"public_key"`
+	MemberInfo
 }
 
 type MemberInfo struct {
@@ -44,9 +44,15 @@ type MemberInfo struct {
 	CustomFields  []byte    `json:"customFields" db:"custom_fields"`
 }
 
+// func (m *MemberInfo) Normalize() {
+// 	if m.CustomFields == nil {
+// 		m.CustomFields = []byte{}
+// 	}
+// }
+
 type User struct {
-	PubKey         string `json:"publicKey" db:"publicKey"`
-	DigestedPubKey string `json:"digestedPublicKey" db:"digestedPublicKey"`
+	PubKey         string `json:"publicKey" db:"public_key"`
+	DigestedPubKey string `json:"digestedPublicKey" db:"digested_public_key"`
 }
 
 type Census struct {

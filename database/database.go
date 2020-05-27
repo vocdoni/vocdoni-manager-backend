@@ -7,10 +7,10 @@ import (
 
 type Database interface {
 	Close() error
-	CreateEntity(entityID string, info *types.EntityInfo) (*types.Entity, error)
+	AddEntity(entityID string, info *types.EntityInfo) error
 	Entity(entityID string) (*types.Entity, error)
 	EntityHas(entityID string, memberID uuid.UUID) bool
-	CreateMember(entityID, publicKey string, member *types.MemberInfo) (*types.Member, error)
+	AddMember(entityID string, pubKey string, info *types.MemberInfo) (*types.Member, error)
 	Member(memberID uuid.UUID) (*types.Member, error)
 	Census(censusID string) (*types.Census, error)
 }

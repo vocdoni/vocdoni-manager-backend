@@ -42,8 +42,8 @@ func (d *Database) EntityHas(entityID string, memberID uuid.UUID) bool {
 	return true
 }
 
-func (d *Database) CreateEntity(entityID string, info *types.EntityInfo) (*types.Entity, error) {
-	return d.Entity("b662e6ac6e8300f0a03b33c4f8510121ba2d5bde")
+func (d *Database) AddEntity(entityID string, info *types.EntityInfo) error {
+	return nil
 }
 
 func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
@@ -66,6 +66,6 @@ func (d *Database) Census(censusID string) (*types.Census, error) {
 	return &census, nil
 }
 
-func (d *Database) CreateMember(entityID, pubKey string, info *types.MemberInfo) (*types.Member, error) {
+func (d *Database) AddMember(entityID string, pubKey string, info *types.MemberInfo) (*types.Member, error) {
 	return &types.Member{MemberInfo: *info, ID: uuid.New(), EntityID: entityID, PubKey: pubKey}, nil
 }
