@@ -189,7 +189,7 @@ func main() {
 	var db database.Database
 
 	// Postgres with sqlx
-	db, err = pgsql.New(cfg.DB.Host, cfg.DB.Port, cfg.DB.User, cfg.DB.Password, cfg.DB.Dbname, cfg.DB.Sslmode)
+	db, err = pgsql.New(cfg.DB)
 	if err != nil {
 		log.Fatal(err)
 	}

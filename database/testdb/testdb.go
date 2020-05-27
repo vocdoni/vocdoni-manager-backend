@@ -20,7 +20,7 @@ import (
 type Database struct {
 }
 
-func New(host string, port int, user, password, dbname string, sslmode string) (*Database, error) {
+func New() (*Database, error) {
 	return &Database{}, nil
 }
 

@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -11,9 +12,12 @@ import (
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
 
+var api testcommon.TestAPI
+
 func TestMain(t *testing.M) {
-	api := testcommon.TestAPI{}
-	api.Start("127.0.0.1", "", 8002)
+	api = testcommon.TestAPI{}
+	route := ""
+	api.Start(nil, &route)
 	reg := NewRegistry(api.EP.Router, api.DB)
 	if err := reg.RegisterMethods(""); err != nil {
 		panic(err)
@@ -26,7 +30,7 @@ func TestRegister(t *testing.T) {
 	var req types.MetaRequest
 	var s signature.SignKeys
 	s.Generate()
-	wsc, err := testcommon.NewAPIConnection("ws://127.0.0.1:8002/registry", t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/registry", api.Port), t)
 	if err != nil {
 		t.Error(err)
 	}

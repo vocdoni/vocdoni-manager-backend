@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -11,9 +12,12 @@ import (
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
 
+var api testcommon.TestAPI
+
 func TestMain(t *testing.M) {
-	api := testcommon.TestAPI{}
-	if err := api.Start("127.0.0.1", "", 8002); err != nil {
+	api = testcommon.TestAPI{}
+	route := ""
+	if err := api.Start(nil, &route); err != nil {
 		panic(err)
 	}
 	reg := NewManager(api.EP.Router, api.DB)
@@ -28,7 +32,7 @@ func TestRegister(t *testing.T) {
 	var req types.MetaRequest
 	var s signature.SignKeys
 	s.Generate()
-	wsc, err := testcommon.NewAPIConnection("ws://127.0.0.1:8002/manager", t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
 	if err != nil {
 		t.Error(err)
 	}

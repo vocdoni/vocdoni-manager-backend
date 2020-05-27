@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/jackc/pgx/stdlib"
 	"gitlab.com/vocdoni/go-dvote/log"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
 
@@ -16,9 +17,10 @@ type Database struct {
 	db *sqlx.DB
 }
 
-func New(host string, port int, user, password, dbname string, sslmode string) (*Database, error) {
+func New(dbc *config.DB) (*Database, error) {
 
-	db, err := sqlx.Open("pgx", fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s ", host, port, user, password, dbname, sslmode))
+	db, err := sqlx.Open("pgx", fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s ",
+		dbc.Host, dbc.Port, dbc.User, dbc.Password, dbc.Dbname, dbc.Sslmode))
 	if err != nil {
 		log.Fatal(err)
 	}
