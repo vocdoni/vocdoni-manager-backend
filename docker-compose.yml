@@ -4,7 +4,7 @@ services:
   postgres:
     container_name: postgres_mgr
     container_name: postgres
-    build: ./database/pgsql/
+    build: ./misc/db/
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-vocdoni}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vocdoni}

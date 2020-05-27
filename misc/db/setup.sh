@@ -12,4 +12,4 @@ psql --username "$POSTGRES_USER" --dbname "postgres" --command "CREATE DATABASE 
 # psql -d $DB -c "CREATE USER $POSTGRES_USER WITH PASSWORD '$POSTGRES_PASSWORD';" # Create user Devicehub uses to access db
 psql --username "$POSTGRES_USER" --dbname "$DB" -c "GRANT ALL PRIVILEGES ON DATABASE $DB TO $POSTGRES_USER;" # Give access to the db
 psql --username "$POSTGRES_USER" --dbname "$DB"  -c "CREATE EXTENSION pgcrypto SCHEMA public;" # Enable pgcrypto
-psql --username "$POSTGRES_USER" --dbname "$DB" -a -f /root/schema.psql
+psql --username "$POSTGRES_USER" --dbname "$DB" -a -f /schema.psql
