@@ -1,8 +1,6 @@
 package test
 
 import (
-	"testing"
-
 	"gitlab.com/vocdoni/go-dvote/crypto/signature"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
@@ -18,7 +16,7 @@ type TestAPI struct {
 	Signer *signature.SignKeys
 }
 
-func (t *TestAPI) Start(tb testing.TB, host, route string, port int) {
+func (t *TestAPI) Start(host, route string, port int) error {
 	log.Init("info", "stdout")
 	var err error
 	// Signer
@@ -33,15 +31,13 @@ func (t *TestAPI) Start(tb testing.TB, host, route string, port int) {
 		},
 	}
 	// WS Endpoint and Router
-	t.EP, err = endpoint.NewEndpoint(cfg, t.Signer)
-	if err != nil {
-		tb.Fatal(err)
+	if t.EP, err = endpoint.NewEndpoint(cfg, t.Signer); err != nil {
+		return err
 	}
 
 	// Mock database
-	t.DB, err = testdb.New("host", 1234, "user", "password", "dbname", "sslmode")
-	if err != nil {
-		tb.Fatal(err)
+	if t.DB, err = testdb.New("host", 1234, "user", "password", "dbname", "sslmode"); err != nil {
+		return err
 	}
-
+	return nil
 }

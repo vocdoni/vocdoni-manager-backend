@@ -42,6 +42,10 @@ func (d *Database) EntityHas(entityID string, memberID uuid.UUID) bool {
 	return true
 }
 
+func (d *Database) CreateEntity(entityID string, info *types.EntityInfo) (*types.Entity, error) {
+	return d.Entity("b662e6ac6e8300f0a03b33c4f8510121ba2d5bde")
+}
+
 func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	var member types.Member
 	member.ID = memberID
@@ -60,4 +64,8 @@ func (d *Database) Census(censusID string) (*types.Census, error) {
 	var census types.Census
 	census.ID = uuid.New().String()
 	return &census, nil
+}
+
+func (d *Database) CreateMember(entityID, pubKey string, info *types.MemberInfo) (*types.Member, error) {
+	return &types.Member{MemberInfo: *info, ID: uuid.New(), EntityID: entityID, PubKey: pubKey}, nil
 }

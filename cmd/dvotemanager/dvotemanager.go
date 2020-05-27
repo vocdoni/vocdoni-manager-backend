@@ -10,13 +10,12 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto/signature"
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database/pgsql"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/database/testdb"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/manager"
 
 	"gitlab.com/vocdoni/vocdoni-manager-backend/registry"
 	endpoint "gitlab.com/vocdoni/vocdoni-manager-backend/services/api-endpoint"
@@ -190,34 +189,25 @@ func main() {
 	var db database.Database
 
 	// Postgres with sqlx
-	// db, err = pgsql.New("host", 1234, "user", "password", "dbname", "sslmode")
 	db, err = pgsql.New(cfg.DB.Host, cfg.DB.Port, cfg.DB.User, cfg.DB.Password, cfg.DB.Dbname, cfg.DB.Sslmode)
 	if err != nil {
 		log.Fatal(err)
 	}
-	test, err := testdb.New(cfg.DB.Host, cfg.DB.Port, cfg.DB.User, cfg.DB.Password, cfg.DB.Dbname, cfg.DB.Sslmode)
-	if err != nil {
-		log.Fatal(err)
-	}
-	entity, _ := test.Entity("0x12345123451234")
-
-	// entity, err := db.AddEntity("0x12345123451234", "0x123847192347", "entity@entity.org", "test entity", []string{"0x0", "0x0"})
-	err = db.AddEntity(entity)
-	if err != nil {
-		log.Fatal(err)
-	}
-	writtenEntity, err := db.Entity(entity.ID)
-	if err != nil {
-		log.Fatal(err)
-	}
-	member, _ := test.Member(uuid.New())
-	db.AddMember(writtenEntity.ID, member)
 
 	// User registry
 	if cfg.Mode == "registry" || cfg.Mode == "all" {
 		log.Infof("enabling Registry API methods")
 		reg := registry.NewRegistry(ep.Router, db)
 		if err := reg.RegisterMethods(cfg.API.Route); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	// Census Manager
+	if cfg.Mode == "manager" || cfg.Mode == "all" {
+		log.Infof("enabling Manager API methods")
+		mgr := manager.NewManager(ep.Router, db)
+		if err := mgr.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}
 	}

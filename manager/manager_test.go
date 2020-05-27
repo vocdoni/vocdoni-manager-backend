@@ -1,4 +1,4 @@
-package registry
+package manager
 
 import (
 	"os"
@@ -13,8 +13,10 @@ import (
 
 func TestMain(t *testing.M) {
 	api := test.TestAPI{}
-	api.Start("127.0.0.1", "", 8002)
-	reg := NewRegistry(api.EP.Router, api.DB)
+	if err := api.Start("127.0.0.1", "", 8002); err != nil {
+		panic(err)
+	}
+	reg := NewManager(api.EP.Router, api.DB)
 	if err := reg.RegisterMethods(""); err != nil {
 		panic(err)
 	}
@@ -26,19 +28,14 @@ func TestRegister(t *testing.T) {
 	var req types.MetaRequest
 	var s signature.SignKeys
 	s.Generate()
-	wsc, err := test.NewAPIConnection("ws://127.0.0.1:8002/registry", t)
+	wsc, err := test.NewAPIConnection("ws://127.0.0.1:8002/manager", t)
 	if err != nil {
 		t.Error(err)
 	}
+
 	req.Method = "register"
 	req.EntityID = "12345123451234"
-
-	mInfo := types.MemberInfo{
-		Email: "info@vocdoni.io",
-	}
-
-	req.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo}
-
+	req.Member = &types.Member{ID: uuid.New()}
 	resp := wsc.Request(req, &s)
 	if !resp.Ok {
 		t.Error(resp.Message)

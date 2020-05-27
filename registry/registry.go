@@ -52,7 +52,7 @@ func (r *Registry) register(request router.RouterRequest) {
 		return
 	}
 	if !checkMemberInfo(request.Member) {
-		r.Router.SendError(request, "invalid member fields")
+		r.Router.SendError(request, "invalid member info")
 		return
 	}
 	member, err := r.db.Member(request.Member.ID)
@@ -97,9 +97,6 @@ func checkMemberInfo(m *types.Member) bool {
 		return false
 	}
 	if err := checkmail.ValidateFormat(m.Email); err != nil {
-		return false
-	}
-	if err := checkmail.ValidateHost(m.Email); err != nil {
 		return false
 	}
 	return true

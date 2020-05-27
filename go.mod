@@ -6,6 +6,9 @@ require (
 	github.com/badoux/checkmail v0.0.0-20181210160741-9661bd69e9ad
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/google/uuid v1.1.1
+	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
+	github.com/jackc/pgtype v1.3.0
+	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/lib/pq v1.5.2
 	github.com/mattn/go-sqlite3 v1.10.0 // indirect
@@ -15,6 +18,6 @@ require (
 	github.com/spf13/viper v1.7.0
 	gitlab.com/vocdoni/go-dvote v0.1.1-0.20200514125307-ce4e81ff6f82
 	golang.org/x/tools v0.0.0-20200513122804-866d71a3170a // indirect
-	google.golang.org/appengine v1.6.1
+	google.golang.org/appengine v1.6.1 // indirect
 	nhooyr.io/websocket v1.8.5
 )

@@ -62,7 +62,11 @@ func (d *Database) EntityHas(entityID string, memberID uuid.UUID) bool {
 	return true
 }
 
-func (d *Database) AddMember(entityID string, member *types.Member) (*types.Member, error) {
+func (d *Database) CreateEntity(entityID string, info *types.EntityInfo) (*types.Entity, error) {
+	return &types.Entity{EntityInfo: *info}, nil
+}
+
+func (d *Database) CreateMember(entityID, pubKey string, info *types.MemberInfo) (*types.Member, error) {
 	// pgmember := ToPGMember(member)
 	// insert := `INSERT INTO members
 	//  				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
@@ -72,7 +76,7 @@ func (d *Database) AddMember(entityID string, member *types.Member) (*types.Memb
 	// 	log.Error(err)
 	// 	return nil, err
 	// }
-	return nil, nil
+	return &types.Member{MemberInfo: *info}, nil
 }
 
 func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
