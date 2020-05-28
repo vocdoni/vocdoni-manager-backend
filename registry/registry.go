@@ -1,6 +1,9 @@
 package registry
 
 import (
+	"bytes"
+	"encoding/hex"
+
 	"github.com/badoux/checkmail"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/router"
@@ -44,10 +47,14 @@ func (r *Registry) send(req router.RouterRequest, resp types.ResponseMessage) {
 
 func (r *Registry) register(request router.RouterRequest) {
 	var entity *types.Entity
+	var entityID []byte
 	var err error
 	var response types.ResponseMessage
+	if entityID, err = hex.DecodeString(request.EntityID); err != nil {
+		r.Router.SendError(request, err.Error())
+	}
 	// check entityId exist
-	if entity, err = r.db.Entity(request.EntityID); err != nil {
+	if entity, err = r.db.Entity(entityID); err != nil {
 		r.Router.SendError(request, err.Error())
 		return
 	}
@@ -61,7 +68,8 @@ func (r *Registry) register(request router.RouterRequest) {
 		return
 
 	}
-	if member.EntityID != entity.ID {
+	if !bytes.Equal(member.EntityID, entity.ID) {
+		// if member.EntityID != entity.ID {
 		r.Router.SendError(request, "invalid entity")
 		return
 	}

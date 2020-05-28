@@ -18,7 +18,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	github.com/status-im/keycard-go v0.0.0-20191119114148-6dd40a46baa0 // indirect
-	gitlab.com/vocdoni/go-dvote v0.1.1-0.20200528083030-f04cc03677be
+	gitlab.com/vocdoni/go-dvote v0.1.1-0.20200528105104-6212f11208f1
 	golang.org/x/tools v0.0.0-20200513122804-866d71a3170a // indirect
 	google.golang.org/appengine v1.6.1 // indirect
 	nhooyr.io/websocket v1.8.6

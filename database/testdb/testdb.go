@@ -1,10 +1,13 @@
 package testdb
 
 import (
+	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
+	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
 
@@ -28,28 +31,40 @@ func (d *Database) Close() error {
 	return nil
 }
 
-func (d *Database) Entity(entityID string) (*types.Entity, error) {
+func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	var entity types.Entity
 	entity.ID = entityID
-	entity.Address = "b662e6ac6e8300f0a03b33c4f8510121ba2d5bde"
-	entity.CensusManagersAddresses = []string{"02ed03e6408e34af72a0e062a50cd9e77997c6c0eded5835b7367bb5695e844bf4"}
+	eid, err := hex.DecodeString(util.TrimHex("b662e6ac6e8300f0a03b33c4f8510121ba2d5bde"))
+	if err != nil {
+		return nil, fmt.Errorf("error decoding entity address: %s", err)
+	}
+	entity.Address = eid
+	managerAddresses, err := hex.DecodeString("02ed03e6408e34af72a0e062a50cd9e77997c6c0eded5835b7367bb5695e844bf4")
+	if err != nil {
+		return nil, fmt.Errorf("error decoding manager address: %s", err)
+	}
+	entity.CensusManagersAddresses = [][]byte{managerAddresses}
 	entity.Name = "test entity"
 	entity.Email = "entity@entity.org"
 	return &entity, nil
 }
 
-func (d *Database) EntityHas(entityID string, memberID uuid.UUID) bool {
+func (d *Database) EntityHas(entityID []byte, memberID uuid.UUID) bool {
 	return true
 }
 
-func (d *Database) AddEntity(entityID string, info *types.EntityInfo) error {
+func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	return nil
 }
 
 func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	var member types.Member
 	member.ID = memberID
-	member.EntityID = "12345123451234"
+	eid, err := hex.DecodeString(util.TrimHex("b662e6ac6e8300f0a03b33c4f8510121ba2d5bde"))
+	if err != nil {
+		return nil, fmt.Errorf("error decoding entity address: %s", err)
+	}
+	member.EntityID = eid
 	member.Email = "hello@vocdoni.io"
 	member.FirstName = "Julian"
 	member.LastName = "Assange"
@@ -60,12 +75,12 @@ func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	return &member, nil
 }
 
-func (d *Database) Census(censusID string) (*types.Census, error) {
+func (d *Database) Census(censusID []byte) (*types.Census, error) {
 	var census types.Census
-	census.ID = uuid.New().String()
+	census.ID = []byte("0x0")
 	return &census, nil
 }
 
-func (d *Database) AddMember(entityID string, pubKey string, info *types.MemberInfo) (*types.Member, error) {
+func (d *Database) AddMember(entityID []byte, pubKey string, info *types.MemberInfo) (*types.Member, error) {
 	return &types.Member{MemberInfo: *info, ID: uuid.New(), EntityID: entityID, PubKey: pubKey}, nil
 }

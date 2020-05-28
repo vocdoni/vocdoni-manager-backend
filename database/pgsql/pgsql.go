@@ -34,28 +34,33 @@ func (d *Database) Close() error {
 	// return d.db.Close()
 }
 
-func (d *Database) AddEntity(entityID string, info *types.EntityInfo) error {
+func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	entity := &types.Entity{EntityInfo: *info, ID: entityID}
-	pgEntity := ToPGEntity(entity)
+	pgEntity, err := ToPGEntity(entity)
+	if err != nil {
+		return err
+	}
 	//TODO: Calculate EntityID (consult go-dvote)
 	insert := `INSERT INTO entities
 					(id, address, email, name, census_managers_addresses)
 					VALUES (:id, :address, :email, :name, :pg_census_managers_addresses)`
-	_, err := d.db.NamedExec(insert, pgEntity)
+	_, err = d.db.NamedExec(insert, pgEntity)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (d *Database) Entity(entityID string) (*types.Entity, error) {
+func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	var pgEntity PGEntity
 	selectQuery := `SELECT id, address, email, name, census_managers_addresses as "pg_census_managers_addresses"  FROM entities WHERE id=$1`
 	row := d.db.QueryRowx(selectQuery, entityID)
 	err := row.StructScan(&pgEntity)
-	entity := ToEntity(&pgEntity)
-	js, err := json.Marshal(entity)
-	log.Debugf("%s", string(js))
+	if err != nil {
+		log.Debug(err)
+		return nil, err
+	}
+	entity, err := ToEntity(&pgEntity)
 	if err != nil {
 		log.Debug(err)
 		return nil, err
@@ -63,12 +68,12 @@ func (d *Database) Entity(entityID string) (*types.Entity, error) {
 	return entity, nil
 }
 
-func (d *Database) EntityHas(entityID string, memberID uuid.UUID) bool {
+func (d *Database) EntityHas(entityID []byte, memberID uuid.UUID) bool {
 	return true
 }
 
 func (d *Database) AddUser(user *types.User) error {
-	if user.PubKey == "" {
+	if user.PubKey == nil {
 		return fmt.Errorf("Invalid public Key")
 	}
 	if user.DigestedPubKey == "" {
@@ -105,17 +110,20 @@ func (d *Database) User(pubKey string) (*types.User, error) {
 	return user, nil
 }
 
-func (d *Database) AddMember(entityID string, pubKey string, info *types.MemberInfo) (*types.Member, error) {
+func (d *Database) AddMember(entityID []byte, pubKey string, info *types.MemberInfo) (*types.Member, error) {
 	member := &types.Member{EntityID: entityID, PubKey: pubKey, MemberInfo: *info}
 	js, err := json.Marshal(member)
 	log.Debugf("%s", string(js))
-	pgmember := ToPGMember(member)
+	pgmember, err := ToPGMember(member)
+	if err != nil {
+		return nil, err
+	}
+
 	insert := `INSERT INTO members
 	 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
 					 VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
 	_, err = d.db.NamedExec(insert, pgmember)
 	if err != nil {
-		log.Debug(err)
 		return nil, err
 	}
 	return &types.Member{MemberInfo: *info}, nil
@@ -138,9 +146,9 @@ func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	return member, nil
 }
 
-func (d *Database) Census(censusID string) (*types.Census, error) {
+func (d *Database) Census(censusID []byte) (*types.Census, error) {
 	var census types.Census
-	census.ID = uuid.New().String()
+	census.ID = []byte("0x0")
 	return &census, nil
 }
 
