@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	_ "github.com/jackc/pgx/stdlib"
-	// "gitlab.com/vocdoni/go-dvote/crypto/snarks"
+	"gitlab.com/vocdoni/go-dvote/crypto/snarks"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
@@ -71,10 +71,15 @@ func (d *Database) AddUser(user *types.User) error {
 	if user.PubKey == "" {
 		return fmt.Errorf("Invalid public Key")
 	}
-	// TODO: solve snarks import
-	// if user.DigestedPubKey == "" {
-	// 	user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
-	// }
+	if user.DigestedPubKey == "" {
+		// The import works.
+		// Note that the input and outputs are the raw []byte.
+		// Assuming that the input is hex, and that you want hex output
+		// too, you should do the encoding/decoding.
+		// Though it would be a bit weird to store hex in postgres.
+		_ = snarks.Poseidon.Hash
+		// user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
+	}
 	insert := `INSERT INTO users
 	 				(public_key, digested_public_key)
 					 VALUES (:public_key, :digested_public_key)`

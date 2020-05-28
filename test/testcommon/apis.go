@@ -3,7 +3,7 @@ package testcommon
 import (
 	"math/rand"
 
-	"gitlab.com/vocdoni/go-dvote/crypto/signature"
+	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
@@ -17,7 +17,7 @@ type TestAPI struct {
 	DB     database.Database
 	EP     *endpoint.EndPoint
 	Port   int
-	Signer *signature.SignKeys
+	Signer *ethereum.SignKeys
 }
 
 // Start creates a new database connection and API endpoint for testing.
@@ -28,7 +28,7 @@ func (t *TestAPI) Start(dbc *config.DB, route *string) error {
 	var err error
 	if route != nil {
 		// Signer
-		t.Signer = new(signature.SignKeys)
+		t.Signer = new(ethereum.SignKeys)
 		t.Signer.Generate()
 
 		t.Port = 12000 + rand.Intn(1000)

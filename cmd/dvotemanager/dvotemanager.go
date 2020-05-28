@@ -10,7 +10,7 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"gitlab.com/vocdoni/go-dvote/crypto/signature"
+	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
@@ -124,7 +124,7 @@ func newConfig() (*config.Manager, config.Error) {
 	// Generate and save signing key if nos specified
 	if len(cfg.SigningKey) < 32 {
 		fmt.Println("no signing key, generating one...")
-		var signer signature.SignKeys
+		var signer ethereum.SignKeys
 		err = signer.Generate()
 		if err != nil {
 			cfgError = config.Error{
@@ -172,7 +172,7 @@ func main() {
 	}
 
 	// Signer
-	signer := new(signature.SignKeys)
+	signer := new(ethereum.SignKeys)
 	if err := signer.AddHexKey(cfg.SigningKey); err != nil {
 		log.Fatal(err)
 	}

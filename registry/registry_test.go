@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gitlab.com/vocdoni/go-dvote/crypto/signature"
+	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/test/testcommon"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
@@ -28,7 +28,7 @@ func TestMain(t *testing.M) {
 
 func TestRegister(t *testing.T) {
 	var req types.MetaRequest
-	var s signature.SignKeys
+	var s ethereum.SignKeys
 	s.Generate()
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/registry", api.Port), t)
 	if err != nil {

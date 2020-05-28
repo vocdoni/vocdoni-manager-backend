@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"gitlab.com/vocdoni/go-dvote/crypto/signature"
+	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/net"
 	dvote "gitlab.com/vocdoni/go-dvote/types"
@@ -35,11 +35,11 @@ type Router struct {
 	Transport net.Transport
 	methods   map[string]registeredMethod
 	inbound   <-chan dvote.Message
-	signer    *signature.SignKeys
+	signer    *ethereum.SignKeys
 }
 
 // NewRouter creates a router multiplexer instance
-func NewRouter(inbound <-chan dvote.Message, transport net.Transport, signer *signature.SignKeys) *Router {
+func NewRouter(inbound <-chan dvote.Message, transport net.Transport, signer *ethereum.SignKeys) *Router {
 	r := new(Router)
 	r.methods = make(map[string]registeredMethod)
 	r.inbound = inbound
@@ -49,7 +49,7 @@ func NewRouter(inbound <-chan dvote.Message, transport net.Transport, signer *si
 }
 
 // InitRouter sets up a Router object which can then be used to route requests
-func InitRouter(inbound <-chan dvote.Message, transport net.Transport, signer *signature.SignKeys) *Router {
+func InitRouter(inbound <-chan dvote.Message, transport net.Transport, signer *ethereum.SignKeys) *Router {
 	return NewRouter(inbound, transport, signer)
 }
 
@@ -112,13 +112,13 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 	if err != nil {
 		return request, fmt.Errorf("unable to marshal message to sign: %s", msg)
 	}
-	if request.PublicKey, err = signature.PubKeyFromSignature(msg, msgStruct.Signature); err != nil {
+	if request.PublicKey, err = ethereum.PubKeyFromSignature(msg, msgStruct.Signature); err != nil {
 		return request, err
 	}
 	if len(request.PublicKey) == 0 {
 		return request, fmt.Errorf("could not extract public key from signature")
 	}
-	if request.Address, err = signature.AddrFromPublicKey(request.PublicKey); err != nil {
+	if request.Address, err = ethereum.AddrFromPublicKey(request.PublicKey); err != nil {
 		return request, err
 	}
 	request.private = !method.public

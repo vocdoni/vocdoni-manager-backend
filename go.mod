@@ -3,6 +3,7 @@ module gitlab.com/vocdoni/vocdoni-manager-backend
 go 1.14
 
 require (
+	github.com/ChainSafe/go-schnorrkel v0.0.0-20200115165343-aa45d48b5ed6 // indirect
 	github.com/badoux/checkmail v0.0.0-20181210160741-9661bd69e9ad
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/google/uuid v1.1.1
@@ -16,8 +17,9 @@ require (
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
-	gitlab.com/vocdoni/go-dvote v0.1.1-0.20200514125307-ce4e81ff6f82
+	github.com/status-im/keycard-go v0.0.0-20191119114148-6dd40a46baa0 // indirect
+	gitlab.com/vocdoni/go-dvote v0.1.1-0.20200528083030-f04cc03677be
 	golang.org/x/tools v0.0.0-20200513122804-866d71a3170a // indirect
 	google.golang.org/appengine v1.6.1 // indirect
-	nhooyr.io/websocket v1.8.5
+	nhooyr.io/websocket v1.8.6
 )

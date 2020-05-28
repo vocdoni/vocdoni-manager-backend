@@ -1,7 +1,7 @@
 package endpoint
 
 import (
-	"gitlab.com/vocdoni/go-dvote/crypto/signature"
+	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/net"
 	"gitlab.com/vocdoni/go-dvote/types"
@@ -15,7 +15,7 @@ type EndPoint struct {
 }
 
 // NewEndpoint creates a new websockets endpoint
-func NewEndpoint(cfg *config.Manager, signer *signature.SignKeys) (*EndPoint, error) {
+func NewEndpoint(cfg *config.Manager, signer *ethereum.SignKeys) (*EndPoint, error) {
 	log.Infof("creating API service")
 	pxy, err := proxy(cfg.API.ListenHost, cfg.API.ListenPort, cfg.API.Ssl.Domain, cfg.API.Ssl.DirCert)
 	if err != nil {
