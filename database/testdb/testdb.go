@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
+	"gitlab.com/vocdoni/go-dvote/crypto/snarks"
 	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
@@ -83,4 +84,19 @@ func (d *Database) Census(censusID []byte) (*types.Census, error) {
 
 func (d *Database) AddMember(entityID []byte, pubKey string, info *types.MemberInfo) (*types.Member, error) {
 	return &types.Member{MemberInfo: *info, ID: uuid.New(), EntityID: entityID, PubKey: pubKey}, nil
+}
+
+func (d *Database) AddUser(user *types.User) error {
+	return nil
+}
+
+func (d *Database) User(pubKey string) (*types.User, error) {
+	pb, err := hex.DecodeString(pubKey)
+	if err != nil {
+		return nil, err
+	}
+	return &types.User{
+		PubKey:         pb,
+		DigestedPubKey: fmt.Sprintf("%x", snarks.Poseidon.Hash(pb)),
+	}, nil
 }

@@ -12,5 +12,7 @@ type Database interface {
 	EntityHas(entityID []byte, memberID uuid.UUID) bool
 	AddMember(entityID []byte, pubKey string, info *types.MemberInfo) (*types.Member, error)
 	Member(memberID uuid.UUID) (*types.Member, error)
+	AddUser(user *types.User) error
+	User(pubKey string) (*types.User, error)
 	Census(censusID []byte) (*types.Census, error)
 }

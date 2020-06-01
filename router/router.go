@@ -21,13 +21,13 @@ type registeredMethod struct {
 type RouterRequest struct {
 	types.MetaRequest
 
-	method        string
-	id            string
-	Authenticated bool
-	Address       string
-	PublicKey     string
-	Context       dvote.MessageContext
-	private       bool
+	method             string
+	id                 string
+	Authenticated      bool
+	Address            string
+	SignaturePublicKey string
+	Context            dvote.MessageContext
+	private            bool
 }
 
 // Router holds a router object
@@ -112,13 +112,17 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 	if err != nil {
 		return request, fmt.Errorf("unable to marshal message to sign: %s", msg)
 	}
-	if request.PublicKey, err = ethereum.PubKeyFromSignature(msg, msgStruct.Signature); err != nil {
+	if request.SignaturePublicKey, err = ethereum.PubKeyFromSignature(msg, msgStruct.Signature); err != nil {
 		return request, err
 	}
-	if len(request.PublicKey) == 0 {
+	// TBD: remove when everything is compressed only
+	if request.SignaturePublicKey, err = ethereum.CompressPubKey(request.SignaturePublicKey); err != nil {
+		return request, err
+	}
+	if len(request.SignaturePublicKey) == 0 {
 		return request, fmt.Errorf("could not extract public key from signature")
 	}
-	if request.Address, err = ethereum.AddrFromPublicKey(request.PublicKey); err != nil {
+	if request.Address, err = ethereum.AddrFromPublicKey(request.SignaturePublicKey); err != nil {
 		return request, err
 	}
 	request.private = !method.public

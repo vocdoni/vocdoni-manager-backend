@@ -36,7 +36,7 @@ func TestRegister(t *testing.T) {
 	}
 	req.Method = "register"
 	req.EntityID = "12345123451234"
-
+	req.PubKey, _ = s.HexString()
 	mInfo := types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
