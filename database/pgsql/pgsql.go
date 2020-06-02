@@ -151,6 +151,23 @@ func (d *Database) AddMember(entityID []byte, pubKey string, info *types.MemberI
 	return &types.Member{MemberInfo: *info}, nil
 }
 
+func (d *Database) SetMemberInfo(pubKey string, info *types.MemberInfo) error {
+	member := &types.Member{PubKey: pubKey, MemberInfo: *info}
+	pgmember, err := ToPGMember(member)
+	if err != nil {
+		return err
+	}
+	update := `UPDATE members
+	 				SET (street_address, first_name, last_name, email, phone, date_of_birth, verified)
+					= (:street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified)
+					WHERE public_key=:public_key`
+	_, err = d.db.NamedExec(update, pgmember)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	var pgMember PGMember
 	selectQuery := `SELECT

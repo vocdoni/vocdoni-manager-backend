@@ -89,6 +89,10 @@ func (d *Database) AddMember(entityID []byte, pubKey string, info *types.MemberI
 	return &types.Member{MemberInfo: *info, ID: uuid.New(), EntityID: entityID, PubKey: pubKey}, nil
 }
 
+func (d *Database) SetMemberInfo(pubKey string, info *types.MemberInfo) error {
+	return nil
+}
+
 func (d *Database) AddUser(user *types.User) error {
 	return nil
 }
