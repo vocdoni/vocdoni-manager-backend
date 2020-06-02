@@ -22,6 +22,41 @@ type EntityInfo struct {
 	Email                   string   `json:"email,omitempty" db:"email"`
 	Name                    string   `json:"name" db:"name"`
 	CensusManagersAddresses [][]byte `json:"censusManagersAddresses,omitempty" db:"census_managers_addresses"`
+	Origins                 []Origin `json:"origin" db:"origin"`
+}
+
+type origin int
+
+const (
+	Token origin = iota
+	Form
+	DB
+)
+
+type Origin interface {
+	Origin() origin
+}
+
+// every base must fulfill the Baser interface
+func (b origin) Origin() origin {
+	return b
+}
+
+func (b origin) String() string {
+	return [...]string{"Token", "Form", "DB"}[b]
+}
+
+func ToOrigin(origin string) Origin {
+	switch origin {
+	case "Token":
+		return Token.Origin()
+	case "Form":
+		return Form.Origin()
+	case "DB":
+		return DB.Origin()
+	default:
+		return nil
+	}
 }
 
 type Member struct {
@@ -41,6 +76,7 @@ type MemberInfo struct {
 	StreetAddress string    `json:"streetAddress,omitempty" db:"street_address"`
 	Consented     bool      `json:"consented,omitempty" db:"consented"`
 	Verified      time.Time `json:"verified,omitempty" db:"verified"`
+	Origin        Origin    `json:"origin,omitempty" db:"origin"`
 	CustomFields  []byte    `json:"customFields" db:"custom_fields"`
 }
 

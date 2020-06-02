@@ -27,6 +27,26 @@ ALTER TABLE ONLY entities
 ALTER TABLE ONLY entities
     ADD CONSTRAINT entities_address_unique UNIQUE (address);
 
+--------------------------- ENTITTIES_ORIGINS
+-- The different types of origins and how the entitties support them
+
+CREATE TYPE origins AS ENUM (
+    'Token',
+    'Form',
+    'DB'
+);
+
+CREATE TABLE entities_origins (
+    origin origins NOT NULL DEFAULT 'Form' ,
+    entity_id bytea NOT NULL
+);
+
+ALTER TABLE entities_origins
+    ADD CONSTRAINT entities_origins_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE;
+
+ALTER TABLE entities_origins
+    ADD CONSTRAINT entities_origins_pkey  PRIMARY KEY (origin, entity_id);
+
 --------------------------- USERS
 -- A user, i.e. someone who is defined uniquely by his public key
 
@@ -49,12 +69,6 @@ ALTER TABLE ONLY users
 -- members N - 1 entities
 -- members N - 1 users
 
-CREATE TYPE origin AS ENUM (
-    'Token',
-    'Form',
-    'DB'
-);
-
 CREATE TABLE members (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -67,7 +81,7 @@ CREATE TABLE members (
     email  text NOT NULL,
     phone  text NOT NULL,
     date_of_birth timestamp with time zone NOT NULL,
-    origin origin NOT NULL DEFAULT 'Token',
+    origin origins NOT NULL DEFAULT 'Token',
     consented boolean DEFAULT false NOT NULL,
     verified timestamp with time zone NOT NULL,
     custom_fields jsonb NOT NULL DEFAULT '{}'::jsonb
@@ -86,6 +100,9 @@ ALTER TABLE ONLY members
 
 ALTER TABLE ONLY members
     ADD CONSTRAINT members_entity_id_public_key_unique UNIQUE (entity_id, public_key);
+
+ALTER TABLE ONLY members
+    ADD CONSTRAINT members_entity_id_origins_fkey FOREIGN KEY (origin, entity_id) REFERENCES entities_origins;
 
 --------------------------- PUSHTOKEN
 -- A user push token for notifications

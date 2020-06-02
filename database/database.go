@@ -9,6 +9,7 @@ type Database interface {
 	Close() error
 	AddEntity(entityID []byte, info *types.EntityInfo) error
 	Entity(entityID []byte) (*types.Entity, error)
+	EntityOrigins(entityID []byte) ([]types.Origin, error)
 	EntityHas(entityID []byte, memberID uuid.UUID) bool
 	AddMember(entityID []byte, pubKey string, info *types.MemberInfo) (*types.Member, error)
 	Member(memberID uuid.UUID) (*types.Member, error)

@@ -35,6 +35,10 @@ func (d *Database) Close() error {
 }
 
 func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
+	tx, err := d.db.Beginx()
+	if err != nil {
+		return err
+	}
 	entity := &types.Entity{EntityInfo: *info, ID: entityID}
 	pgEntity, err := ToPGEntity(entity)
 	if err != nil {
@@ -44,28 +48,46 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	insert := `INSERT INTO entities
 					(id, address, email, name, census_managers_addresses)
 					VALUES (:id, :address, :email, :name, :pg_census_managers_addresses)`
-	_, err = d.db.NamedExec(insert, pgEntity)
+	_, err = tx.NamedExec(insert, pgEntity)
+	insertOrigins := `INSERT INTO entities_origins (entity_id,origin)
+						VALUES ($1, unnest(cast($2 AS Origins[])))`
+	_, err = tx.Exec(insertOrigins, entityID, pgEntity.Origins)
 	if err != nil {
 		return err
 	}
+	tx.Commit()
 	return nil
 }
 
 func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	var pgEntity PGEntity
-	selectQuery := `SELECT id, address, email, name, census_managers_addresses as "pg_census_managers_addresses"  FROM entities WHERE id=$1`
-	row := d.db.QueryRowx(selectQuery, entityID)
+	selectEntity := `SELECT id, address, email, name, census_managers_addresses as "pg_census_managers_addresses"  FROM entities WHERE id=$1`
+	row := d.db.QueryRowx(selectEntity, entityID)
 	err := row.StructScan(&pgEntity)
 	if err != nil {
-		log.Debug(err)
 		return nil, err
 	}
 	entity, err := ToEntity(&pgEntity)
+	origins, err := d.EntityOrigins(entityID)
 	if err != nil {
-		log.Debug(err)
 		return nil, err
 	}
+	entity.Origins = origins
 	return entity, nil
+}
+
+func (d *Database) EntityOrigins(entityID []byte) ([]types.Origin, error) {
+	var stringOrigins []string
+	selectOrigins := `SELECT origin FROM entities_origins WHERE entity_id=$1`
+	err := d.db.Select(&stringOrigins, selectOrigins, entityID)
+	if err != nil {
+		return nil, err
+	}
+	origins, err := StringToOriginArray(stringOrigins)
+	if err != nil {
+		return nil, err
+	}
+	return origins, nil
 }
 
 func (d *Database) EntityHas(entityID []byte, memberID uuid.UUID) bool {

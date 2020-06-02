@@ -54,6 +54,9 @@ func (d *Database) EntityHas(entityID []byte, memberID uuid.UUID) bool {
 	return true
 }
 
+func (d *Database) EntityOrigins(entityID []byte) ([]types.Origin, error) {
+	return nil, nil
+}
 func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	return nil
 }

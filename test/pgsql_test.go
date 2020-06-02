@@ -31,7 +31,6 @@ func TestMain(t *testing.M) {
 }
 
 func TestEntity(t *testing.T) {
-	t.Log("0")
 	db := api.DB
 	entitySigner := new(ethereum.SignKeys)
 	entitySigner.Generate()
@@ -40,24 +39,24 @@ func TestEntity(t *testing.T) {
 	if err != nil {
 		t.Errorf("error decoding entity address: %s", err)
 	}
-	entityID := ethereum.HashRaw(eid)
 
+	entityID := ethereum.HashRaw(eid)
 	info := &types.EntityInfo{
 		Address: eid,
 		// Email:                   "entity@entity.org",
 		Name:                    "test entity",
 		CensusManagersAddresses: [][]byte{{1, 2, 3}},
+		Origins:                 []types.Origin{types.Token.Origin()},
 	}
-	t.Log("1")
+
 	err = db.AddEntity(entityID, info)
 	if err != nil {
 		t.Errorf("Error adding entity to the Postgres DB (pgsql.go:addEntity): %s", err)
 	}
-	t.Log("Hi")
 
 	entity, err := db.Entity(entityID)
 	if err != nil {
-		t.Error("Error retrieving entity frome the Postgres DB (pgsql.go:Entity)")
+		t.Error("Error retrieving entity from the Postgres DB (pgsql.go:Entity)")
 	}
 	marshalledEntityInfo, err := json.Marshal(entity.EntityInfo)
 	marshalledInfo, err := json.Marshal(info)
@@ -67,7 +66,6 @@ func TestEntity(t *testing.T) {
 	if string(marshalledEntityInfo) != string(marshalledInfo) {
 		t.Error("Entity info not stored correctly in the DB")
 	}
-
 }
 
 func TestMember(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 type PGEntity struct {
 	types.Entity
 	CensusManagersAddresses pgtype.ByteaArray `json:"censusManagersAddresses" db:"pg_census_managers_addresses"`
+	Origins                 pgtype.EnumArray  `db:"origins"`
 }
 
 func ToPGEntity(x *types.Entity) (*PGEntity, error) {
@@ -16,6 +17,15 @@ func ToPGEntity(x *types.Entity) (*PGEntity, error) {
 	if err != nil {
 		return nil, err
 	}
+	vsm := make([]string, len(x.Origins))
+	for i, v := range x.Origins {
+		vsm[i] = v.Origin().String()
+	}
+	pgOrigins, err := ToPGOriginArray(x.Origins)
+	if err != nil {
+		return nil, err
+	}
+	y.Origins = *pgOrigins
 	return y, nil
 }
 
@@ -25,7 +35,51 @@ func ToEntity(x *PGEntity) (*types.Entity, error) {
 	if err != nil {
 		return nil, err
 	}
+	if x.Origins.Status != pgtype.Null {
+		origins, err := ToOriginArray(x.Origins)
+		if err != nil {
+			return nil, err
+		}
+		y.EntityInfo.Origins = origins
+	}
+
+	// err = x.Origins.AssignTo(&y.EntityInfo.Origins)
+	if err != nil {
+		return nil, err
+	}
 	return &y, nil
+}
+
+func ToPGOriginArray(x []types.Origin) (*pgtype.EnumArray, error) {
+	var origin pgtype.EnumArray
+	copy := make([]string, len(x))
+	for i, v := range x {
+		copy[i] = v.Origin().String()
+	}
+	err := origin.Set(copy)
+	if err != nil {
+		return nil, err
+	}
+	pgOrigin := pgtype.EnumArray(origin)
+	return &pgOrigin, nil
+}
+
+func ToOriginArray(p pgtype.EnumArray) ([]types.Origin, error) {
+	var origin []string
+	p.AssignTo(&origin)
+	copy := make([]types.Origin, len(origin))
+	for i, v := range origin {
+		copy[i] = types.ToOrigin(v)
+	}
+	return copy, nil
+}
+
+func StringToOriginArray(s []string) ([]types.Origin, error) {
+	vsm := make([]types.Origin, len(s))
+	for i, v := range s {
+		vsm[i] = types.ToOrigin(v)
+	}
+	return vsm, nil
 }
 
 type PGMember struct {
@@ -47,12 +101,6 @@ func ToPGMember(x *types.Member) (*PGMember, error) {
 	// y.CustomFields = pgtype.JSONB{Bytes: x.MemberInfo.CustomFields, Status: pgtype.Present}
 	return y, nil
 }
-
-// func (m *MemberInfo) Normalize() {
-// 	if m.CustomFields == nil {
-// 		m.CustomFields = []byte{}
-// 	}
-// }
 
 func ToMember(x *PGMember) *types.Member {
 	y := x.Member
