@@ -73,7 +73,7 @@ func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	member.FirstName = "Julian"
 	member.LastName = "Assange"
 	member.Phone = "+441827738192"
-	member.PubKey = "020be846bab70b4eff964d74178187832b3c7866f8509de340b6fccc53032834c6"
+	member.PubKey = []byte("020be846bab70b4eff964d74178187832b3c7866f8509de340b6fccc53032834c6")
 	member.DateOfBirth = time.Time{}
 	member.StreetAddress = "Yolo St. 550"
 	return &member, nil
@@ -85,11 +85,11 @@ func (d *Database) Census(censusID []byte) (*types.Census, error) {
 	return &census, nil
 }
 
-func (d *Database) AddMember(entityID []byte, pubKey string, info *types.MemberInfo) (*types.Member, error) {
+func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (*types.Member, error) {
 	return &types.Member{MemberInfo: *info, ID: uuid.New(), EntityID: entityID, PubKey: pubKey}, nil
 }
 
-func (d *Database) SetMemberInfo(pubKey string, info *types.MemberInfo) error {
+func (d *Database) SetMemberInfo(pubKey []byte, info *types.MemberInfo) error {
 	return nil
 }
 
@@ -97,13 +97,9 @@ func (d *Database) AddUser(user *types.User) error {
 	return nil
 }
 
-func (d *Database) User(pubKey string) (*types.User, error) {
-	pb, err := hex.DecodeString(pubKey)
-	if err != nil {
-		return nil, err
-	}
+func (d *Database) User(pubKey []byte) (*types.User, error) {
 	return &types.User{
-		PubKey:         pb,
-		DigestedPubKey: fmt.Sprintf("%x", snarks.Poseidon.Hash(pb)),
+		PubKey:         pubKey,
+		DigestedPubKey: snarks.Poseidon.Hash(pubKey),
 	}, nil
 }

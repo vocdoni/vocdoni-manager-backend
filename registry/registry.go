@@ -73,14 +73,15 @@ func (r *Registry) register(request router.RouterRequest) {
 		r.Router.SendError(request, "public key does not match")
 		return
 	}
+
 	var u *types.User
-	if u, err = r.db.User(request.PubKey); err != nil {
+	if u, err = r.db.User(user.PubKey); err != nil {
 		log.Error(err)
 		r.Router.SendError(request, "cannot query for user")
 		return
 	}
 	if u == nil {
-		user.DigestedPubKey = fmt.Sprintf("%x", snarks.Poseidon.Hash(user.PubKey))
+		user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
 		if err = r.db.AddUser(&user); err != nil {
 			log.Error(err)
 			r.Router.SendError(request, "unkown error on AddUser")
@@ -112,7 +113,7 @@ func (r *Registry) register(request router.RouterRequest) {
 			return
 		}
 		r.db.AddUser(&user)
-		if member, err = r.db.AddMember(entityID, request.PubKey, &request.Member.MemberInfo); err != nil {
+		if member, err = r.db.AddMember(entityID, user.PubKey, &request.Member.MemberInfo); err != nil {
 			log.Warn(err)
 			r.Router.SendError(request, fmt.Sprintf("cannot create member: (%s)", err))
 			return

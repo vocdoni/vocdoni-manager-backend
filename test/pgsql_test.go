@@ -68,6 +68,21 @@ func TestEntity(t *testing.T) {
 	}
 }
 
+func TestUser(t *testing.T) {
+	db := api.DB
+	userSigner := new(ethereum.SignKeys)
+	userSigner.Generate()
+	user := &types.User{PubKey: userSigner.Public.X.Bytes()}
+	err := db.AddUser(user)
+	if err != nil {
+		t.Errorf("Error adding user to the Postgres DB (pgsql.go:addUser): %s", err)
+	}
+	user, err = db.User(userSigner.Public.X.Bytes())
+	if err != nil {
+		t.Errorf("Error retrieving user from the Postgres DB (pgsql.go:User): %s", err)
+	}
+}
+
 func TestMember(t *testing.T) {
 	t.Error("TODO: Unimplemented")
 	// var db = api.DB

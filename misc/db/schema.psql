@@ -14,11 +14,11 @@
 CREATE TABLE entities (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    id BYTEA NOT NULL ,
-    address BYTEA NOT NULL,
+    id bytea NOT NULL ,
+    address bytea NOT NULL,
     email text NOT NULL,
     name text NOT NULL,
-    census_managers_addresses BYTEA[] NOT NULL
+    census_managers_addresses bytea[] NOT NULL
 );
 
 ALTER TABLE ONLY entities
@@ -53,8 +53,8 @@ ALTER TABLE entities_origins
 CREATE TABLE users (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    public_key BYTEA NOT NULL, 
-    digested_public_key text NOT NULL
+    public_key bytea NOT NULL, 
+    digested_public_key bytea NOT NULL
     --TODO: CONSTRAINT sizes of address
 );
 
@@ -73,8 +73,8 @@ CREATE TABLE members (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id uuid DEFAULT public.gen_random_uuid() NOT NULL,
-    entity_id  BYTEA NOT NULL,
-    public_key  BYTEA NOT NULL, 
+    entity_id  bytea NOT NULL,
+    public_key  bytea NOT NULL, 
     street_address  text NOT NULL,
     first_name  text NOT NULL,
     last_name  text NOT NULL,
@@ -109,7 +109,7 @@ ALTER TABLE ONLY members
 -- push_tokens N - 1 User
 
 CREATE TABLE push_tokens (
-    user_id BYTEA NOT NULL,  
+    user_id bytea NOT NULL,  
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     token text NOT NULL
 );
@@ -128,7 +128,7 @@ CREATE TABLE targets (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id serial NOT NULL,
-    entity_id BYTEA NOT NULL,
+    entity_id bytea NOT NULL,
     name text NOT NULL,
     filters jsonb NOT NULL DEFAULT '{}'::jsonb
 );
@@ -148,10 +148,10 @@ CREATE TABLE censuses (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     target_id integer NOT NULL,
-    id BYTEA NOT NULL,
+    id bytea NOT NULL,
     name text NOT NULL,
-    entity_id BYTEA NOT NULL,
-    merkle_root BYTEA NOT NULL, 
+    entity_id bytea NOT NULL,
+    merkle_root bytea NOT NULL, 
     merkle_tree_uri text NOT NULL
 );
 
@@ -171,7 +171,7 @@ ALTER TABLE ONLY censuses
 
 CREATE TABLE census_members (
   member_id uuid NOT NULL,
-  census_id BYTEA NOT NULL
+  census_id bytea NOT NULL
 );
 
 ALTER TABLE ONLY census_members

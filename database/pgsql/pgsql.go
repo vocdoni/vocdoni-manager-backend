@@ -9,7 +9,8 @@ import (
 
 	_ "github.com/jackc/pgx/stdlib"
 	"gitlab.com/vocdoni/go-dvote/crypto/snarks"
-	"gitlab.com/vocdoni/go-dvote/log"
+
+	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
@@ -20,8 +21,8 @@ type Database struct {
 
 func New(dbc *config.DB) (*Database, error) {
 
-	db, err := sqlx.Open("pgx", fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s ",
-		dbc.Host, dbc.Port, dbc.User, dbc.Password, dbc.Dbname, dbc.Sslmode))
+	db, err := sqlx.Open("pgx", fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s client_encoding=%s ",
+		dbc.Host, dbc.Port, dbc.User, dbc.Password, dbc.Dbname, dbc.Sslmode, "UTF8"))
 	if err != nil {
 		return nil, err
 	}
@@ -98,41 +99,44 @@ func (d *Database) AddUser(user *types.User) error {
 	if user.PubKey == nil {
 		return fmt.Errorf("Invalid public Key")
 	}
-	if user.DigestedPubKey == "" {
+	if len(user.DigestedPubKey) == 0 {
 		// The import works.
 		// Note that the input and outputs are the raw []byte.
 		// Assuming that the input is hex, and that you want hex output
 		// too, you should do the encoding/decoding.
 		// Though it would be a bit weird to store hex in postgres.
-		_ = snarks.Poseidon.Hash
+		user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
 		// user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
+	}
+	pgUser, err := ToPGUser(user)
+	if err != nil {
+		return err
 	}
 	insert := `INSERT INTO users
 	 				(public_key, digested_public_key)
-					 VALUES (:public_key, :digested_public_key)`
-	_, err := d.db.NamedExec(insert, user)
+					 VALUES (:pg_public_key, :pg_digested_public_key)`
+	_, err = d.db.NamedExec(insert, pgUser)
 	if err != nil {
-		log.Debug(err)
 		return err
 	}
 	return nil
 }
 
-func (d *Database) User(pubKey string) (*types.User, error) {
-	var user *types.User
+func (d *Database) User(pubKey []byte) (*types.User, error) {
+	var pgUser PGUser
 	selectQuery := `SELECT
 	 			public_key, digested_public_key
 				FROM USERS where public_key=$1`
 	row := d.db.QueryRowx(selectQuery, pubKey)
-	err := row.StructScan(&user)
+	err := row.StructScan(&pgUser)
 	if err != nil {
-		log.Debug(err)
 		return nil, err
 	}
+	user := ToUser(&pgUser)
 	return user, nil
 }
 
-func (d *Database) AddMember(entityID []byte, pubKey string, info *types.MemberInfo) (*types.Member, error) {
+func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (*types.Member, error) {
 	member := &types.Member{EntityID: entityID, PubKey: pubKey, MemberInfo: *info}
 	js, err := json.Marshal(member)
 	log.Debugf("%s", string(js))
@@ -151,7 +155,7 @@ func (d *Database) AddMember(entityID []byte, pubKey string, info *types.MemberI
 	return &types.Member{MemberInfo: *info}, nil
 }
 
-func (d *Database) SetMemberInfo(pubKey string, info *types.MemberInfo) error {
+func (d *Database) SetMemberInfo(pubKey []byte, info *types.MemberInfo) error {
 	member := &types.Member{PubKey: pubKey, MemberInfo: *info}
 	pgmember, err := ToPGMember(member)
 	if err != nil {
