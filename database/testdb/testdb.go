@@ -80,17 +80,36 @@ func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	return &member, nil
 }
 
+func (d *Database) MemberPubKey(pubKey []byte) (*types.Member, error) {
+	var member types.Member
+	member.ID = uuid.New()
+	eid, err := hex.DecodeString(util.TrimHex("b662e6ac6e8300f0a03b33c4f8510121ba2d5bde"))
+	if err != nil {
+		return nil, fmt.Errorf("error decoding entity address: %s", err)
+	}
+	member.EntityID = eid
+	member.Email = "hello@vocdoni.io"
+	member.FirstName = "Julian"
+	member.LastName = "Assange"
+	member.Phone = "+441827738192"
+	member.PubKey = []byte("020be846bab70b4eff964d74178187832b3c7866f8509de340b6fccc53032834c6")
+	member.DateOfBirth = time.Time{}
+	member.StreetAddress = "Yolo St. 550"
+	return &member, nil
+}
+
 func (d *Database) Census(censusID []byte) (*types.Census, error) {
 	var census types.Census
 	census.ID = []byte("0x0")
 	return &census, nil
 }
 
-func (d *Database) AddMember(entityID, pubKey []byte, info *types.MemberInfo) (*types.Member, error) {
-	return &types.Member{MemberInfo: *info, ID: uuid.New(), EntityID: entityID, PubKey: pubKey}, nil
+func (d *Database) AddMember(entityID, pubKey []byte, info *types.MemberInfo) error {
+	// return &types.Member{MemberInfo: *info, ID: uuid.New(), EntityID: entityID, PubKey: pubKey}, nil
+	return nil
 }
 
-func (d *Database) SetMemberInfo(pubKey []byte, info *types.MemberInfo) error {
+func (d *Database) SetMemberInfo(memberID uuid.UUID, info *types.MemberInfo) error {
 	return nil
 }
 

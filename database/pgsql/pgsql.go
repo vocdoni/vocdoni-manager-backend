@@ -35,6 +35,7 @@ func (d *Database) Close() error {
 }
 
 func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
+	var err error
 	tx, err := d.db.Beginx()
 	if err != nil {
 		return err
@@ -49,13 +50,24 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 					(id, address, email, name, census_managers_addresses)
 					VALUES (:id, :address, :email, :name, :pg_census_managers_addresses)`
 	_, err = tx.NamedExec(insert, pgEntity)
+	if err != nil {
+		return err
+	}
 	insertOrigins := `INSERT INTO entities_origins (entity_id,origin)
 						VALUES ($1, unnest(cast($2 AS Origins[])))`
 	_, err = tx.Exec(insertOrigins, entityID, pgEntity.Origins)
 	if err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+
+			return err
+		}
 		return err
 	}
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -124,35 +136,42 @@ func (d *Database) User(pubKey []byte) (*types.User, error) {
 	return &user, nil
 }
 
-func (d *Database) AddMember(entityID, pubKey []byte, info *types.MemberInfo) (*types.Member, error) {
+func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) error {
 	member := &types.Member{EntityID: entityID, PubKey: pubKey, MemberInfo: *info}
+	_, err := d.User(pubKey)
+	if err != nil {
+		user := &types.User{PubKey: pubKey}
+		addErr := d.AddUser(user)
+		if addErr != nil {
+			return addErr
+		}
+	}
 	js, err := json.Marshal(member)
 	log.Debugf("%s", string(js))
 	pgmember, err := ToPGMember(member)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
 	insert := `INSERT INTO members
 	 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
 					 VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
 	_, err = d.db.NamedExec(insert, pgmember)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &types.Member{MemberInfo: *info}, nil
+	return nil
 }
 
-func (d *Database) SetMemberInfo(pubKey []byte, info *types.MemberInfo) error {
-	member := &types.Member{PubKey: pubKey, MemberInfo: *info}
+func (d *Database) SetMemberInfo(memberID uuid.UUID, info *types.MemberInfo) error {
+	member := &types.Member{ID: memberID, MemberInfo: *info}
 	pgmember, err := ToPGMember(member)
 	if err != nil {
 		return err
 	}
 	update := `UPDATE members
-	 				SET (street_address, first_name, last_name, email, phone, date_of_birth, verified)
-					= (:street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified)
-					WHERE public_key=:public_key`
+	 				SET (street_address, first_name, last_name, email, phone, date_of_birth, verified, consented)
+					= (:street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :consented)
+					WHERE id = :id`
 	_, err = d.db.NamedExec(update, pgmember)
 	if err != nil {
 		return err
@@ -163,13 +182,26 @@ func (d *Database) SetMemberInfo(pubKey []byte, info *types.MemberInfo) error {
 func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	var pgMember PGMember
 	selectQuery := `SELECT
-	 				entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
-					FROM members WHERE id =$1`
+	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented
+					FROM members WHERE id = $1`
 	row := d.db.QueryRowx(selectQuery, memberID)
 	err := row.StructScan(&pgMember)
 	member := ToMember(&pgMember)
-	js, err := json.Marshal(member)
-	log.Debugf("%s", string(js))
+	if err != nil {
+		log.Debug(err)
+		return nil, err
+	}
+	return member, nil
+}
+
+func (d *Database) MemberPubKey(pubKey []byte) (*types.Member, error) {
+	var pgMember PGMember
+	selectQuery := `SELECT
+	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
+					FROM members WHERE public_key =$1`
+	row := d.db.QueryRowx(selectQuery, pubKey)
+	err := row.StructScan(&pgMember)
+	member := ToMember(&pgMember)
 	if err != nil {
 		log.Debug(err)
 		return nil, err

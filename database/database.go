@@ -11,9 +11,10 @@ type Database interface {
 	Entity(entityID []byte) (*types.Entity, error)
 	EntityOrigins(entityID []byte) ([]types.Origin, error)
 	EntityHas(entityID []byte, memberID uuid.UUID) bool
-	AddMember(entityID, pubKey []byte, info *types.MemberInfo) (*types.Member, error)
+	AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) error
 	Member(memberID uuid.UUID) (*types.Member, error)
-	SetMemberInfo(pubKey []byte, info *types.MemberInfo) error
+	MemberPubKey(pubKey []byte) (*types.Member, error)
+	SetMemberInfo(memberID uuid.UUID, info *types.MemberInfo) error
 	AddUser(user *types.User) error
 	User(pubKey []byte) (*types.User, error)
 	Census(censusID []byte) (*types.Census, error)

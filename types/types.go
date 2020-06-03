@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -68,16 +69,16 @@ type Member struct {
 }
 
 type MemberInfo struct {
-	DateOfBirth   time.Time `json:"dateOfBirth,omitempty" db:"date_of_birth"`
-	Email         string    `json:"email,omitempty" db:"email"`
-	FirstName     string    `json:"firstName,omitempty" db:"first_name"`
-	LastName      string    `json:"lastName,omitempty" db:"last_name"`
-	Phone         string    `json:"phone,omitempty" db:"phone"`
-	StreetAddress string    `json:"streetAddress,omitempty" db:"street_address"`
-	Consented     bool      `json:"consented,omitempty" db:"consented"`
-	Verified      time.Time `json:"verified,omitempty" db:"verified"`
-	Origin        Origin    `json:"origin,omitempty" db:"origin"`
-	CustomFields  []byte    `json:"customFields" db:"custom_fields"`
+	DateOfBirth   time.Time       `json:"dateOfBirth,omitempty" db:"date_of_birth"`
+	Email         string          `json:"email,omitempty" db:"email"`
+	FirstName     string          `json:"firstName,omitempty" db:"first_name"`
+	LastName      string          `json:"lastName,omitempty" db:"last_name"`
+	Phone         string          `json:"phone,omitempty" db:"phone"`
+	StreetAddress string          `json:"streetAddress,omitempty" db:"street_address"`
+	Consented     bool            `json:"consented,omitempty" db:"consented"`
+	Verified      time.Time       `json:"verified,omitempty" db:"verified"`
+	Origin        Origin          `json:"origin,omitempty" db:"origin"`
+	CustomFields  json.RawMessage `json:"customFields" db:"custom_fields"`
 }
 
 // func (m *MemberInfo) Normalize() {

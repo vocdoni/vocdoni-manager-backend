@@ -90,11 +90,12 @@ type PGMember struct {
 func ToPGMember(x *types.Member) (*PGMember, error) {
 	var err error
 	y := &PGMember{Member: *x}
-	if x.MemberInfo.CustomFields == nil {
-		err = y.CustomFields.Set([]byte{})
-	} else {
-		err = y.CustomFields.Set(x.MemberInfo.CustomFields)
-	}
+	err = y.CustomFields.Set(x.MemberInfo.CustomFields)
+	// if x.MemberInfo.CustomFields == nil {
+	// 	err = y.CustomFields.Set(json.RawMessage{})
+	// } else {
+	// 	err = y.CustomFields.Set(x.MemberInfo.CustomFields)
+	// }
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +105,7 @@ func ToPGMember(x *types.Member) (*PGMember, error) {
 
 func ToMember(x *PGMember) *types.Member {
 	y := x.Member
-	y.MemberInfo.CustomFields = x.CustomFields.Bytes
+	// y.MemberInfo.CustomFields = x.CustomFields.Bytes
+	x.CustomFields.AssignTo(y.MemberInfo.CustomFields)
 	return &y
 }

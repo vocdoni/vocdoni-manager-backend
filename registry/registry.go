@@ -113,7 +113,7 @@ func (r *Registry) register(request router.RouterRequest) {
 			return
 		}
 		r.db.AddUser(&user)
-		if member, err = r.db.AddMember(entityID, user.PubKey, &request.Member.MemberInfo); err != nil {
+		if err = r.db.AddMember(entityID, user.PubKey, &request.Member.MemberInfo); err != nil {
 			log.Warn(err)
 			r.Router.SendError(request, fmt.Sprintf("cannot create member: (%s)", err))
 			return
