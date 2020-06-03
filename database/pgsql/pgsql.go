@@ -20,7 +20,6 @@ type Database struct {
 }
 
 func New(dbc *config.DB) (*Database, error) {
-
 	db, err := sqlx.Open("pgx", fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s client_encoding=%s ",
 		dbc.Host, dbc.Port, dbc.User, dbc.Password, dbc.Dbname, dbc.Sslmode, "UTF8"))
 	if err != nil {
@@ -45,7 +44,7 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	if err != nil {
 		return err
 	}
-	//TODO: Calculate EntityID (consult go-dvote)
+	// TODO: Calculate EntityID (consult go-dvote)
 	insert := `INSERT INTO entities
 					(id, address, email, name, census_managers_addresses)
 					VALUES (:id, :address, :email, :name, :pg_census_managers_addresses)`
@@ -125,7 +124,7 @@ func (d *Database) User(pubKey []byte) (*types.User, error) {
 	return &user, nil
 }
 
-func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (*types.Member, error) {
+func (d *Database) AddMember(entityID, pubKey []byte, info *types.MemberInfo) (*types.Member, error) {
 	member := &types.Member{EntityID: entityID, PubKey: pubKey, MemberInfo: *info}
 	js, err := json.Marshal(member)
 	log.Debugf("%s", string(js))

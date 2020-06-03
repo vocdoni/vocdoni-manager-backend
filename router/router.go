@@ -137,7 +137,6 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 				break
 			}
 		}
-
 	}
 	return request, err
 }

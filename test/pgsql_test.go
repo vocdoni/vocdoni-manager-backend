@@ -19,12 +19,14 @@ var api testcommon.TestAPI
 
 func TestMain(t *testing.M) {
 	api = testcommon.TestAPI{}
-	db := &config.DB{Dbname: "vocdonimgr",
+	db := &config.DB{
+		Dbname:   "vocdonimgr",
 		Password: "vocdoni",
 		Host:     "127.0.0.1",
 		Port:     5432,
 		Sslmode:  "disable",
-		User:     "vocdoni"}
+		User:     "vocdoni",
+	}
 	api.Start(db, nil)
 	time.Sleep(2 * time.Second)
 	os.Exit(t.Run())

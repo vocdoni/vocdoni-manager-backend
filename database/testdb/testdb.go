@@ -19,7 +19,7 @@ import (
   member PubKey: 020be846bab70b4eff964d74178187832b3c7866f8509de340b6fccc53032834c6
 */
 
-//uuid.Parse("11111111-8888-3333-2222-999999999999")
+// uuid.Parse("11111111-8888-3333-2222-999999999999")
 
 type Database struct {
 }
@@ -57,6 +57,7 @@ func (d *Database) EntityHas(entityID []byte, memberID uuid.UUID) bool {
 func (d *Database) EntityOrigins(entityID []byte) ([]types.Origin, error) {
 	return nil, nil
 }
+
 func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	return nil
 }
@@ -85,7 +86,7 @@ func (d *Database) Census(censusID []byte) (*types.Census, error) {
 	return &census, nil
 }
 
-func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (*types.Member, error) {
+func (d *Database) AddMember(entityID, pubKey []byte, info *types.MemberInfo) (*types.Member, error) {
 	return &types.Member{MemberInfo: *info, ID: uuid.New(), EntityID: entityID, PubKey: pubKey}, nil
 }
 
