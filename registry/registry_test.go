@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
@@ -22,7 +21,6 @@ func TestMain(t *testing.M) {
 	if err := reg.RegisterMethods(""); err != nil {
 		panic(err)
 	}
-	time.Sleep(2 * time.Second)
 	os.Exit(t.Run())
 }
 

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
-	"time"
 
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/util"
@@ -28,7 +27,6 @@ func TestMain(t *testing.M) {
 		User:     "vocdoni",
 	}
 	api.Start(db, nil)
-	time.Sleep(2 * time.Second)
 	os.Exit(t.Run())
 }
 
