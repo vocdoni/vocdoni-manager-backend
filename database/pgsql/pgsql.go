@@ -100,22 +100,12 @@ func (d *Database) AddUser(user *types.User) error {
 		return fmt.Errorf("Invalid public Key")
 	}
 	if len(user.DigestedPubKey) == 0 {
-		// The import works.
-		// Note that the input and outputs are the raw []byte.
-		// Assuming that the input is hex, and that you want hex output
-		// too, you should do the encoding/decoding.
-		// Though it would be a bit weird to store hex in postgres.
 		user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
-		// user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
-	}
-	pgUser, err := ToPGUser(user)
-	if err != nil {
-		return err
 	}
 	insert := `INSERT INTO users
 	 				(public_key, digested_public_key)
-					 VALUES (:pg_public_key, :pg_digested_public_key)`
-	_, err = d.db.NamedExec(insert, pgUser)
+					 VALUES (:public_key, :digested_public_key)`
+	_, err := d.db.NamedExec(insert, user)
 	if err != nil {
 		return err
 	}
@@ -123,17 +113,16 @@ func (d *Database) AddUser(user *types.User) error {
 }
 
 func (d *Database) User(pubKey []byte) (*types.User, error) {
-	var pgUser PGUser
+	var user types.User
 	selectQuery := `SELECT
 	 			public_key, digested_public_key
 				FROM USERS where public_key=$1`
 	row := d.db.QueryRowx(selectQuery, pubKey)
-	err := row.StructScan(&pgUser)
+	err := row.StructScan(&user)
 	if err != nil {
 		return nil, err
 	}
-	user := ToUser(&pgUser)
-	return user, nil
+	return &user, nil
 }
 
 func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (*types.Member, error) {

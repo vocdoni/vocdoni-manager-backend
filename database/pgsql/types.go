@@ -107,39 +107,3 @@ func ToMember(x *PGMember) *types.Member {
 	y.MemberInfo.CustomFields = x.CustomFields.Bytes
 	return &y
 }
-
-type PGUser struct {
-	types.User
-	PubKey         pgtype.Bytea `db:"pg_public_key"`
-	DigestedPubKey pgtype.Bytea `db:"pg_digested_public_key"`
-}
-
-func ToPGUser(x *types.User) (*PGUser, error) {
-	var err error
-	y := &PGUser{User: *x}
-	if x.PubKey == nil {
-		err = y.PubKey.Set([]byte{})
-	} else {
-		err = y.PubKey.Set(x.PubKey)
-	}
-	if err != nil {
-		return nil, err
-	}
-	if x.DigestedPubKey == nil {
-		err = y.DigestedPubKey.Set([]byte{})
-	} else {
-		err = y.DigestedPubKey.Set(x.DigestedPubKey)
-	}
-	if err != nil {
-		return nil, err
-	}
-	// y.CustomFields = pgtype.JSONB{Bytes: x.MemberInfo.CustomFields, Status: pgtype.Present}
-	return y, nil
-}
-
-func ToUser(x *PGUser) *types.User {
-	y := x.User
-	x.PubKey.AssignTo(y.PubKey)
-	x.DigestedPubKey.AssignTo(y.DigestedPubKey)
-	return &y
-}
