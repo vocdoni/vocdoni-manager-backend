@@ -13,7 +13,8 @@ type Database interface {
 	EntityHas(entityID []byte, memberID uuid.UUID) bool
 	AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) error
 	Member(memberID uuid.UUID) (*types.Member, error)
-	MemberPubKey(pubKey []byte) (*types.Member, error)
+	MemberPubKey(pubKey, entityID []byte) (*types.Member, error)
+	MembersFiltered(entityID []byte, info *types.MemberInfo, filter *types.Filter) ([]*types.Member, error)
 	SetMemberInfo(memberID uuid.UUID, info *types.MemberInfo) error
 	AddUser(user *types.User) error
 	User(pubKey []byte) (*types.User, error)

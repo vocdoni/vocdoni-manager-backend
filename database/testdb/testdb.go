@@ -80,14 +80,10 @@ func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	return &member, nil
 }
 
-func (d *Database) MemberPubKey(pubKey []byte) (*types.Member, error) {
+func (d *Database) MemberPubKey(pubKey, entityID []byte) (*types.Member, error) {
 	var member types.Member
 	member.ID = uuid.New()
-	eid, err := hex.DecodeString(util.TrimHex("b662e6ac6e8300f0a03b33c4f8510121ba2d5bde"))
-	if err != nil {
-		return nil, fmt.Errorf("error decoding entity address: %s", err)
-	}
-	member.EntityID = eid
+	member.EntityID = entityID
 	member.Email = "hello@vocdoni.io"
 	member.FirstName = "Julian"
 	member.LastName = "Assange"
@@ -96,6 +92,10 @@ func (d *Database) MemberPubKey(pubKey []byte) (*types.Member, error) {
 	member.DateOfBirth = time.Time{}
 	member.StreetAddress = "Yolo St. 550"
 	return &member, nil
+}
+
+func (d *Database) MembersFiltered(entityID []byte, info *types.MemberInfo, filter *types.Filter) ([]*types.Member, error) {
+	return nil, nil
 }
 
 func (d *Database) Census(censusID []byte) (*types.Census, error) {

@@ -81,6 +81,13 @@ type MemberInfo struct {
 	CustomFields  json.RawMessage `json:"customFields" db:"custom_fields"`
 }
 
+type Filter struct {
+	Offset  int
+	Limit   int
+	Asc     bool
+	OrderBy string
+}
+
 // func (m *MemberInfo) Normalize() {
 // 	if m.CustomFields == nil {
 // 		m.CustomFields = []byte{}

@@ -87,11 +87,12 @@ func TestUser(t *testing.T) {
 
 func TestMember(t *testing.T) {
 	db := api.DB
-	// Create Entity
-	entity, err := createEntity(db)
+	entityAddress := "30ed83726db2f7d28a58ecf0071b7dcd08f7b1e2"
+	eid, err := hex.DecodeString(util.TrimHex(entityAddress))
 	if err != nil {
-		t.Errorf("Error creating entity the Postgres DB (pgsql.go:addEntity): %s", err)
+		t.Errorf("error decoding entity address: %s", err)
 	}
+	entity := &types.Entity{ID: ethereum.HashRaw(eid)}
 
 	// Create pubkey and Add membmer to the db
 	memberSigner := new(ethereum.SignKeys)
@@ -105,7 +106,7 @@ func TestMember(t *testing.T) {
 	}
 
 	// Query by Public Key
-	member, err := db.MemberPubKey(memberSigner.Public.X.Bytes())
+	member, err := db.MemberPubKey(memberSigner.Public.X.Bytes(), entity.ID)
 	if err != nil {
 		t.Errorf("Error retrieving user from the Postgres DB (pgsql.go:MemberPubKey): %s", err)
 	}
@@ -155,6 +156,18 @@ func TestMember(t *testing.T) {
 	}
 	if newMember.Consented != true {
 		t.Error("setMemberInfo failed to update member Consent in the Postgres DB (pgsql.go:Member)")
+	}
+
+	// Test Selecting filtered members
+	limit := 5
+	filter := *&types.Filter{
+		Offset: 2,
+		Limit:  limit,
+		Asc:    false,
+	}
+	members, err := db.MembersFiltered(entity.ID, newInfo, &filter)
+	if len(members) != limit {
+		t.Error("Error retrieving Members with filter and limit from the Prostgres DB (pgsql.go:MembersFiltered")
 	}
 }
 

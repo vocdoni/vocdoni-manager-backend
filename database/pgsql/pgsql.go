@@ -3,6 +3,9 @@ package pgsql
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -136,6 +139,8 @@ func (d *Database) User(pubKey []byte) (*types.User, error) {
 	return &user, nil
 }
 
+// TODO: Implement import members
+
 func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) error {
 	member := &types.Member{EntityID: entityID, PubKey: pubKey, MemberInfo: *info}
 	_, err := d.User(pubKey)
@@ -194,12 +199,12 @@ func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	return member, nil
 }
 
-func (d *Database) MemberPubKey(pubKey []byte) (*types.Member, error) {
+func (d *Database) MemberPubKey(pubKey, entityID []byte) (*types.Member, error) {
 	var pgMember PGMember
 	selectQuery := `SELECT
 	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
-					FROM members WHERE public_key =$1`
-	row := d.db.QueryRowx(selectQuery, pubKey)
+					FROM members WHERE public_key =$1 AND entity_id =$2`
+	row := d.db.QueryRowx(selectQuery, pubKey, entityID)
 	err := row.StructScan(&pgMember)
 	member := ToMember(&pgMember)
 	if err != nil {
@@ -207,6 +212,51 @@ func (d *Database) MemberPubKey(pubKey []byte) (*types.Member, error) {
 		return nil, err
 	}
 	return member, nil
+}
+
+func (d *Database) MembersFiltered(entityID []byte, info *types.MemberInfo, filter *types.Filter) ([]*types.Member, error) {
+	var orderQuery, order, offset, limit, offsetQuery string
+	// TODO: Replace limit offset with better strategy, can slow down DB
+	// would nee to now last value from previous query
+	selectQuery := `SELECT
+	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
+					FROM members WHERE entity_id =$1`
+	t := reflect.TypeOf(info)
+	if len(filter.OrderBy) > 0 {
+		field, found := t.FieldByName(strings.Title(filter.OrderBy))
+		if found {
+			if filter.Asc == true {
+				order = "ASC"
+			} else {
+				order = "DESC"
+			}
+			orderQuery = fmt.Sprintf("ORDER BY %s %s", field.Tag.Get("db"), order)
+		}
+	}
+	if filter.Offset > 0 {
+		offset = strconv.Itoa(filter.Offset)
+	} else {
+		offset = "0"
+	}
+	if filter.Limit > 0 {
+		limit = strconv.Itoa(filter.Limit)
+	} else {
+		limit = "NULL"
+	}
+	offsetQuery = fmt.Sprintf("LIMIT %s OFFSET %s", limit, offset)
+
+	var pgMembers []PGMember
+	query := fmt.Sprintf("%s %s %s", selectQuery, orderQuery, offsetQuery)
+	err := d.db.Select(&pgMembers, query, entityID)
+	if err != nil {
+		log.Debug(err)
+		return nil, err
+	}
+	members := make([]*types.Member, len(pgMembers))
+	for i, member := range pgMembers {
+		members[i] = ToMember(&member)
+	}
+	return members, nil
 }
 
 func (d *Database) Census(censusID []byte) (*types.Census, error) {
