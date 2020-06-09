@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -87,12 +88,12 @@ func TestUser(t *testing.T) {
 
 func TestMember(t *testing.T) {
 	db := api.DB
+	// Create or retrieve existing entity
 	entityAddress := "30ed83726db2f7d28a58ecf0071b7dcd08f7b1e2"
-	eid, err := hex.DecodeString(util.TrimHex(entityAddress))
+	entity, err := createEntity(entityAddress, db)
 	if err != nil {
-		t.Errorf("error decoding entity address: %s", err)
+		t.Errorf("error creating or retreiving entity address: %s", err)
 	}
-	entity := &types.Entity{ID: ethereum.HashRaw(eid)}
 
 	// Create pubkey and Add membmer to the db
 	memberSigner := new(ethereum.SignKeys)
@@ -160,7 +161,7 @@ func TestMember(t *testing.T) {
 
 	// Test Selecting filtered members
 	limit := 5
-	filter := *&types.Filter{
+	filter := types.Filter{
 		Offset: 2,
 		Limit:  limit,
 		Asc:    false,
@@ -169,28 +170,39 @@ func TestMember(t *testing.T) {
 	if len(members) != limit {
 		t.Error("Error retrieving Members with filter and limit from the Prostgres DB (pgsql.go:MembersFiltered")
 	}
+
+	// Test Bulk Info
+	var bulkMembers []types.MemberInfo
+	for i := 0; i < 10; i++ {
+		info := types.MemberInfo{FirstName: fmt.Sprintf("Name%d", i), LastName: fmt.Sprintf("LastName%d", i)}
+		bulkMembers = append(bulkMembers, info)
+	}
+	err = db.AddMemberBulk(entity.ID, bulkMembers)
+	if err != nil {
+		t.Errorf("Error bulk member adding to Postgres DB (pgsql.go:AddMemberBulk): %s", err)
+	}
 }
 
-func createEntity(db database.Database) (*types.Entity, error) {
-	entitySigner := new(ethereum.SignKeys)
-	entitySigner.Generate()
-	entityAddress := entitySigner.EthAddrString()
-	eid, err := hex.DecodeString(util.TrimHex(entityAddress))
+func createEntity(address string, db database.Database) (*types.Entity, error) {
+	eid, err := hex.DecodeString(util.TrimHex(address))
 	if err != nil {
 		return nil, err
 	}
 	entityID := ethereum.HashRaw(eid)
-	info := &types.EntityInfo{
-		Address: eid,
-		// Email:                   "entity@entity.org",
-		Name:                    "test entity",
-		CensusManagersAddresses: [][]byte{{1, 2, 3}},
-		Origins:                 []types.Origin{types.Token.Origin()},
-	}
-	entity := &types.Entity{ID: ethereum.HashRaw(eid), EntityInfo: *info}
-	err = db.AddEntity(entityID, info)
+	entity, err := db.Entity(entityID)
 	if err != nil {
-		return nil, err
+		info := &types.EntityInfo{
+			Address: eid,
+			// Email:                   "entity@entity.org",
+			Name:                    "test entity",
+			CensusManagersAddresses: [][]byte{{1, 2, 3}},
+			Origins:                 []types.Origin{types.Token.Origin()},
+		}
+		entity = &types.Entity{ID: ethereum.HashRaw(eid), EntityInfo: *info}
+		err = db.AddEntity(entityID, info)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return entity, nil
 }

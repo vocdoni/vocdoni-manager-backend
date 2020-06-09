@@ -20,19 +20,33 @@ import (
 
 type Database struct {
 	db *sqlx.DB
+	// For using pgx connector
+	// pgx    *pgxpool.Pool
+	// pgxCtx context.Context
 }
 
 func New(dbc *config.DB) (*Database, error) {
-	db, err := sqlx.Open("pgx", fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s client_encoding=%s ",
-		dbc.Host, dbc.Port, dbc.User, dbc.Password, dbc.Dbname, dbc.Sslmode, "UTF8"))
+	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s client_encoding=%s ",
+		dbc.Host, dbc.Port, dbc.User, dbc.Password, dbc.Dbname, dbc.Sslmode, "UTF8")
+	db, err := sqlx.Open("pgx", connectionString)
 	if err != nil {
 		return nil, err
 	}
+	// For using pgx connector
+	// ctx := context.Background()
+	// pgx, err := pgxpool.Connect(ctx, connectionString)
+	if err != nil {
+		log.Debug(fmt.Errorf("Unable to connect to database: %v\n", err))
+		return nil, fmt.Errorf("Unable to connect to database: %v\n", err)
+	}
+
+	// return &Database{db: db, pgx: pgx, pgxCtx: ctx}, err
 	return &Database{db: db}, err
 }
 
 func (d *Database) Close() error {
 	defer d.db.Close()
+	// defer d.pgx.Close()
 	return nil
 	// return d.db.Close()
 }
@@ -161,6 +175,57 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
 					 VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
 	_, err = d.db.NamedExec(insert, pgmember)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error {
+	if len(info) <= 0 {
+		return fmt.Errorf("No member data provided")
+	}
+	members := []PGMember{}
+	for _, member := range info {
+		newMember := &types.Member{EntityID: entityID, MemberInfo: member}
+		pgMember, err := ToPGMember(newMember)
+		if err != nil {
+			return err
+		}
+		members = append(members, *pgMember)
+	}
+	// Effort to use COPY FROM with pgx
+	// fields := []string{"public_key", "entity_id"}
+	// fields = append(fields, info[0].GetDBFields()...)
+	// // str := reflect.Indirect(reflect.ValueOf(types.MemberInfo{}))
+	// // var fields []string
+	// // for i := 0; i < str.Type().NumField(); i++ {
+	// // 	fields = append(fields, str.Type().Field(i).Name)
+	// // }
+	// members := [][]interface{}{}
+	// var eid interface{} = entityID
+	// var pubKey []byte = make([]byte, 0)
+	// var pK interface{} = pubKey
+	// for _, member := range info {
+	// 	// members= append(members, member.GetRecord())
+	// 	// var ret  []interface{}
+	// 	// for jdx, _ := range member {
+
+	// 	// }
+	// 	member.Origin = types.DB.Origin()
+	// 	// entry := []interface{}
+	// 	entry := []interface{}{pK, eid}
+	// 	entry = append(entry, member.GetRecord()...)
+	// 	members = append(members, entry)
+	// }
+	// count, err := d.pgx.CopyFrom(d.pgxCtx, pgx.Identifier{"members"}, fields, pgx.CopyFromRows(members))
+	// if count != int64(len(info)) {
+	// 	return fmt.Errorf("Bulk insert members error. Needed to insert %d members but insterted %d members", len(info), count)
+	// }
+	insert := `INSERT INTO members
+					(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
+					VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
+	_, err := d.db.NamedExec(insert, members)
 	if err != nil {
 		return err
 	}

@@ -11,7 +11,7 @@ require (
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgtype v1.3.1-0.20200521144610-9d847241cb8f
 	github.com/jackc/pgx v3.6.2+incompatible
-	github.com/jmoiron/sqlx v1.2.0
+	github.com/jmoiron/sqlx v1.2.1-0.20200324155115-ee514944af4b
 	github.com/lib/pq v1.5.2
 	github.com/mattn/go-sqlite3 v1.10.0 // indirect
 	github.com/rogpeppe/rjson v0.0.0-20151026200957-77220b71d327

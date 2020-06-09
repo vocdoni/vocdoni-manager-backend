@@ -74,7 +74,7 @@ CREATE TABLE members (
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     id uuid DEFAULT public.gen_random_uuid() NOT NULL,
     entity_id  bytea NOT NULL,
-    public_key  bytea NOT NULL, 
+    public_key  bytea, 
     street_address  text NOT NULL,
     first_name  text NOT NULL,
     last_name  text NOT NULL,

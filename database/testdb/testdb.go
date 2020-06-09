@@ -109,6 +109,10 @@ func (d *Database) AddMember(entityID, pubKey []byte, info *types.MemberInfo) er
 	return nil
 }
 
+func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error {
+	return nil
+}
+
 func (d *Database) SetMemberInfo(memberID uuid.UUID, info *types.MemberInfo) error {
 	return nil
 }

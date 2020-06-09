@@ -75,11 +75,59 @@ type MemberInfo struct {
 	LastName      string          `json:"lastName,omitempty" db:"last_name"`
 	Phone         string          `json:"phone,omitempty" db:"phone"`
 	StreetAddress string          `json:"streetAddress,omitempty" db:"street_address"`
-	Consented     bool            `json:"consented,omitempty" db:"consented"`
+	Consented     bool            `json:"consented" db:"consented"`
 	Verified      time.Time       `json:"verified,omitempty" db:"verified"`
 	Origin        Origin          `json:"origin,omitempty" db:"origin"`
 	CustomFields  json.RawMessage `json:"customFields" db:"custom_fields"`
 }
+
+// In case COPY FROM is adopted
+// func (m *MemberInfo) GetDBFields() []string {
+// 	return []string{
+// 		"date_of_birth",
+// 		"email",
+// 		"first_name",
+// 		"last_name",
+// 		"phone",
+// 		"street_address",
+// 		"consented",
+// 		"verified",
+// 		"origin",
+// 		"custom_fields",
+// 	}
+// }
+
+// func (m *MemberInfo) GetActiveDBFields() map[string]interface{} {
+// 	ret := make(map[string]interface{})
+// 	str := reflect.Indirect(reflect.ValueOf(m))
+// 	// var fields []string
+// 	for i := 0; i < str.NumField(); i++ {
+// 		ret[str.Type().Field(i).Tag.Get("db")] = str.Field(i).Interface()
+// 		// fields = append(fields, str.Field(i).Name)
+// 	}
+// 	return ret
+// }
+
+// func (m *MemberInfo) GetRecord() []interface{} {
+// 	var list []interface{}
+// 	generic := reflect.Indirect(reflect.ValueOf(MemberInfo{}))
+// 	totalFields := m.GetDBFields()
+// 	activeFields := m.GetActiveDBFields()
+// 	// record := reflect.Indirect(reflect.ValueOf(m))
+// 	for _, field := range totalFields {
+// 		// TODO check ommited
+// 		data, ok := activeFields[field]
+// 		if ok {
+// 			list = append(list, data)
+// 		} else {
+// 			// generic.FieldByName(field).Type().
+// 			list = append(list, generic.FieldByName(field).Interface())
+// 		}
+
+// 		// list = append(list, record.FieldByName(field).Elem)
+// 	}
+// 	return list
+// }
 
 type Filter struct {
 	Offset  int
