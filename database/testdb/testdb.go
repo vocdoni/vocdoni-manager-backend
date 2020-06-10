@@ -113,7 +113,7 @@ func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error
 	return nil
 }
 
-func (d *Database) SetMemberInfo(memberID uuid.UUID, info *types.MemberInfo) error {
+func (d *Database) UpdateMember(memberID uuid.UUID, pubKey []byte, info *types.MemberInfo) error {
 	return nil
 }
 

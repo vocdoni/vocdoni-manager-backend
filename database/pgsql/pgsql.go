@@ -1,7 +1,6 @@
 package pgsql
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -39,6 +38,9 @@ func New(dbc *config.DB) (*Database, error) {
 		log.Debug(fmt.Errorf("Unable to connect to database: %v\n", err))
 		return nil, fmt.Errorf("Unable to connect to database: %v\n", err)
 	}
+	// TODO: Set MaxOpenConnections, MaxLifetime (MaxIdle?)
+	// MaxOpen should be the number of expected clients? (Different apis?)
+	// db.SetMaxOpenConns(2)
 
 	// return &Database{db: db, pgx: pgx, pgxCtx: ctx}, err
 	return &Database{db: db}, err
@@ -77,7 +79,7 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 
-			return err
+			return rollbackErr
 		}
 		return err
 	}
@@ -159,14 +161,8 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	member := &types.Member{EntityID: entityID, PubKey: pubKey, MemberInfo: *info}
 	_, err := d.User(pubKey)
 	if err != nil {
-		user := &types.User{PubKey: pubKey}
-		addErr := d.AddUser(user)
-		if addErr != nil {
-			return addErr
-		}
+		return err
 	}
-	js, err := json.Marshal(member)
-	log.Debugf("%s", string(js))
 	pgmember, err := ToPGMember(member)
 	if err != nil {
 		return err
@@ -182,6 +178,8 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 }
 
 func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error {
+	// TODO: Check if support for Update a Member is needed
+	// TODO: Investigate COPY FROM with pgx
 	if len(info) <= 0 {
 		return fmt.Errorf("No member data provided")
 	}
@@ -222,26 +220,42 @@ func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error
 	// if count != int64(len(info)) {
 	// 	return fmt.Errorf("Bulk insert members error. Needed to insert %d members but insterted %d members", len(info), count)
 	// }
+	tx, err := d.db.Beginx()
+	if err != nil {
+		return err
+	}
 	insert := `INSERT INTO members
 					(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
 					VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
-	_, err := d.db.NamedExec(insert, members)
+	_, err = tx.NamedExec(insert, members)
 	if err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return rollbackErr
+		}
 		return err
 	}
 	return nil
 }
 
-func (d *Database) SetMemberInfo(memberID uuid.UUID, info *types.MemberInfo) error {
-	member := &types.Member{ID: memberID, MemberInfo: *info}
+func (d *Database) UpdateMember(memberID uuid.UUID, pubKey []byte, info *types.MemberInfo) error {
+	member := &types.Member{ID: memberID, PubKey: pubKey, MemberInfo: *info}
 	pgmember, err := ToPGMember(member)
 	if err != nil {
 		return err
 	}
-	update := `UPDATE members
+	var update string
+	if pubKey != nil {
+		update = `UPDATE members
+	 				SET (public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, consented)
+					= (:public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :consented)
+					WHERE id = :id`
+	} else {
+		update = `UPDATE members
 	 				SET (street_address, first_name, last_name, email, phone, date_of_birth, verified, consented)
 					= (:street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :consented)
 					WHERE id = :id`
+	}
 	_, err = d.db.NamedExec(update, pgmember)
 	if err != nil {
 		return err

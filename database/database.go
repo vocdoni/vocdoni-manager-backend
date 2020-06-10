@@ -16,7 +16,7 @@ type Database interface {
 	Member(memberID uuid.UUID) (*types.Member, error)
 	MemberPubKey(pubKey, entityID []byte) (*types.Member, error)
 	MembersFiltered(entityID []byte, info *types.MemberInfo, filter *types.Filter) ([]*types.Member, error)
-	SetMemberInfo(memberID uuid.UUID, info *types.MemberInfo) error
+	UpdateMember(memberID uuid.UUID, pubKey []byte, info *types.MemberInfo) error
 	AddUser(user *types.User) error
 	User(pubKey []byte) (*types.User, error)
 	Census(censusID []byte) (*types.Census, error)

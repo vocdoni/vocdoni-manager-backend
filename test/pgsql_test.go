@@ -101,15 +101,20 @@ func TestMember(t *testing.T) {
 	memberInfo := &types.MemberInfo{}
 	memberInfo.DateOfBirth.Round(time.Microsecond).UTC()
 	memberInfo.Verified.Round(time.Microsecond)
+	user := &types.User{PubKey: memberSigner.Public.X.Bytes()}
+	err = db.AddUser(user)
+	if err != nil {
+		t.Errorf("Error adding user to the Postgres DB (pgsql.go:addUser) %s", err)
+	}
 	err = db.AddMember(entity.ID, memberSigner.Public.X.Bytes(), memberInfo)
 	if err != nil {
-		t.Errorf("Error adding user to the Postgres DB (pgsql.go:addMember): %s", err)
+		t.Errorf("Error adding member to the Postgres DB (pgsql.go:addMember): %s", err)
 	}
 
 	// Query by Public Key
 	member, err := db.MemberPubKey(memberSigner.Public.X.Bytes(), entity.ID)
 	if err != nil {
-		t.Errorf("Error retrieving user from the Postgres DB (pgsql.go:MemberPubKey): %s", err)
+		t.Errorf("Error retrieving member from the Postgres DB (pgsql.go:MemberPubKey): %s", err)
 	}
 	// Check first timestamps that need different handling
 	// and then assing one to another so that the rest of test doesnt fail
@@ -147,7 +152,7 @@ func TestMember(t *testing.T) {
 
 	// Test SetMemberInfo
 	newInfo := &types.MemberInfo{Consented: true}
-	err = db.SetMemberInfo(member.ID, newInfo)
+	err = db.UpdateMember(member.ID, nil, newInfo)
 	if err != nil {
 		t.Errorf("Error updating user info to the Postgres DB (pgsql.go:setMemberInfo): %s", err)
 	}
