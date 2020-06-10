@@ -21,7 +21,7 @@ type MetaRequest struct {
 	ListOptions *ListOptions `json:"listOptions,omitempty"`
 	Member      *Member      `json:"member"`
 	Method      string       `json:"method"`
-	PubKey      string       `json:"publicKey"`
+	PubKey      string       `json:"publicKey,omitempty"`
 	Signature   string       `json:"signature,omitempty"`
 	Scope       string       `json:"scope,omitempty"`
 	Status      *Status      `json:"status,omitempty"`

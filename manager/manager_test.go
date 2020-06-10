@@ -15,8 +15,7 @@ var api testcommon.TestAPI
 
 func TestMain(t *testing.M) {
 	api = testcommon.TestAPI{}
-	route := ""
-	if err := api.Start(nil, &route); err != nil {
+	if err := api.Start(nil, ""); err != nil {
 		panic(err)
 	}
 	reg := NewManager(api.EP.Router, api.DB)

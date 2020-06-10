@@ -25,9 +25,8 @@ type Database struct {
 }
 
 func New(dbc *config.DB) (*Database, error) {
-	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s client_encoding=%s ",
-		dbc.Host, dbc.Port, dbc.User, dbc.Password, dbc.Dbname, dbc.Sslmode, "UTF8")
-	db, err := sqlx.Open("pgx", connectionString)
+	db, err := sqlx.Open("pgx", fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s client_encoding=%s",
+		dbc.Host, dbc.Port, dbc.User, dbc.Password, dbc.Dbname, dbc.Sslmode, "UTF8"))
 	if err != nil {
 		return nil, err
 	}

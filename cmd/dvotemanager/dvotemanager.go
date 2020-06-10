@@ -56,7 +56,7 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.DB.User = *flag.String("dbUser", "user", "DB Username")
 	cfg.DB.Password = *flag.String("dbPassword", "password", "DB password")
 	cfg.DB.Dbname = *flag.String("dbName", "database", "DB database name")
-	cfg.DB.Sslmode = *flag.String("dbSslmode", "required", "DB postgres sslmode")
+	cfg.DB.Sslmode = *flag.String("dbSslmode", "require", "DB postgres sslmode")
 	// parse flags
 	flag.Parse()
 

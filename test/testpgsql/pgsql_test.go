@@ -1,10 +1,11 @@
-package registry
+package testpgsql
 
 import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -20,7 +21,7 @@ import (
 var api testcommon.TestAPI
 
 func TestMain(t *testing.M) {
-	api = testcommon.TestAPI{}
+	api = testcommon.TestAPI{Port: 12000 + rand.Intn(1000)}
 	db := &config.DB{
 		Dbname:   "vocdonimgr",
 		Password: "vocdoni",
@@ -29,7 +30,7 @@ func TestMain(t *testing.M) {
 		Sslmode:  "disable",
 		User:     "vocdoni",
 	}
-	api.Start(db, nil)
+	api.Start(db, "")
 	os.Exit(t.Run())
 }
 
@@ -91,7 +92,7 @@ func TestMember(t *testing.T) {
 	db := api.DB
 	// Create or retrieve existing entity
 	entityAddress := "30ed83726db2f7d28a58ecf0071b7dcd08f7b1e2"
-	entity, err := createEntity(entityAddress, db)
+	entity, err := loadOrGenEntity(entityAddress, db)
 	if err != nil {
 		t.Errorf("error creating or retreiving entity address: %s", err)
 	}
@@ -190,7 +191,7 @@ func TestMember(t *testing.T) {
 	}
 }
 
-func createEntity(address string, db database.Database) (*types.Entity, error) {
+func loadOrGenEntity(address string, db database.Database) (*types.Entity, error) {
 	eid, err := hex.DecodeString(util.TrimHex(address))
 	if err != nil {
 		return nil, err

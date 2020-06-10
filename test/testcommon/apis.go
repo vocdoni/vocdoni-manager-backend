@@ -1,14 +1,13 @@
 package testcommon
 
 import (
-	"math/rand"
-
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database/pgsql"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database/testdb"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/registry"
 
 	endpoint "gitlab.com/vocdoni/vocdoni-manager-backend/services/api-endpoint"
 )
@@ -23,18 +22,17 @@ type TestAPI struct {
 // Start creates a new database connection and API endpoint for testing.
 // If dbc is nill the testdb will be used.
 // If route is nill, then the websockets API won't be initialized
-func (t *TestAPI) Start(dbc *config.DB, route *string) error {
+func (t *TestAPI) Start(dbc *config.DB, route string) error {
 	log.Init("info", "stdout")
 	var err error
-	if route != nil {
+	if route != "" {
 		// Signer
 		t.Signer = new(ethereum.SignKeys)
 		t.Signer.Generate()
 
-		t.Port = 12000 + rand.Intn(1000)
 		cfg := &config.Manager{
 			API: &config.API{
-				Route:      *route,
+				Route:      route,
 				ListenPort: t.Port,
 				ListenHost: "127.0.0.1",
 			},
@@ -54,6 +52,14 @@ func (t *TestAPI) Start(dbc *config.DB, route *string) error {
 		// Mock database
 		if t.DB, err = testdb.New(); err != nil {
 			return err
+		}
+	}
+
+	if route != "" {
+		log.Infof("enabling Registry API methods")
+		reg := registry.NewRegistry(t.EP.Router, t.DB)
+		if err := reg.RegisterMethods(route); err != nil {
+			log.Fatal(err)
 		}
 	}
 	return nil
