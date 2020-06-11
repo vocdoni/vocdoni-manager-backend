@@ -72,14 +72,15 @@ func TestEntity(t *testing.T) {
 }
 
 func TestUser(t *testing.T) {
+	var err error
 	db := api.DB
 	userSigner := new(ethereum.SignKeys)
 	userSigner.Generate()
-	user := &types.User{PubKey: userSigner.Public.X.Bytes()}
-	err := db.AddUser(user)
-	if err != nil {
-		t.Errorf("Error adding user to the Postgres DB (pgsql.go:addUser): %s", err)
-	}
+	// user := &types.User{PubKey: userSigner.Public.X.Bytes()}
+	// err := db.AddUser(user)
+	// if err != nil {
+	// 	t.Errorf("Error adding user to the Postgres DB (pgsql.go:addUser): %s", err)
+	// }
 	_, err = db.User(userSigner.Public.X.Bytes())
 	if err != nil {
 		t.Errorf("Error retrieving user from the Postgres DB (pgsql.go:User): %s", err)
@@ -164,18 +165,6 @@ func TestMember(t *testing.T) {
 		t.Error("setMemberInfo failed to update member Consent in the Postgres DB (pgsql.go:Member)")
 	}
 
-	// Test Selecting filtered members
-	limit := 5
-	filter := types.Filter{
-		Offset: 2,
-		Limit:  limit,
-		Asc:    false,
-	}
-	members, err := db.MembersFiltered(entity.ID, newInfo, &filter)
-	if len(members) != limit {
-		t.Error("Error retrieving Members with filter and limit from the Prostgres DB (pgsql.go:MembersFiltered")
-	}
-
 	// Test Bulk Info
 	var bulkMembers []types.MemberInfo
 	for i := 0; i < 10; i++ {
@@ -185,6 +174,19 @@ func TestMember(t *testing.T) {
 	err = db.AddMemberBulk(entity.ID, bulkMembers)
 	if err != nil {
 		t.Errorf("Error bulk member adding to Postgres DB (pgsql.go:AddMemberBulk): %s", err)
+	}
+
+	// Test Selecting filtered members
+	limit := 5
+	filter := &types.ListOptions{
+		Skip:   2,
+		Count:  limit,
+		SortBy: "lastName",
+		Order:  "desc",
+	}
+	members, err := db.ListMembers(entity.ID, newInfo, filter)
+	if len(members) > limit {
+		t.Error("Error retrieving Members with filter and limit from the Prostgres DB (pgsql.go:MembersFiltered")
 	}
 }
 

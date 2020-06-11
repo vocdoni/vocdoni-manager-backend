@@ -155,6 +155,48 @@ func (d *Database) User(pubKey []byte) (*types.User, error) {
 	return &user, nil
 }
 
+func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error {
+	var err error
+	pgmembers := make([]PGMember, len(tokens))
+	for idx, _ := range pgmembers {
+		if tokens[idx] == uuid.Nil {
+			return fmt.Errorf("error parsing the uuids")
+		}
+		pgmembers[idx].ID = tokens[idx]
+		pgmembers[idx].EntityID = entityID
+	}
+
+	tx, err := d.db.Beginx()
+	if err != nil {
+		return err
+	}
+	insert := `INSERT INTO members
+					(id, entity_id)
+					VALUES (:id, :entity_id)`
+	result, err := tx.NamedExec(insert, pgmembers)
+	rows, errRows := result.RowsAffected()
+	if err != nil || int(rows) != len(pgmembers) {
+
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return rollbackErr
+		}
+		if err != nil {
+			return fmt.Errorf("Error in bulk import %w", err)
+		}
+		if errRows != nil {
+			return fmt.Errorf("Error in bulk import %w", errRows)
+		}
+		return fmt.Errorf("Should insert %d rows, while inserted %d rows. Rolled back.", len(pgmembers), rows)
+	}
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("Could not commit bulk import %w", err)
+	}
+	return nil
+
+}
+
 // TODO: Implement import members
 
 func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) error {
@@ -227,13 +269,25 @@ func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error
 	insert := `INSERT INTO members
 					(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
 					VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
-	_, err = tx.NamedExec(insert, members)
-	if err != nil {
+	result, err := tx.NamedExec(insert, members)
+	rows, errRows := result.RowsAffected()
+	if err != nil || int(rows) != len(members) {
+
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return rollbackErr
 		}
-		return err
+		if err != nil {
+			return fmt.Errorf("Error in bulk import %w", err)
+		}
+		if errRows != nil {
+			return fmt.Errorf("Error in bulk import %w", errRows)
+		}
+		return fmt.Errorf("Should insert %d rows, while inserted %d rows. Rolled back.", len(members), rows)
+	}
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("Could not commit bulk import %w", err)
 	}
 	return nil
 }
@@ -293,32 +347,30 @@ func (d *Database) MemberPubKey(pubKey, entityID []byte) (*types.Member, error) 
 	return member, nil
 }
 
-func (d *Database) MembersFiltered(entityID []byte, info *types.MemberInfo, filter *types.Filter) ([]*types.Member, error) {
+func (d *Database) ListMembers(entityID []byte, info *types.MemberInfo, filter *types.ListOptions) ([]types.Member, error) {
 	var orderQuery, order, offset, limit, offsetQuery string
 	// TODO: Replace limit offset with better strategy, can slow down DB
 	// would nee to now last value from previous query
 	selectQuery := `SELECT
 	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
 					FROM members WHERE entity_id =$1`
-	t := reflect.TypeOf(info)
-	if len(filter.OrderBy) > 0 {
-		field, found := t.FieldByName(strings.Title(filter.OrderBy))
+	t := reflect.TypeOf(*info)
+	if len(filter.SortBy) > 0 {
+		field, found := t.FieldByName(strings.Title(filter.SortBy))
 		if found {
-			if filter.Asc == true {
-				order = "ASC"
-			} else {
-				order = "DESC"
+			if filter.Order == "asc" || filter.Order == "desc" {
+				order = filter.Order
 			}
 			orderQuery = fmt.Sprintf("ORDER BY %s %s", field.Tag.Get("db"), order)
 		}
 	}
-	if filter.Offset > 0 {
-		offset = strconv.Itoa(filter.Offset)
+	if filter.Skip > 0 {
+		offset = strconv.Itoa(filter.Skip)
 	} else {
 		offset = "0"
 	}
-	if filter.Limit > 0 {
-		limit = strconv.Itoa(filter.Limit)
+	if filter.Count > 0 {
+		limit = strconv.Itoa(filter.Count)
 	} else {
 		limit = "NULL"
 	}
@@ -331,9 +383,9 @@ func (d *Database) MembersFiltered(entityID []byte, info *types.MemberInfo, filt
 		log.Debug(err)
 		return nil, err
 	}
-	members := make([]*types.Member, len(pgMembers))
+	members := make([]types.Member, len(pgMembers))
 	for i, member := range pgMembers {
-		members[i] = ToMember(&member)
+		members[i] = *ToMember(&member)
 	}
 	return members, nil
 }

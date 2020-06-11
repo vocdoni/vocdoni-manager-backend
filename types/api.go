@@ -2,6 +2,8 @@ package types
 
 import (
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type RequestMessage struct {
@@ -12,6 +14,7 @@ type RequestMessage struct {
 }
 
 type MetaRequest struct {
+	Amount      int          `json:"amount,omitempty"`
 	Census      *Census      `json:"census,omitempty"`
 	EntityID    string       `json:"entityId,omitempty"`
 	Filter      *Target      `json:"filter,omitempty"`
@@ -38,12 +41,14 @@ type ResponseMessage struct {
 // Fields must be in alphabetical order
 // Those fields with valid zero-values (such as bool) must be pointers
 type MetaResponse struct {
-	Message   string  `json:"message,omitempty"`
-	Ok        bool    `json:"ok"`
-	PublicKey string  `json:"publicKey,omitempty"`
-	Request   string  `json:"request"`
-	Status    *Status `json:"status,omitempty"`
-	Timestamp int32   `json:"timestamp"`
+	Members   []Member    `json:members,omitempty`
+	Message   string      `json:"message,omitempty"`
+	Ok        bool        `json:"ok"`
+	PublicKey string      `json:"publicKey,omitempty"`
+	Request   string      `json:"request"`
+	Status    *Status     `json:"status,omitempty"`
+	Timestamp int32       `json:"timestamp"`
+	Tokens    []uuid.UUID `json:"tokens"`
 }
 
 // SetError sets the MetaResponse's Ok field to false, and Message to a string

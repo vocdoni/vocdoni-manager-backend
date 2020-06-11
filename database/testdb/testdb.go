@@ -94,7 +94,7 @@ func (d *Database) MemberPubKey(pubKey, entityID []byte) (*types.Member, error) 
 	return &member, nil
 }
 
-func (d *Database) MembersFiltered(entityID []byte, info *types.MemberInfo, filter *types.Filter) ([]*types.Member, error) {
+func (d *Database) ListMembers(entityID []byte, info *types.MemberInfo, filter *types.ListOptions) ([]types.Member, error) {
 	return nil, nil
 }
 
@@ -114,6 +114,10 @@ func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error
 }
 
 func (d *Database) UpdateMember(memberID uuid.UUID, pubKey []byte, info *types.MemberInfo) error {
+	return nil
+}
+
+func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error {
 	return nil
 }
 
