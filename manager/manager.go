@@ -2,7 +2,7 @@ package manager
 
 import (
 	"database/sql"
-	"encoding/hex"
+
 	"fmt"
 	"reflect"
 	"strings"
@@ -10,10 +10,10 @@ import (
 	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
-	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/router"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/util"
 )
 
 type Manager struct {
@@ -51,13 +51,13 @@ func (m *Manager) listMembers(request router.RouterRequest) {
 	var response types.ResponseMessage
 
 	// check public key length
-	if len(request.PubKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
 		m.Router.SendError(request, "invalid public key")
 		return
 	}
 
 	// retrieve entity ID
-	if entityID, err = pubKeyToEntityID(request.PubKey); err != nil {
+	if entityID, err = util.PubKeyToEntityID(request.PubKey); err != nil {
 		log.Warn(err)
 		m.Router.SendError(request, err.Error())
 		return
@@ -90,13 +90,13 @@ func (m *Manager) generateTokens(request router.RouterRequest) {
 	var response types.ResponseMessage
 
 	// check public key length
-	if len(request.PubKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
 		m.Router.SendError(request, "invalid public key")
 		return
 	}
 
 	// retrieve entity ID
-	if entityID, err = pubKeyToEntityID(request.PubKey); err != nil {
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Warn(err)
 		m.Router.SendError(request, err.Error())
 		return
@@ -148,17 +148,4 @@ func checkOptions(filter *types.ListOptions) error {
 	}
 	return nil
 
-}
-
-func pubKeyToEntityID(pubKey string) ([]byte, error) {
-	// retrieve entity ID
-	var eid []byte
-	var err error
-	if eid, err = hex.DecodeString(util.TrimHex(pubKey)); err != nil {
-		log.Warn(err)
-		// m.Router.SendError(request, "cannot decode public key")
-		// return
-		return nil, fmt.Errorf("cannot decode public key")
-	}
-	return ethereum.HashRaw(eid), nil
 }
