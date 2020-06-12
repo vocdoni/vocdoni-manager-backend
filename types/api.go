@@ -20,6 +20,7 @@ type MetaRequest struct {
 	Filter      *Target      `json:"filter,omitempty"`
 	ListOptions *ListOptions `json:"listOptions,omitempty"`
 	Member      *Member      `json:"member"`
+	MembersInfo []MemberInfo `json:"membersInfo"`
 	Method      string       `json:"method"`
 	PubKey      string       `json:"publicKey,omitempty"`
 	Signature   string       `json:"signature,omitempty"`

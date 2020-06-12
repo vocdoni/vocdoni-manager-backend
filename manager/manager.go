@@ -29,10 +29,16 @@ func NewManager(r *router.Router, d database.Database) *Manager {
 // RegisterMethods registers all registry methods behind the given path
 func (m *Manager) RegisterMethods(path string) error {
 	m.Router.Transport.AddNamespace(path + "/manager")
+	if err := m.Router.AddHandler("signUp", path+"/manager", m.signUp, false); err != nil {
+		return err
+	}
 	if err := m.Router.AddHandler("listMembers", path+"/manager", m.listMembers, false); err != nil {
 		return err
 	}
 	if err := m.Router.AddHandler("generateTokens", path+"/manager", m.generateTokens, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("exportTokens", path+"/manager", m.exportTokens, false); err != nil {
 		return err
 	}
 	if err := m.Router.AddHandler("importMembers", path+"/manager", m.importMembers, false); err != nil {
@@ -43,6 +49,36 @@ func (m *Manager) RegisterMethods(path string) error {
 
 func (m *Manager) send(req router.RouterRequest, resp types.ResponseMessage) {
 	m.Router.Transport.Send(m.Router.BuildReply(req, resp))
+}
+
+func (m *Manager) signUp(request router.RouterRequest) {
+	var entityID []byte
+	var entityInfo *types.EntityInfo
+	var err error
+	var response types.ResponseMessage
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	// Add Entity
+	if err = m.db.AddEntity(entityID, entityInfo); err != nil {
+		log.Error(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	log.Infof("Added Entity with public Key %s", request.SignaturePublicKey)
+	m.send(request, response)
 }
 
 func (m *Manager) listMembers(request router.RouterRequest) {
@@ -80,8 +116,9 @@ func (m *Manager) listMembers(request router.RouterRequest) {
 		m.Router.SendError(request, "cannot query for members")
 		return
 	}
-	m.send(request, response)
+
 	log.Info("listMembers")
+	m.send(request, response)
 }
 
 func (m *Manager) generateTokens(request router.RouterRequest) {
@@ -116,12 +153,43 @@ func (m *Manager) generateTokens(request router.RouterRequest) {
 		m.Router.SendError(request, "could not register generated tokens")
 		return
 	}
+
 	log.Infof("generate %d tokens for %s", len(response.Tokens), entityID)
 	m.send(request, response)
 }
 
+func (m *Manager) exportTokens(request router.RouterRequest) {
+	// log.Infof("export %d tokens for %s", len(response.Tokens), entityID)
+	log.Warn("ToImplement:exportTokens")
+}
+
 func (m *Manager) importMembers(request router.RouterRequest) {
-	log.Info("importMembers")
+	var entityID []byte
+	var err error
+	var response types.ResponseMessage
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	// Add members
+	if err = m.db.AddMemberBulk(entityID, request.MembersInfo); err != nil {
+		log.Error(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	log.Infof("imported Members for Entity with public Key %s", request.SignaturePublicKey)
+	m.send(request, response)
 }
 
 func checkOptions(filter *types.ListOptions) error {
