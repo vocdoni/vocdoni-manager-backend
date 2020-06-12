@@ -177,6 +177,12 @@ func TestMember(t *testing.T) {
 		t.Errorf("Error bulk member adding to Postgres DB (pgsql.go:AddMemberBulk): %s", err)
 	}
 
+	// Test Selecting all members
+	allMembers, err := db.ListMembers(entity.ID, newInfo, &types.ListOptions{})
+	if err != nil {
+		t.Errorf("Error selecting all members from Postgres DB (pgsql.go:MembersFiltered): %s", err)
+	}
+
 	// Test Selecting filtered members
 	limit := 5
 	filter := &types.ListOptions{
@@ -188,6 +194,12 @@ func TestMember(t *testing.T) {
 	members, err := db.ListMembers(entity.ID, newInfo, filter)
 	if len(members) > limit {
 		t.Error("Error retrieving Members with filter and limit from the Prostgres DB (pgsql.go:MembersFiltered")
+	}
+
+	// Test Selecting all members and retrieving just their uuids and emails
+	tokenMembers, err := db.MembersTokensEmails(entity.ID)
+	if len(tokenMembers) != len(allMembers) {
+		t.Error("Error retrieving Members tokens and emails from the Prostgres DB (pgsql.go:MembersTokensEmails")
 	}
 }
 

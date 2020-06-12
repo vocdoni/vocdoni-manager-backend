@@ -18,6 +18,7 @@ type Database interface {
 	ListMembers(entityID []byte, info *types.MemberInfo, filter *types.ListOptions) ([]types.Member, error)
 	UpdateMember(memberID uuid.UUID, pubKey []byte, info *types.MemberInfo) error
 	CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error
+	MembersTokensEmails(entityID []byte) ([]types.Member, error)
 	AddUser(user *types.User) error
 	User(pubKey []byte) (*types.User, error)
 	Census(censusID []byte) (*types.Census, error)

@@ -147,8 +147,7 @@ func (m *Manager) generateTokens(request router.RouterRequest) {
 
 	response.Tokens = make([]uuid.UUID, request.Amount)
 	// TODO: Probably I need to initialize tokens
-	err = m.db.CreateMembersWithTokens(entityID, response.Tokens)
-	if err != nil {
+	if err = m.db.CreateMembersWithTokens(entityID, response.Tokens); err != nil {
 		log.Error("could not register generated tokens")
 		m.Router.SendError(request, "could not register generated tokens")
 		return
@@ -159,8 +158,48 @@ func (m *Manager) generateTokens(request router.RouterRequest) {
 }
 
 func (m *Manager) exportTokens(request router.RouterRequest) {
-	// log.Infof("export %d tokens for %s", len(response.Tokens), entityID)
-	log.Warn("ToImplement:exportTokens")
+	var entityID []byte
+	var members []types.Member
+	var err error
+	var response types.ResponseMessage
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	if request.Amount < 1 {
+		log.Warn("invalid request arguments")
+		m.Router.SendError(request, "invalid request arguments")
+		return
+	}
+
+	response.Tokens = make([]uuid.UUID, request.Amount)
+	// TODO: Probably I need to initialize tokens
+	if members, err = m.db.MembersTokensEmails(entityID); err != nil {
+		if err == sql.ErrNoRows {
+			m.Router.SendError(request, "no members found")
+			return
+		}
+		log.Error(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+	response.MembersTokens = make([]types.TokenEmail, len(members))
+	for idx, member := range members {
+		response.MembersTokens[idx] = types.TokenEmail{Token: member.ID, Email: member.Email}
+	}
+
+	log.Infof("retrieved %d tokens and their emails for Entiy %s", len(members), entityID)
+	m.send(request, response)
 }
 
 func (m *Manager) importMembers(request router.RouterRequest) {

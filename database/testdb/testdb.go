@@ -121,6 +121,10 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 	return nil
 }
 
+func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) {
+	return nil, nil
+}
+
 func (d *Database) AddUser(user *types.User) error {
 	return nil
 }

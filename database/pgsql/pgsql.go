@@ -346,6 +346,24 @@ func (d *Database) MemberPubKey(pubKey, entityID []byte) (*types.Member, error) 
 	return member, nil
 }
 
+func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) {
+	selectQuery := `SELECT
+	 				id, email
+					FROM members WHERE entity_id =$1`
+
+	var pgMembers []PGMember
+	err := d.db.Select(&pgMembers, selectQuery, entityID)
+	if err != nil {
+		log.Debug(err)
+		return nil, err
+	}
+	members := make([]types.Member, len(pgMembers))
+	for i, member := range pgMembers {
+		members[i] = *ToMember(&member)
+	}
+	return members, nil
+}
+
 func (d *Database) ListMembers(entityID []byte, info *types.MemberInfo, filter *types.ListOptions) ([]types.Member, error) {
 	var orderQuery, order, offset, limit, offsetQuery string
 	// TODO: Replace limit offset with better strategy, can slow down DB

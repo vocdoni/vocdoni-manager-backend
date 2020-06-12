@@ -42,14 +42,15 @@ type ResponseMessage struct {
 // Fields must be in alphabetical order
 // Those fields with valid zero-values (such as bool) must be pointers
 type MetaResponse struct {
-	Members   []Member    `json:members,omitempty`
-	Message   string      `json:"message,omitempty"`
-	Ok        bool        `json:"ok"`
-	PublicKey string      `json:"publicKey,omitempty"`
-	Request   string      `json:"request"`
-	Status    *Status     `json:"status,omitempty"`
-	Timestamp int32       `json:"timestamp"`
-	Tokens    []uuid.UUID `json:"tokens"`
+	Members       []Member     `json:members,omitempty`
+	Message       string       `json:"message,omitempty"`
+	Ok            bool         `json:"ok"`
+	PublicKey     string       `json:"publicKey,omitempty"`
+	Request       string       `json:"request"`
+	Status        *Status      `json:"status,omitempty"`
+	Timestamp     int32        `json:"timestamp"`
+	Tokens        []uuid.UUID  `json:"tokens"`
+	MembersTokens []TokenEmail `json:"membersTokens"`
 }
 
 // SetError sets the MetaResponse's Ok field to false, and Message to a string
@@ -57,6 +58,11 @@ type MetaResponse struct {
 func (r *MetaResponse) SetError(v interface{}) {
 	r.Ok = false
 	r.Message = fmt.Sprintf("%s", v)
+}
+
+type TokenEmail struct {
+	Token uuid.UUID `json:"tokens"`
+	Email string    `json:"emails"`
 }
 
 type Status struct {
