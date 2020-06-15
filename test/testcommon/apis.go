@@ -7,6 +7,7 @@ import (
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database/pgsql"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database/testdb"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/manager"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/registry"
 
 	endpoint "gitlab.com/vocdoni/vocdoni-manager-backend/services/api-endpoint"
@@ -59,6 +60,10 @@ func (t *TestAPI) Start(dbc *config.DB, route string) error {
 		log.Infof("enabling Registry API methods")
 		reg := registry.NewRegistry(t.EP.Router, t.DB)
 		if err := reg.RegisterMethods(route); err != nil {
+			log.Fatal(err)
+		}
+		mgr := manager.NewManager(t.EP.Router, t.DB)
+		if err := mgr.RegisterMethods(route); err != nil {
 			log.Fatal(err)
 		}
 	}
