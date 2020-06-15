@@ -26,37 +26,28 @@ type EntityInfo struct {
 	Origins                 []Origin `json:"origin" db:"origin"`
 }
 
-type origin int
+type Origin int
 
 const (
-	Token origin = iota
+	Token Origin = iota
 	Form
 	DB
 )
 
-type Origin interface {
-	Origin() origin
-}
-
-// every base must fulfill the Baser interface
-func (b origin) Origin() origin {
-	return b
-}
-
-func (b origin) String() string {
+func (b Origin) String() string {
 	return [...]string{"Token", "Form", "DB"}[b]
 }
 
 func ToOrigin(origin string) Origin {
 	switch origin {
 	case "Token":
-		return Token.Origin()
+		return Token
 	case "Form":
-		return Form.Origin()
+		return Form
 	case "DB":
-		return DB.Origin()
+		return DB
 	default:
-		return nil
+		return -1
 	}
 }
 

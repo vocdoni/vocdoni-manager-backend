@@ -109,10 +109,10 @@ func TestStatus(t *testing.T) {
 	if !resp2.Ok {
 		t.Error(err)
 	}
-	if !resp2.Status.Registered {
+	if *resp2.Status.Registered {
 		t.Error("Status.Registered expected to be true")
 	}
-	if resp2.Status.NeedsUpdate {
+	if !*resp2.Status.NeedsUpdate {
 		t.Error("Status.NeedsUpdate expected to be false")
 	}
 }

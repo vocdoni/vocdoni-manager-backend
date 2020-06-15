@@ -19,7 +19,7 @@ func ToPGEntity(x *types.Entity) (*PGEntity, error) {
 	}
 	vsm := make([]string, len(x.Origins))
 	for i, v := range x.Origins {
-		vsm[i] = v.Origin().String()
+		vsm[i] = v.String()
 	}
 	pgOrigins, err := ToPGOriginArray(x.Origins)
 	if err != nil {
@@ -54,7 +54,7 @@ func ToPGOriginArray(x []types.Origin) (*pgtype.EnumArray, error) {
 	var origin pgtype.EnumArray
 	copy := make([]string, len(x))
 	for i, v := range x {
-		copy[i] = v.Origin().String()
+		copy[i] = v.String()
 	}
 	err := origin.Set(copy)
 	if err != nil {

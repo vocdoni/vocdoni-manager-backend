@@ -66,8 +66,8 @@ type TokenEmail struct {
 }
 
 type Status struct {
-	Registered  bool `json:"registered,omitempty"`
-	NeedsUpdate bool `json:"needsUpdate,omitempty"`
+	Registered  *bool `json:"registered,omitempty"`
+	NeedsUpdate *bool `json:"needsUpdate,omitempty"`
 }
 
 type ListOptions struct {

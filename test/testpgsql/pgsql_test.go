@@ -50,7 +50,7 @@ func TestEntity(t *testing.T) {
 		// Email:                   "entity@entity.org",
 		Name:                    "test entity",
 		CensusManagersAddresses: [][]byte{{1, 2, 3}},
-		Origins:                 []types.Origin{types.Token.Origin()},
+		Origins:                 []types.Origin{types.Token},
 	}
 
 	err = db.AddEntity(entityID, info)
@@ -216,7 +216,7 @@ func loadOrGenEntity(address string, db database.Database) (*types.Entity, error
 			// Email:                   "entity@entity.org",
 			Name:                    "test entity",
 			CensusManagersAddresses: [][]byte{{1, 2, 3}},
-			Origins:                 []types.Origin{types.Token.Origin()},
+			Origins:                 []types.Origin{types.Token},
 		}
 		entity = &types.Entity{ID: ethereum.HashRaw(eid), EntityInfo: *info}
 		err = db.AddEntity(entityID, info)
