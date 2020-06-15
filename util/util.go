@@ -20,3 +20,16 @@ func PubKeyToEntityID(pubKey string) ([]byte, error) {
 	}
 	return ethereum.HashRaw(eid), nil
 }
+
+func PubKeyToAddress(pubKey string) ([]byte, error) {
+	var address string
+	var err error
+	var addressB []byte
+	if address, err = ethereum.AddrFromPublicKey(pubKey); err != nil {
+		return nil, fmt.Errorf("Error extracting address from public key %w", err)
+	}
+	if addressB, err = hex.DecodeString(util.TrimHex(address)); err != nil {
+		return nil, fmt.Errorf("Error extracting address from public key %w", err)
+	}
+	return addressB, nil
+}

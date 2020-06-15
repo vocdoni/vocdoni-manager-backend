@@ -32,16 +32,16 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("signUp", path+"/manager", m.signUp, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("listMembers", path+"/manager", m.listMembers, false); err != nil {
+	if err := m.Router.AddHandler("listMembers", path+"/manager", m.listMembers, true); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("generateTokens", path+"/manager", m.generateTokens, false); err != nil {
+	if err := m.Router.AddHandler("generateTokens", path+"/manager", m.generateTokens, true); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("exportTokens", path+"/manager", m.exportTokens, false); err != nil {
+	if err := m.Router.AddHandler("exportTokens", path+"/manager", m.exportTokens, true); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("importMembers", path+"/manager", m.importMembers, false); err != nil {
+	if err := m.Router.AddHandler("importMembers", path+"/manager", m.importMembers, true); err != nil {
 		return err
 	}
 	return nil
@@ -54,6 +54,7 @@ func (m *Manager) send(req router.RouterRequest, resp types.ResponseMessage) {
 func (m *Manager) signUp(request router.RouterRequest) {
 	var entityID []byte
 	var entityInfo *types.EntityInfo
+	var entityAddress []byte
 	var err error
 	var response types.ResponseMessage
 
@@ -70,6 +71,14 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		return
 	}
 
+	// retrieve entity Address
+	if entityAddress, err = util.PubKeyToAddress(request.SignaturePublicKey); err != nil {
+		log.Error(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+	// TODO: Receive from API census Managers addresses during signUp
+	entityInfo = &types.EntityInfo{Address: entityAddress, CensusManagersAddresses: [][]byte{entityAddress}}
 	// Add Entity
 	if err = m.db.AddEntity(entityID, entityInfo); err != nil {
 		log.Error(err)

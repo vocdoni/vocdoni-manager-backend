@@ -54,6 +54,12 @@ func (d *Database) Close() error {
 
 func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	var err error
+	if info.Address == nil {
+		return fmt.Errorf("entity address not found")
+	}
+	if info.CensusManagersAddresses == nil {
+		return fmt.Errorf("census manager addresses not found")
+	}
 	tx, err := d.db.Beginx()
 	if err != nil {
 		return err
