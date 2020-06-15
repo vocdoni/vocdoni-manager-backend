@@ -371,34 +371,38 @@ func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) 
 }
 
 func (d *Database) ListMembers(entityID []byte, info *types.MemberInfo, filter *types.ListOptions) ([]types.Member, error) {
-	var orderQuery, order, offset, limit, offsetQuery string
+	var order, offset, limit string
+	orderQuery := ""
+	offsetQuery := ""
 	// TODO: Replace limit offset with better strategy, can slow down DB
 	// would nee to now last value from previous query
 	selectQuery := `SELECT
 	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
 					FROM members WHERE entity_id =$1`
-	t := reflect.TypeOf(*info)
-	if len(filter.SortBy) > 0 {
-		field, found := t.FieldByName(strings.Title(filter.SortBy))
-		if found {
-			if filter.Order == "asc" || filter.Order == "desc" {
-				order = filter.Order
-			}
-			orderQuery = fmt.Sprintf("ORDER BY %s %s", field.Tag.Get("db"), order)
-		}
-	}
-	if filter.Skip > 0 {
-		offset = strconv.Itoa(filter.Skip)
-	} else {
-		offset = "0"
-	}
-	if filter.Count > 0 {
-		limit = strconv.Itoa(filter.Count)
-	} else {
-		limit = "NULL"
-	}
-	offsetQuery = fmt.Sprintf("LIMIT %s OFFSET %s", limit, offset)
 
+	if info != nil {
+		t := reflect.TypeOf(*info)
+		if len(filter.SortBy) > 0 {
+			field, found := t.FieldByName(strings.Title(filter.SortBy))
+			if found {
+				if filter.Order == "asc" || filter.Order == "desc" {
+					order = filter.Order
+				}
+				orderQuery = fmt.Sprintf("ORDER BY %s %s", field.Tag.Get("db"), order)
+			}
+		}
+		if filter.Skip > 0 {
+			offset = strconv.Itoa(filter.Skip)
+		} else {
+			offset = "0"
+		}
+		if filter.Count > 0 {
+			limit = strconv.Itoa(filter.Count)
+		} else {
+			limit = "NULL"
+		}
+		offsetQuery = fmt.Sprintf("LIMIT %s OFFSET %s", limit, offset)
+	}
 	var pgMembers []PGMember
 	query := fmt.Sprintf("%s %s %s", selectQuery, orderQuery, offsetQuery)
 	err := d.db.Select(&pgMembers, query, entityID)

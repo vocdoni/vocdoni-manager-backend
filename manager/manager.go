@@ -32,16 +32,16 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("signUp", path+"/manager", m.signUp, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("listMembers", path+"/manager", m.listMembers, true); err != nil {
+	if err := m.Router.AddHandler("listMembers", path+"/manager", m.listMembers, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("generateTokens", path+"/manager", m.generateTokens, true); err != nil {
+	if err := m.Router.AddHandler("generateTokens", path+"/manager", m.generateTokens, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("exportTokens", path+"/manager", m.exportTokens, true); err != nil {
+	if err := m.Router.AddHandler("exportTokens", path+"/manager", m.exportTokens, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("importMembers", path+"/manager", m.importMembers, true); err != nil {
+	if err := m.Router.AddHandler("importMembers", path+"/manager", m.importMembers, false); err != nil {
 		return err
 	}
 	return nil
@@ -241,6 +241,9 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 }
 
 func checkOptions(filter *types.ListOptions) error {
+	if filter == nil {
+		return nil
+	}
 	// Check skip and count
 	if filter.Skip < 0 || filter.Count < 0 {
 		return fmt.Errorf("invalid filter options")
