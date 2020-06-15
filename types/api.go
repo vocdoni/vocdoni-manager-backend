@@ -19,8 +19,8 @@ type MetaRequest struct {
 	EntityID    string       `json:"entityId,omitempty"`
 	Filter      *Target      `json:"filter,omitempty"`
 	ListOptions *ListOptions `json:"listOptions,omitempty"`
-	Member      *Member      `json:"member"`
-	MembersInfo []MemberInfo `json:"membersInfo"`
+	Member      *Member      `json:"member,omitempty"`
+	MembersInfo []MemberInfo `json:"membersInfo,omitempty"`
 	Method      string       `json:"method"`
 	PubKey      string       `json:"publicKey,omitempty"`
 	Signature   string       `json:"signature,omitempty"`

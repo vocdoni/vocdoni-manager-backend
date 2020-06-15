@@ -15,7 +15,7 @@ type Database interface {
 	AddMemberBulk(entityID []byte, info []types.MemberInfo) error
 	Member(memberID uuid.UUID) (*types.Member, error)
 	MemberPubKey(pubKey, entityID []byte) (*types.Member, error)
-	ListMembers(entityID []byte, info *types.MemberInfo, filter *types.ListOptions) ([]types.Member, error)
+	ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error)
 	UpdateMember(memberID uuid.UUID, pubKey []byte, info *types.MemberInfo) error
 	CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error
 	MembersTokensEmails(entityID []byte) ([]types.Member, error)

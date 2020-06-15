@@ -77,11 +77,11 @@ func TestUser(t *testing.T) {
 	db := api.DB
 	userSigner := new(ethereum.SignKeys)
 	userSigner.Generate()
-	// user := &types.User{PubKey: userSigner.Public.X.Bytes()}
-	// err := db.AddUser(user)
-	// if err != nil {
-	// 	t.Errorf("Error adding user to the Postgres DB (pgsql.go:addUser): %s", err)
-	// }
+	user := &types.User{PubKey: userSigner.Public.X.Bytes()}
+	err = db.AddUser(user)
+	if err != nil {
+		t.Errorf("Error adding user to the Postgres DB (pgsql.go:addUser): %s", err)
+	}
 	_, err = db.User(userSigner.Public.X.Bytes())
 	if err != nil {
 		t.Errorf("Error retrieving user from the Postgres DB (pgsql.go:User): %s", err)
@@ -178,7 +178,7 @@ func TestMember(t *testing.T) {
 	}
 
 	// Test Selecting all members
-	allMembers, err := db.ListMembers(entity.ID, newInfo, &types.ListOptions{})
+	allMembers, err := db.ListMembers(entity.ID, &types.ListOptions{})
 	if err != nil {
 		t.Errorf("Error selecting all members from Postgres DB (pgsql.go:MembersFiltered): %s", err)
 	}
@@ -191,7 +191,7 @@ func TestMember(t *testing.T) {
 		SortBy: "lastName",
 		Order:  "desc",
 	}
-	members, err := db.ListMembers(entity.ID, newInfo, filter)
+	members, err := db.ListMembers(entity.ID, filter)
 	if len(members) > limit {
 		t.Error("Error retrieving Members with filter and limit from the Prostgres DB (pgsql.go:MembersFiltered")
 	}

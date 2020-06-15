@@ -78,7 +78,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		return
 	}
 	// TODO: Receive from API census Managers addresses during signUp
-	entityInfo = &types.EntityInfo{Address: entityAddress, CensusManagersAddresses: [][]byte{entityAddress}}
+	entityInfo = &types.EntityInfo{Address: entityAddress, CensusManagersAddresses: [][]byte{entityAddress}, Origins: []types.Origin{types.Token.Origin()}}
 	// Add Entity
 	if err = m.db.AddEntity(entityID, entityInfo); err != nil {
 		log.Error(err)
@@ -102,7 +102,7 @@ func (m *Manager) listMembers(request router.RouterRequest) {
 	}
 
 	// retrieve entity ID
-	if entityID, err = util.PubKeyToEntityID(request.PubKey); err != nil {
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Warn(err)
 		m.Router.SendError(request, err.Error())
 		return
@@ -116,7 +116,7 @@ func (m *Manager) listMembers(request router.RouterRequest) {
 	}
 
 	// Query for members
-	if response.Members, err = m.db.ListMembers(entityID, nil, request.ListOptions); err != nil {
+	if response.Members, err = m.db.ListMembers(entityID, request.ListOptions); err != nil {
 		if err == sql.ErrNoRows {
 			m.Router.SendError(request, "no members found")
 			return
@@ -227,6 +227,10 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 		log.Warn(err)
 		m.Router.SendError(request, err.Error())
 		return
+	}
+
+	for idx, _ := range request.MembersInfo {
+		request.MembersInfo[idx].Origin = types.Token.Origin()
 	}
 
 	// Add members

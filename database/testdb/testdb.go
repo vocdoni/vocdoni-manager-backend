@@ -94,7 +94,7 @@ func (d *Database) MemberPubKey(pubKey, entityID []byte) (*types.Member, error) 
 	return &member, nil
 }
 
-func (d *Database) ListMembers(entityID []byte, info *types.MemberInfo, filter *types.ListOptions) ([]types.Member, error) {
+func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error) {
 	return nil, nil
 }
 

@@ -1,6 +1,7 @@
 package pgsql
 
 import (
+	"database/sql"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -227,6 +228,9 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error {
 	// TODO: Check if support for Update a Member is needed
 	// TODO: Investigate COPY FROM with pgx
+	var err error
+	var result sql.Result
+	var rows int64
 	if len(info) <= 0 {
 		return fmt.Errorf("No member data provided")
 	}
@@ -274,10 +278,7 @@ func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error
 	insert := `INSERT INTO members
 					(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
 					VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
-	result, err := tx.NamedExec(insert, members)
-	rows, errRows := result.RowsAffected()
-	if err != nil || int(rows) != len(members) {
-
+	if result, err = tx.NamedExec(insert, members); err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return rollbackErr
@@ -285,8 +286,14 @@ func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error
 		if err != nil {
 			return fmt.Errorf("Error in bulk import %w", err)
 		}
-		if errRows != nil {
-			return fmt.Errorf("Error in bulk import %w", errRows)
+	}
+	if rows, err = result.RowsAffected(); err != nil || int(rows) != len(members) {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return rollbackErr
+		}
+		if err != nil {
+			return fmt.Errorf("Error in bulk import %w", err)
 		}
 		return fmt.Errorf("Should insert %d rows, while inserted %d rows. Rolled back.", len(members), rows)
 	}
@@ -370,7 +377,7 @@ func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) 
 	return members, nil
 }
 
-func (d *Database) ListMembers(entityID []byte, info *types.MemberInfo, filter *types.ListOptions) ([]types.Member, error) {
+func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error) {
 	var order, offset, limit string
 	orderQuery := ""
 	offsetQuery := ""
@@ -379,9 +386,9 @@ func (d *Database) ListMembers(entityID []byte, info *types.MemberInfo, filter *
 	selectQuery := `SELECT
 	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
 					FROM members WHERE entity_id =$1`
-
-	if info != nil {
-		t := reflect.TypeOf(*info)
+	query := selectQuery
+	t := reflect.TypeOf(types.MemberInfo{})
+	if filter != nil {
 		if len(filter.SortBy) > 0 {
 			field, found := t.FieldByName(strings.Title(filter.SortBy))
 			if found {
@@ -402,9 +409,10 @@ func (d *Database) ListMembers(entityID []byte, info *types.MemberInfo, filter *
 			limit = "NULL"
 		}
 		offsetQuery = fmt.Sprintf("LIMIT %s OFFSET %s", limit, offset)
+		query = fmt.Sprintf("%s %s %s", selectQuery, orderQuery, offsetQuery)
 	}
 	var pgMembers []PGMember
-	query := fmt.Sprintf("%s %s %s", selectQuery, orderQuery, offsetQuery)
+	// query = fmt.Sprintf("%s %s %s", selectQuery, orderQuery, offsetQuery)
 	err := d.db.Select(&pgMembers, query, entityID)
 	if err != nil {
 		log.Debug(err)
