@@ -167,3 +167,45 @@ func TestExportTokens(t *testing.T) {
 	}
 	// another entity cannot request
 }
+
+func TestImportMembers(t *testing.T) {
+	db := api.DB
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Error(err)
+	}
+	// create entity
+	entitySigners, entities, err := testcommon.CreateEntities(1)
+	if err != nil {
+		t.Error(err)
+	}
+	// add entity
+	db.AddEntity(entities[0].ID, &entities[0].EntityInfo)
+
+	// add members
+	// create members
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 3)
+	memInfo := make([]types.MemberInfo, len(members))
+	for idx, mem := range members {
+		memInfo[idx] = mem.MemberInfo
+	}
+	// add members
+	if err := db.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+		t.Error(err)
+	}
+
+	var req types.MetaRequest
+	req.Method = "importMembers"
+	for idx, mem := range members {
+		req.MembersInfo[idx] = mem.MemberInfo
+	}
+
+	resp := wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Error()
+	}
+
+	// another entity cannot request
+}
