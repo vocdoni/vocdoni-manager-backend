@@ -230,24 +230,32 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 
 // TODO: Implement import members
 
-func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) error {
+func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (uuid.UUID, error) {
+	var err error
+	var result *sqlx.Rows
+	var id uuid.UUID
 	member := &types.Member{EntityID: entityID, PubKey: pubKey, MemberInfo: *info}
-	_, err := d.User(pubKey)
+	_, err = d.User(pubKey)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 	pgmember, err := ToPGMember(member)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 	insert := `INSERT INTO members
 	 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
-					 VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
-	_, err = d.db.NamedExec(insert, pgmember)
-	if err != nil {
-		return err
+					 VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)
+				RETURNING id`
+	if result, err = d.db.NamedQuery(insert, pgmember); err != nil {
+		return uuid.Nil, err
 	}
-	return nil
+	for result.Next() {
+		if err = result.Scan(&id); err != nil {
+			return uuid.Nil, err
+		}
+	}
+	return id, nil
 }
 
 func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error {

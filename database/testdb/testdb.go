@@ -104,9 +104,9 @@ func (d *Database) Census(censusID []byte) (*types.Census, error) {
 	return &census, nil
 }
 
-func (d *Database) AddMember(entityID, pubKey []byte, info *types.MemberInfo) error {
+func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (uuid.UUID, error) {
 	// return &types.Member{MemberInfo: *info, ID: uuid.New(), EntityID: entityID, PubKey: pubKey}, nil
-	return nil
+	return uuid.Nil, nil
 }
 
 func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error {

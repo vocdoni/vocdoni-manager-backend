@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
@@ -87,7 +88,9 @@ func TestUser(t *testing.T) {
 }
 
 func TestMember(t *testing.T) {
-	// Create or fetch existing entity
+	var id uuid.UUID
+	db := api.DB
+	// Create or retrieve existing entity
 	entityAddress := "30ed83726db2f7d28a58ecf0071b7dcd08f7b1e2"
 	entity, err := loadOrGenEntity(entityAddress, api.DB)
 	if err != nil {
@@ -105,9 +108,15 @@ func TestMember(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot add user to the Postgres DB (pgsql.go:addUser) %s", err)
 	}
-	err = api.DB.AddMember(entity.ID, memberSigner.Public.X.Bytes(), memberInfo)
+	id, err = api.DB.AddMember(entity.ID, memberSigner.Public.X.Bytes(), memberInfo)
 	if err != nil {
 		t.Fatalf("cannot add member to the Postgres DB (pgsql.go:addMember): %s", err)
+	}
+
+	// Query by ID
+	member, err := db.Member(id)
+	if err != nil {
+		t.Errorf("Error retrieving member from the Postgres DB (pgsql.go:Member): %s", err)
 	}
 
 	// Query by Public Key

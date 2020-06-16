@@ -127,7 +127,7 @@ func (r *Registry) register(request router.RouterRequest) {
 			r.Router.SendError(request, "invalid member info")
 			return
 		}
-		if err = r.db.AddMember(entityID, user.PubKey, &request.Member.MemberInfo); err != nil {
+		if _, err = r.db.AddMember(entityID, user.PubKey, &request.Member.MemberInfo); err != nil {
 			log.Warn(err)
 			r.Router.SendError(request, fmt.Sprintf("cannot create member: (%s)", err))
 			return
@@ -283,7 +283,7 @@ func (r *Registry) subscribe(request router.RouterRequest) {
 		// not subscribed
 		if !r.db.EntityHas(entityID, uid) {
 			// add member
-			if err = r.db.AddMember(entityID, user.PubKey, &member.MemberInfo); err != nil {
+			if _, err = r.db.AddMember(entityID, user.PubKey, &member.MemberInfo); err != nil {
 				log.Warn(err)
 				r.Router.SendError(request, fmt.Sprintf("cannot add member: (%s)", err))
 				return
