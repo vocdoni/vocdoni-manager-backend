@@ -9,24 +9,30 @@ import (
 	randomdata "github.com/Pallinder/go-randomdata"
 
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
-	"gitlab.com/vocdoni/go-dvote/util"
+	// dvote "gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/util"
 )
 
 // CreateEntities a given number of random entities
 func CreateEntities(size int) ([]*ethereum.SignKeys, []*types.Entity, error) {
+	var entityID, entityAddress []byte
+	var err error
 	signers := CreateEthRandomKeysBatch(size)
+	// ethereum.HashRaw(signers[0].EthAddrString())
 	mp := make([]*types.Entity, size)
 	for i := 0; i < size; i++ {
-		addr := signers[i].EthAddrString()
-		addrHex, err := hex.DecodeString(util.TrimHex(addr))
-		if err != nil {
+		// retrieve entity ID
+		if entityAddress, err = util.SignerEntityAddress(*signers[i]); err != nil {
+			return nil, nil, err
+		}
+		if entityID, err = util.SignerEntityID(*signers[i]); err != nil {
 			return nil, nil, err
 		}
 		mp[i] = &types.Entity{
-			ID: ethereum.HashRaw(addrHex),
+			ID: entityID,
 			EntityInfo: types.EntityInfo{
-				Address:                 addrHex,
+				Address:                 entityAddress,
 				Email:                   randomdata.Email(),
 				Name:                    randomdata.FirstName(2),
 				CensusManagersAddresses: [][]byte{{1, 2, 3}},
