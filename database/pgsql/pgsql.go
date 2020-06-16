@@ -163,13 +163,16 @@ func (d *Database) User(pubKey []byte) (*types.User, error) {
 
 func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error {
 	var err error
+	var result sql.Result
+	var rows int64
 	pgmembers := make([]PGMember, len(tokens))
 	for idx := range pgmembers {
 		if tokens[idx] == uuid.Nil {
 			return fmt.Errorf("error parsing the uuids")
 		}
-		pgmembers[idx].ID = tokens[idx]
-		pgmembers[idx].EntityID = entityID
+		pgmembers[idx] = PGMember{Member: types.Member{ID: tokens[idx], EntityID: entityID, MemberInfo: types.MemberInfo{}}}
+		// pgmembers[idx].ID = tokens[idx]
+		// pgmembers[idx].EntityID = entityID
 	}
 
 	tx, err := d.db.Beginx()
@@ -179,10 +182,11 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 	insert := `INSERT INTO members
 					(id, entity_id)
 					VALUES (:id, :entity_id)`
-	result, err := tx.NamedExec(insert, pgmembers)
-	rows, errRows := result.RowsAffected()
-	if err != nil || int(rows) != len(pgmembers) {
-
+	insert = `INSERT INTO members
+	(id,entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified)
+	VALUES (:id, :entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified)`
+	// result, err = tx.NamedExec(insert, pgmembers)
+	if result, err = tx.NamedExec(insert, pgmembers); err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return rollbackErr
@@ -190,11 +194,32 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 		if err != nil {
 			return fmt.Errorf("Error in bulk import %w", err)
 		}
-		if errRows != nil {
-			return fmt.Errorf("Error in bulk import %w", errRows)
+	}
+	if rows, err = result.RowsAffected(); err != nil || int(rows) != len(pgmembers) {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return rollbackErr
+		}
+		if err != nil {
+			return fmt.Errorf("Error in bulk import %w", err)
 		}
 		return fmt.Errorf("Should insert %d rows, while inserted %d rows. Rolled back.", len(pgmembers), rows)
 	}
+	// rows, errRows := result.RowsAffected()
+	// if err != nil || int(rows) != len(pgmembers) {
+
+	// 	rollbackErr := tx.Rollback()
+	// 	if rollbackErr != nil {
+	// 		return rollbackErr
+	// 	}
+	// 	if err != nil {
+	// 		return fmt.Errorf("Error in bulk import %w", err)
+	// 	}
+	// 	if errRows != nil {
+	// 		return fmt.Errorf("Error in bulk import %w", errRows)
+	// 	}
+	// 	return fmt.Errorf("Should insert %d rows, while inserted %d rows. Rolled back.", len(pgmembers), rows)
+	// }
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("Could not commit bulk import %w", err)

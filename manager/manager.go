@@ -155,6 +155,9 @@ func (m *Manager) generateTokens(request router.RouterRequest) {
 	}
 
 	response.Tokens = make([]uuid.UUID, request.Amount)
+	for idx := range response.Tokens {
+		response.Tokens[idx] = uuid.New()
+	}
 	// TODO: Probably I need to initialize tokens
 	if err = m.db.CreateMembersWithTokens(entityID, response.Tokens); err != nil {
 		log.Error("could not register generated tokens")
@@ -185,13 +188,6 @@ func (m *Manager) exportTokens(request router.RouterRequest) {
 		return
 	}
 
-	if request.Amount < 1 {
-		log.Warn("invalid request arguments")
-		m.Router.SendError(request, "invalid request arguments")
-		return
-	}
-
-	response.Tokens = make([]uuid.UUID, request.Amount)
 	// TODO: Probably I need to initialize tokens
 	if members, err = m.db.MembersTokensEmails(entityID); err != nil {
 		if err == sql.ErrNoRows {
@@ -253,20 +249,19 @@ func checkOptions(filter *types.ListOptions) error {
 		return fmt.Errorf("invalid filter options")
 	}
 	// Check sortby
-	t := reflect.TypeOf(&types.MemberInfo{})
+	t := reflect.TypeOf(types.MemberInfo{})
 	if len(filter.SortBy) > 0 {
 		_, found := t.FieldByName(strings.Title(filter.SortBy))
 		if !found {
 			return fmt.Errorf("invalid filter options")
 		}
 		// Check order
-		if len(filter.Order) > 0 && (filter.Order == "asc" || filter.Order == "desc") {
+		if len(filter.Order) > 0 && !(filter.Order == "asc" || filter.Order == "desc") {
 			return fmt.Errorf("invalid filter options")
 		}
 
-	}
-	// Also check that order does not make sense without sortby
-	if len(filter.Order) > 0 {
+	} else if len(filter.Order) > 0 {
+		// Also check that order does not make sense without sortby
 		return fmt.Errorf("invalid filter options")
 	}
 	return nil
