@@ -10,15 +10,15 @@ import (
 
 func PubKeyToEntityID(pubKey string) ([]byte, error) {
 	// retrieve entity ID
-	var eid []byte
+	var address []byte
 	var err error
-	if eid, err = hex.DecodeString(util.TrimHex(pubKey)); err != nil {
+	if address, err = PubKeyToAddress(pubKey); err != nil {
 		// log.Warn(err)
 		// m.Router.SendError(request, "cannot decode public key")
 		// return
 		return nil, fmt.Errorf("cannot decode public key")
 	}
-	return ethereum.HashRaw(eid), nil
+	return ethereum.HashRaw(address), nil
 }
 
 func PubKeyToAddress(pubKey string) ([]byte, error) {
