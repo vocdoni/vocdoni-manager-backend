@@ -1,7 +1,6 @@
 package testmanager
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"os"
@@ -89,7 +88,6 @@ func TestListMembers(t *testing.T) {
 	// create and make request
 	var req types.MetaRequest
 	req.Method = "listMembers"
-	req.EntityID = hex.EncodeToString(entities[0].ID)
 	req.ListOptions = &types.ListOptions{
 		Count:  10,
 		Order:  "asc",
@@ -131,8 +129,9 @@ func TestGenerateTokens(t *testing.T) {
 	if !resp.Ok {
 		t.Fatal()
 	}
-	if len(resp.MembersTokens) != randAmount {
-		t.Fatalf("expected %d tokens, but got %d", randAmount, len(resp.MembersTokens))
+
+	if len(resp.Tokens) != randAmount {
+		t.Fatalf("expected %d tokens, but got %d", randAmount, len(resp.Tokens))
 	}
 	// another entity cannot request
 }
@@ -153,17 +152,26 @@ func TestExportTokens(t *testing.T) {
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
 	}
-	// create and make request
+
+	// create members
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 3)
+	memInfo := make([]types.MemberInfo, len(members))
+	for idx, mem := range members {
+		memInfo[idx] = mem.MemberInfo
+	}
+	// add members
+	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+		t.Error(err)
+	}
+
 	var req types.MetaRequest
-	randAmount := rand.Intn(100)
-	req.Amount = randAmount
 	req.Method = "exportTokens"
 	resp := wsc.Request(req, entitySigners[0])
 	if !resp.Ok {
 		t.Fatal()
 	}
-	if len(resp.MembersTokens) != randAmount {
-		t.Fatalf("expected %d tokens, but got %d", randAmount, len(resp.MembersTokens))
+	if len(resp.MembersTokens) != 3 {
+		t.Fatalf("expected 3 tokens, but got %d", len(resp.MembersTokens))
 	}
 	// another entity cannot request
 }
@@ -199,6 +207,7 @@ func TestImportMembers(t *testing.T) {
 	}
 	// create and make request
 	var req types.MetaRequest
+	req.MembersInfo = make([]types.MemberInfo, len(members))
 	req.Method = "importMembers"
 	for idx, mem := range members {
 		req.MembersInfo[idx] = mem.MemberInfo
