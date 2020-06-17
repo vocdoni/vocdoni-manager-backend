@@ -145,7 +145,7 @@ func (r *Registry) register(request router.RouterRequest) {
 			r.Router.SendError(request, "invalid token")
 			return
 		}
-		member, err = r.db.Member(uid)
+		member, err = r.db.Member(entityID, uid)
 		if err != nil {
 			log.Warn(err)
 			r.Router.SendError(request, "invalid token id")
@@ -200,7 +200,7 @@ func (r *Registry) status(request router.RouterRequest) {
 	}
 
 	// check if user is a member
-	if member, err = r.db.MemberPubKey(signaturePubKeyBytes, entityID); err != nil {
+	if member, err = r.db.MemberPubKey(entityID, signaturePubKeyBytes); err != nil {
 		// user is not a member but exists
 		if err == sql.ErrNoRows {
 			response.Status = &types.Status{
@@ -269,7 +269,7 @@ func (r *Registry) subscribe(request router.RouterRequest) {
 		}
 
 		// check if member exists
-		if member, err = r.db.Member(uid); err != nil {
+		if member, err = r.db.Member(entityID, uid); err != nil {
 			// member does not exist
 			if err.Error() == "sql: no rows in result set" {
 				r.Router.SendError(request, fmt.Sprintf("member does not exist"))
@@ -341,7 +341,7 @@ func (r *Registry) unsubscribe(request router.RouterRequest) {
 		}
 
 		// check if member exists
-		if member, err = r.db.Member(uid); err != nil {
+		if member, err = r.db.Member(entityID, uid); err != nil {
 			// member does not exist
 			if err.Error() == "sql: no rows in result set" {
 				r.Router.SendError(request, fmt.Sprintf("member does not exist"))

@@ -362,12 +362,12 @@ func (d *Database) UpdateMember(memberID uuid.UUID, pubKey []byte, info *types.M
 	return nil
 }
 
-func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
+func (d *Database) Member(entityID []byte, memberID uuid.UUID) (*types.Member, error) {
 	var pgMember PGMember
 	selectQuery := `SELECT
 	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented
-					FROM members WHERE id = $1`
-	row := d.db.QueryRowx(selectQuery, memberID)
+					FROM members WHERE id = $1 and entity_id =$2`
+	row := d.db.QueryRowx(selectQuery, memberID, entityID)
 	err := row.StructScan(&pgMember)
 	member := ToMember(&pgMember)
 	if err != nil {
@@ -377,7 +377,7 @@ func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	return member, nil
 }
 
-func (d *Database) MemberPubKey(pubKey, entityID []byte) (*types.Member, error) {
+func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) {
 	var pgMember PGMember
 	selectQuery := `SELECT
 	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"

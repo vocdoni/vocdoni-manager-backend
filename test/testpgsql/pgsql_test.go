@@ -114,13 +114,13 @@ func TestMember(t *testing.T) {
 	}
 
 	// Query by ID
-	member, err := db.Member(id)
+	member, err := db.Member(entity.ID, id)
 	if err != nil {
 		t.Errorf("Error retrieving member from the Postgres DB (pgsql.go:Member): %s", err)
 	}
 
 	// Query by Public Key
-	member, err := api.DB.MemberPubKey(memberSigner.Public.X.Bytes(), entity.ID)
+	member, err = db.MemberPubKey(entity.ID, memberSigner.Public.X.Bytes())
 	if err != nil {
 		t.Fatalf("cannot fetch member from the Postgres DB (pgsql.go:MemberPubKey): %s", err)
 	}
@@ -150,7 +150,7 @@ func TestMember(t *testing.T) {
 	}
 
 	// Query by UUID
-	member, err = api.DB.Member(member.ID)
+	member, err = db.Member(entity.ID, member.ID)
 	if err != nil {
 		t.Fatalf("cannot fetch user from the Postgres DB (pgsql.go:Member): %s", err)
 	}
@@ -164,7 +164,7 @@ func TestMember(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot update user info to the Postgres DB (pgsql.go:setMemberInfo): %s", err)
 	}
-	newMember, err := api.DB.Member(member.ID)
+	newMember, err := db.Member(entity.ID, member.ID)
 	if err != nil {
 		t.Fatalf("cannot fetch user from the Postgres DB (pgsql.go:Member): %s", err)
 	}

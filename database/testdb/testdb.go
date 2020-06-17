@@ -62,14 +62,14 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	return nil
 }
 
-func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
+func (d *Database) Member(entityID []byte, memberID uuid.UUID) (*types.Member, error) {
 	var member types.Member
 	member.ID = memberID
-	eid, err := hex.DecodeString(util.TrimHex("b662e6ac6e8300f0a03b33c4f8510121ba2d5bde"))
-	if err != nil {
-		return nil, fmt.Errorf("error decoding entity address: %s", err)
-	}
-	member.EntityID = eid
+	// eid, err := hex.DecodeString(util.TrimHex("b662e6ac6e8300f0a03b33c4f8510121ba2d5bde"))
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error decoding entity address: %s", err)
+	// }
+	member.EntityID = entityID
 	member.Email = "hello@vocdoni.io"
 	member.FirstName = "Julian"
 	member.LastName = "Assange"
@@ -80,7 +80,7 @@ func (d *Database) Member(memberID uuid.UUID) (*types.Member, error) {
 	return &member, nil
 }
 
-func (d *Database) MemberPubKey(pubKey, entityID []byte) (*types.Member, error) {
+func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) {
 	var member types.Member
 	member.ID = uuid.New()
 	member.EntityID = entityID

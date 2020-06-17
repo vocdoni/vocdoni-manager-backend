@@ -13,8 +13,8 @@ type Database interface {
 	EntityHas(entityID []byte, memberID uuid.UUID) bool
 	AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (uuid.UUID, error)
 	AddMemberBulk(entityID []byte, info []types.MemberInfo) error
-	Member(memberID uuid.UUID) (*types.Member, error)
-	MemberPubKey(pubKey, entityID []byte) (*types.Member, error)
+	Member(entityID []byte, memberID uuid.UUID) (*types.Member, error)
+	MemberPubKey(entityID, pubKey []byte) (*types.Member, error)
 	ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error)
 	UpdateMember(memberID uuid.UUID, pubKey []byte, info *types.MemberInfo) error
 	CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error
