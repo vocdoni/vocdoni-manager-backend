@@ -78,7 +78,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		return
 	}
 	// TODO: Receive from API census Managers addresses during signUp
-	entityInfo = &types.EntityInfo{Address: entityAddress, CensusManagersAddresses: [][]byte{entityAddress}, Origins: []types.Origin{types.Token.Origin()}}
+	entityInfo = &types.EntityInfo{Address: entityAddress, CensusManagersAddresses: [][]byte{entityAddress}, Origins: []types.Origin{types.Token}}
 	// Add Entity
 	if err = m.db.AddEntity(entityID, entityInfo); err != nil {
 		log.Error(err)
@@ -229,8 +229,8 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 		return
 	}
 
-	for idx, _ := range request.MembersInfo {
-		request.MembersInfo[idx].Origin = types.Token.Origin()
+	for idx := range request.MembersInfo {
+		request.MembersInfo[idx].Origin = types.Token
 	}
 
 	// Add members

@@ -33,7 +33,7 @@ func TestRegister(t *testing.T) {
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// without token
@@ -50,7 +50,7 @@ func TestRegister(t *testing.T) {
 	resp := wsc.Request(req, &s)
 	// check register went successful
 	if !resp.Ok {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// with token
@@ -71,7 +71,7 @@ func TestRegister(t *testing.T) {
 	resp2 := wsc.Request(req2, &s2)
 	// check register went successful
 	if !resp2.Ok {
-		t.Error(err)
+		t.Fatal(err)
 	}
 }
 
@@ -85,7 +85,7 @@ func TestStatus(t *testing.T) {
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Register user and add member
@@ -98,7 +98,7 @@ func TestStatus(t *testing.T) {
 	req.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo}
 	resp := wsc.Request(req, &s)
 	if !resp.Ok {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// check user is registered calling status
@@ -107,12 +107,12 @@ func TestStatus(t *testing.T) {
 	req2.EntityID = "12345123451234"
 	resp2 := wsc.Request(req2, &s)
 	if !resp2.Ok {
-		t.Error(err)
+		t.Fatal(err)
 	}
-	if *resp2.Status.Registered {
-		t.Error("Status.Registered expected to be true")
+	if resp2.Status.Registered {
+		t.Fatal("Status.Registered expected to be true")
 	}
-	if !*resp2.Status.NeedsUpdate {
-		t.Error("Status.NeedsUpdate expected to be false")
+	if !resp2.Status.NeedsUpdate {
+		t.Fatal("Status.NeedsUpdate expected to be false")
 	}
 }

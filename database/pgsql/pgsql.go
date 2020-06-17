@@ -164,7 +164,7 @@ func (d *Database) User(pubKey []byte) (*types.User, error) {
 func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error {
 	var err error
 	pgmembers := make([]PGMember, len(tokens))
-	for idx, _ := range pgmembers {
+	for idx := range pgmembers {
 		if tokens[idx] == uuid.Nil {
 			return fmt.Errorf("error parsing the uuids")
 		}

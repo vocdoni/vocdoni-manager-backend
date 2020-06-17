@@ -15,7 +15,7 @@ import (
 
 var api testcommon.TestAPI
 
-func TestMain(t *testing.M) {
+func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
 	api = testcommon.TestAPI{Port: 12000 + rand.Intn(1000)}
 	db := &config.DB{
@@ -27,7 +27,7 @@ func TestMain(t *testing.M) {
 		User:     "vocdoni",
 	}
 	api.Start(db, "/api")
-	os.Exit(t.Run())
+	os.Exit(m.Run())
 }
 
 func TestSignUp(t *testing.T) {
@@ -35,57 +35,58 @@ func TestSignUp(t *testing.T) {
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
 	signers, _, err := testcommon.CreateEntities(1)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("cannot create entities: %s", err)
 	}
-
+	// create and make request
 	var req types.MetaRequest
 	req.Method = "signUp"
 	resp := wsc.Request(req, signers[0])
 	if !resp.Ok {
-		t.Error()
+		t.Fatal()
 	}
-
 	// cannot add twice
 	resp2 := wsc.Request(req, signers[0])
 	if resp2.Ok {
-		t.Error()
+		t.Fatal("entity must be unique, cannot add twice")
 	}
 }
 
-// TBD: fail on inner type reflect
 func TestListMembers(t *testing.T) {
-	db := api.DB
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
 	entitySigners, entities, err := testcommon.CreateEntities(1)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("cannot create entities: %s", err)
 	}
 	// add entity
-	db.AddEntity(entities[0].ID, &entities[0].EntityInfo)
-
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
 	// add members
 	// create members
 	_, members, err := testcommon.CreateMembers(entities[0].ID, 3)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
 	memInfo := make([]types.MemberInfo, len(members))
 	for idx, mem := range members {
 		memInfo[idx] = mem.MemberInfo
 	}
 	// add members
-	if err := db.AddMemberBulk(entities[0].ID, memInfo); err != nil {
-		t.Error(err)
+	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
 	}
-
+	// create and make request
 	var req types.MetaRequest
 	req.Method = "listMembers"
 	req.EntityID = hex.EncodeToString(entities[0].ID)
@@ -95,117 +96,116 @@ func TestListMembers(t *testing.T) {
 		Skip:   0,
 		SortBy: "lastName",
 	}
-
+	// create and make request
 	resp := wsc.Request(req, entitySigners[0])
 	if !resp.Ok {
-		t.Error()
+		t.Fatal()
 	}
 	if len(resp.Members) != 3 {
-		t.Error()
+		t.Fatalf("expected %d members, but got %d", 3, len(resp.Members))
 	}
 }
 
 func TestGenerateTokens(t *testing.T) {
-	db := api.DB
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
 	entitySigners, entities, err := testcommon.CreateEntities(1)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("cannot create entities: %s", err)
 	}
 	// add entity
-	db.AddEntity(entities[0].ID, &entities[0].EntityInfo)
-
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into DB: %s", err)
+	}
+	// create and make request
 	var req types.MetaRequest
 	randAmount := rand.Intn(100)
 	req.Amount = randAmount
 	req.Method = "generateTokens"
-
 	resp := wsc.Request(req, entitySigners[0])
 	if !resp.Ok {
-		t.Error()
+		t.Fatal()
 	}
 	if len(resp.MembersTokens) != randAmount {
-		t.Error("amounts do not match")
+		t.Fatalf("expected %d tokens, but got %d", randAmount, len(resp.MembersTokens))
 	}
-
 	// another entity cannot request
 }
 
 func TestExportTokens(t *testing.T) {
-	db := api.DB
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
 	entitySigners, entities, err := testcommon.CreateEntities(1)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("cannot create entities: %s", err)
 	}
 	// add entity
-	db.AddEntity(entities[0].ID, &entities[0].EntityInfo)
-
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+	// create and make request
 	var req types.MetaRequest
 	randAmount := rand.Intn(100)
 	req.Amount = randAmount
 	req.Method = "exportTokens"
-
 	resp := wsc.Request(req, entitySigners[0])
 	if !resp.Ok {
-		t.Error()
+		t.Fatal()
 	}
 	if len(resp.MembersTokens) != randAmount {
-		t.Error("amounts do not match")
+		t.Fatalf("expected %d tokens, but got %d", randAmount, len(resp.MembersTokens))
 	}
 	// another entity cannot request
 }
 
 func TestImportMembers(t *testing.T) {
-	db := api.DB
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
 	entitySigners, entities, err := testcommon.CreateEntities(1)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("cannot create entities: %s", err)
 	}
 	// add entity
-	db.AddEntity(entities[0].ID, &entities[0].EntityInfo)
-
-	// add members
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
 	// create members
 	_, members, err := testcommon.CreateMembers(entities[0].ID, 3)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
 	memInfo := make([]types.MemberInfo, len(members))
 	for idx, mem := range members {
 		memInfo[idx] = mem.MemberInfo
 	}
 	// add members
-	if err := db.AddMemberBulk(entities[0].ID, memInfo); err != nil {
-		t.Error(err)
+	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
 	}
-
+	// create and make request
 	var req types.MetaRequest
 	req.Method = "importMembers"
 	for idx, mem := range members {
 		req.MembersInfo[idx] = mem.MemberInfo
 	}
-
 	resp := wsc.Request(req, entitySigners[0])
 	if !resp.Ok {
-		t.Error()
+		t.Fatal()
 	}
-
 	// another entity cannot request
 }

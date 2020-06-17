@@ -26,6 +26,7 @@ type EntityInfo struct {
 	Origins                 []Origin `json:"origin" db:"origin"`
 }
 
+//go:generate stringer -type=Origin
 type Origin int
 
 const (
@@ -33,10 +34,6 @@ const (
 	Form
 	DB
 )
-
-func (b Origin) String() string {
-	return [...]string{"Token", "Form", "DB"}[b]
-}
 
 func ToOrigin(origin string) Origin {
 	switch origin {

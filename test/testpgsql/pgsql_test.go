@@ -20,7 +20,7 @@ import (
 
 var api testcommon.TestAPI
 
-func TestMain(t *testing.M) {
+func TestMain(m *testing.M) {
 	api = testcommon.TestAPI{Port: 12000 + rand.Intn(1000)}
 	db := &config.DB{
 		Dbname:   "vocdonimgr",
@@ -31,17 +31,16 @@ func TestMain(t *testing.M) {
 		User:     "vocdoni",
 	}
 	api.Start(db, "")
-	os.Exit(t.Run())
+	os.Exit(m.Run())
 }
 
 func TestEntity(t *testing.T) {
-	db := api.DB
 	entitySigner := new(ethereum.SignKeys)
 	entitySigner.Generate()
 	entityAddress := entitySigner.EthAddrString()
 	eid, err := hex.DecodeString(util.TrimHex(entityAddress))
 	if err != nil {
-		t.Errorf("error decoding entity address: %s", err)
+		t.Fatalf("cannot decode entity address: %s", err)
 	}
 
 	entityID := ethereum.HashRaw(eid)
@@ -53,48 +52,46 @@ func TestEntity(t *testing.T) {
 		Origins:                 []types.Origin{types.Token},
 	}
 
-	err = db.AddEntity(entityID, info)
+	err = api.DB.AddEntity(entityID, info)
 	if err != nil {
-		t.Errorf("Error adding entity to the Postgres DB (pgsql.go:addEntity): %s", err)
+		t.Fatalf("cannot add entity to the Postgres DB (pgsql.go:addEntity): %s", err)
 	}
 
-	entity, err := db.Entity(entityID)
+	entity, err := api.DB.Entity(entityID)
 	if err != nil {
-		t.Error("Error retrieving entity from the Postgres DB (pgsql.go:Entity)")
+		t.Fatalf("cannot fetch entity from the Postgres DB (pgsql.go:Entity): %s", err)
 	}
 	marshalledEntityInfo, err := json.Marshal(entity.EntityInfo)
 	marshalledInfo, err := json.Marshal(info)
 	if err != nil {
-		t.Error("Error marshaling Entity info")
+		t.Fatalf("cannot marshal Entity info: %s", err)
 	}
 	if string(marshalledEntityInfo) != string(marshalledInfo) {
-		t.Error("Entity info not stored correctly in the DB")
+		t.Fatalf("expected %s info, but got %s", string(marshalledEntityInfo), string(marshalledInfo))
 	}
 }
 
 func TestUser(t *testing.T) {
 	var err error
-	db := api.DB
 	userSigner := new(ethereum.SignKeys)
 	userSigner.Generate()
 	user := &types.User{PubKey: userSigner.Public.X.Bytes()}
-	err = db.AddUser(user)
+	err = api.DB.AddUser(user)
 	if err != nil {
-		t.Errorf("Error adding user to the Postgres DB (pgsql.go:addUser): %s", err)
+		t.Fatalf("cannot add user to the Postgres DB (pgsql.go:addUser): %s", err)
 	}
-	_, err = db.User(userSigner.Public.X.Bytes())
+	_, err = api.DB.User(userSigner.Public.X.Bytes())
 	if err != nil {
-		t.Errorf("Error retrieving user from the Postgres DB (pgsql.go:User): %s", err)
+		t.Fatalf("cannot fetch user from the Postgres DB (pgsql.go:User): %s", err)
 	}
 }
 
 func TestMember(t *testing.T) {
-	db := api.DB
-	// Create or retrieve existing entity
+	// Create or fetch existing entity
 	entityAddress := "30ed83726db2f7d28a58ecf0071b7dcd08f7b1e2"
-	entity, err := loadOrGenEntity(entityAddress, db)
+	entity, err := loadOrGenEntity(entityAddress, api.DB)
 	if err != nil {
-		t.Errorf("error creating or retreiving entity address: %s", err)
+		t.Fatalf("cannot create or fetch entity address: %s", err)
 	}
 
 	// Create pubkey and Add membmer to the db
@@ -104,66 +101,66 @@ func TestMember(t *testing.T) {
 	memberInfo.DateOfBirth.Round(time.Microsecond).UTC()
 	memberInfo.Verified.Round(time.Microsecond)
 	user := &types.User{PubKey: memberSigner.Public.X.Bytes()}
-	err = db.AddUser(user)
+	err = api.DB.AddUser(user)
 	if err != nil {
-		t.Errorf("Error adding user to the Postgres DB (pgsql.go:addUser) %s", err)
+		t.Fatalf("cannot add user to the Postgres DB (pgsql.go:addUser) %s", err)
 	}
-	err = db.AddMember(entity.ID, memberSigner.Public.X.Bytes(), memberInfo)
+	err = api.DB.AddMember(entity.ID, memberSigner.Public.X.Bytes(), memberInfo)
 	if err != nil {
-		t.Errorf("Error adding member to the Postgres DB (pgsql.go:addMember): %s", err)
+		t.Fatalf("cannot add member to the Postgres DB (pgsql.go:addMember): %s", err)
 	}
 
 	// Query by Public Key
-	member, err := db.MemberPubKey(memberSigner.Public.X.Bytes(), entity.ID)
+	member, err := api.DB.MemberPubKey(memberSigner.Public.X.Bytes(), entity.ID)
 	if err != nil {
-		t.Errorf("Error retrieving member from the Postgres DB (pgsql.go:MemberPubKey): %s", err)
+		t.Fatalf("cannot fetch member from the Postgres DB (pgsql.go:MemberPubKey): %s", err)
 	}
 	// Check first timestamps that need different handling
 	// and then assing one to another so that the rest of test doesnt fail
 	if !memberInfo.Verified.Equal(member.Verified) {
-		t.Error("Timestamps Error (verified)")
+		t.Fatalf("expected %s verified on member info, but got %s", memberInfo.Verified, member.Verified)
 	}
 	if !memberInfo.DateOfBirth.Equal(member.DateOfBirth) {
-		t.Error("Timestamps Error (DateOfBirth)")
+		t.Fatalf("expected %s dateofbirth on member info, but got %s", memberInfo.DateOfBirth, member.DateOfBirth)
 	}
 	memberInfo.DateOfBirth = member.DateOfBirth
 	memberInfo.Verified = member.Verified
 
-	// Check retrieved data match send data
+	// Check fetchd data match send data
 	marshalledMemberInfo, err := json.Marshal(member.MemberInfo)
 	if err != nil {
-		t.Error("Error marshaling member info from query")
+		t.Fatalf("cannot marshal member info from query: %s", err)
 	}
 	marshalledInfo, err := json.Marshal(memberInfo)
 	if err != nil {
-		t.Error("Error marshaling member info")
+		t.Fatalf("cannot marshal member info: %s", err)
 	}
 
 	if string(marshalledMemberInfo) != string(marshalledInfo) {
-		t.Error("Member info not stored correctly in the DB")
+		t.Fatalf("expected %s marshaled member info, but got %s", marshalledMemberInfo, marshalledInfo)
 	}
 
 	// Query by UUID
-	member, err = db.Member(member.ID)
+	member, err = api.DB.Member(member.ID)
 	if err != nil {
-		t.Errorf("Error retrieving user from the Postgres DB (pgsql.go:Member): %s", err)
+		t.Fatalf("cannot fetch user from the Postgres DB (pgsql.go:Member): %s", err)
 	}
 	if !bytes.Equal(member.PubKey, memberSigner.Public.X.Bytes()) {
-		t.Error("Member public not stored correctly in the Postgres DB (pgsql.go:Member):")
+		t.Fatalf("expected %s member pubkey, but got %s", member.PubKey, memberSigner.Public.X.Bytes())
 	}
 
 	// Test SetMemberInfo
 	newInfo := &types.MemberInfo{Consented: true}
-	err = db.UpdateMember(member.ID, nil, newInfo)
+	err = api.DB.UpdateMember(member.ID, nil, newInfo)
 	if err != nil {
-		t.Errorf("Error updating user info to the Postgres DB (pgsql.go:setMemberInfo): %s", err)
+		t.Fatalf("cannot update user info to the Postgres DB (pgsql.go:setMemberInfo): %s", err)
 	}
-	newMember, err := db.Member(member.ID)
+	newMember, err := api.DB.Member(member.ID)
 	if err != nil {
-		t.Errorf("Error retrieving user from the Postgres DB (pgsql.go:Member): %s", err)
+		t.Fatalf("cannot fetch user from the Postgres DB (pgsql.go:Member): %s", err)
 	}
 	if newMember.Consented != true {
-		t.Error("setMemberInfo failed to update member Consent in the Postgres DB (pgsql.go:Member)")
+		t.Fatal("setMemberInfo failed to update member Consent in the Postgres DB (pgsql.go:Member)")
 	}
 
 	// Test Bulk Info
@@ -172,15 +169,15 @@ func TestMember(t *testing.T) {
 		info := types.MemberInfo{FirstName: fmt.Sprintf("Name%d", i), LastName: fmt.Sprintf("LastName%d", i)}
 		bulkMembers = append(bulkMembers, info)
 	}
-	err = db.AddMemberBulk(entity.ID, bulkMembers)
+	err = api.DB.AddMemberBulk(entity.ID, bulkMembers)
 	if err != nil {
-		t.Errorf("Error bulk member adding to Postgres DB (pgsql.go:AddMemberBulk): %s", err)
+		t.Fatalf("cannot add members to Postgres DB (pgsql.go:AddMemberBulk): %s", err)
 	}
 
 	// Test Selecting all members
-	allMembers, err := db.ListMembers(entity.ID, &types.ListOptions{})
+	allMembers, err := api.DB.ListMembers(entity.ID, &types.ListOptions{})
 	if err != nil {
-		t.Errorf("Error selecting all members from Postgres DB (pgsql.go:MembersFiltered): %s", err)
+		t.Fatalf("cannot select all members from Postgres DB (pgsql.go:MembersFiltered): %s", err)
 	}
 
 	// Test Selecting filtered members
@@ -191,15 +188,15 @@ func TestMember(t *testing.T) {
 		SortBy: "lastName",
 		Order:  "desc",
 	}
-	members, err := db.ListMembers(entity.ID, filter)
+	members, err := api.DB.ListMembers(entity.ID, filter)
 	if len(members) > limit {
-		t.Error("Error retrieving Members with filter and limit from the Prostgres DB (pgsql.go:MembersFiltered")
+		t.Fatalf("expected limit to be less than members length, %d <= %d", len(members), limit)
 	}
 
 	// Test Selecting all members and retrieving just their uuids and emails
-	tokenMembers, err := db.MembersTokensEmails(entity.ID)
+	tokenMembers, err := api.DB.MembersTokensEmails(entity.ID)
 	if len(tokenMembers) != len(allMembers) {
-		t.Error("Error retrieving Members tokens and emails from the Prostgres DB (pgsql.go:MembersTokensEmails")
+		t.Fatal("cannot fetch tokens and emails from the Prostgres DB (pgsql.go:MembersTokensEmails")
 	}
 }
 
@@ -209,7 +206,7 @@ func loadOrGenEntity(address string, db database.Database) (*types.Entity, error
 		return nil, err
 	}
 	entityID := ethereum.HashRaw(eid)
-	entity, err := db.Entity(entityID)
+	entity, err := api.DB.Entity(entityID)
 	if err != nil {
 		info := &types.EntityInfo{
 			Address: eid,
@@ -219,7 +216,7 @@ func loadOrGenEntity(address string, db database.Database) (*types.Entity, error
 			Origins:                 []types.Origin{types.Token},
 		}
 		entity = &types.Entity{ID: ethereum.HashRaw(eid), EntityInfo: *info}
-		err = db.AddEntity(entityID, info)
+		err = api.DB.AddEntity(entityID, info)
 		if err != nil {
 			return nil, err
 		}

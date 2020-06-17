@@ -204,8 +204,8 @@ func (r *Registry) status(request router.RouterRequest) {
 		// user is not a member but exists
 		if err == sql.ErrNoRows {
 			response.Status = &types.Status{
-				Registered:  types.False,
-				NeedsUpdate: types.False,
+				Registered:  false,
+				NeedsUpdate: false,
 			}
 			r.Router.Transport.Send(r.Router.BuildReply(request, response))
 			return
@@ -217,8 +217,8 @@ func (r *Registry) status(request router.RouterRequest) {
 	// user exists and is member
 	if member != nil {
 		response.Status = &types.Status{
-			Registered:  types.True,
-			NeedsUpdate: types.False,
+			Registered:  true,
+			NeedsUpdate: false,
 		}
 	}
 	r.Router.Transport.Send(r.Router.BuildReply(request, response))
