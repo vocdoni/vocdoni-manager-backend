@@ -15,7 +15,7 @@ import (
 	json "github.com/rogpeppe/rjson"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
-	"gitlab.com/vocdoni/go-dvote/types"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 	"nhooyr.io/websocket"
 )
 
