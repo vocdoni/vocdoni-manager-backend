@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -8,6 +9,13 @@ import (
 
 type RequestMessage struct {
 	MetaRequest `json:"request"`
+
+	ID        string `json:"id"`
+	Signature string `json:"signature"`
+}
+
+type LazyRequestMessage struct {
+	MetaRequest json.RawMessage `json:"request"`
 
 	ID        string `json:"id"`
 	Signature string `json:"signature"`

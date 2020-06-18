@@ -88,6 +88,7 @@ func (r *Router) Route() {
 // semi-unmarshalls message, returns method name
 func (r *Router) getRequest(namespace string, payload []byte, context dvote.MessageContext) (request RouterRequest, err error) {
 	var msgStruct types.RequestMessage
+	var lazyMsgStruct types.LazyRequestMessage
 	request.Context = context
 	err = json.Unmarshal(payload, &msgStruct)
 	if err != nil {
@@ -108,10 +109,10 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 	}
 
 	// Extract publicKey and address from signature
-	msg, err := json.Marshal(msgStruct.MetaRequest)
-	if err != nil {
-		return request, fmt.Errorf("unable to marshal message to sign: %s", msg)
+	if err = json.Unmarshal(payload, &lazyMsgStruct); err != nil {
+		return request, fmt.Errorf("unable to unmarshal message ti recover signature")
 	}
+	msg := lazyMsgStruct.MetaRequest
 	if request.SignaturePublicKey, err = ethereum.PubKeyFromSignature(msg, msgStruct.Signature); err != nil {
 		return request, err
 	}
