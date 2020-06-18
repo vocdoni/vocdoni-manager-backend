@@ -28,6 +28,10 @@ func New() (*Database, error) {
 	return &Database{}, nil
 }
 
+func (d *Database) Ping() error {
+	return nil
+}
+
 func (d *Database) Close() error {
 	return nil
 }

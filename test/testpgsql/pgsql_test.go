@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"testing"
@@ -32,6 +33,10 @@ func TestMain(m *testing.M) {
 		User:     "vocdoni",
 	}
 	api.Start(db, "")
+	if err := api.DB.Ping(); err != nil {
+		log.Printf("SKIPPING: could not connect to DB: %v", err)
+		return
+	}
 	os.Exit(m.Run())
 }
 

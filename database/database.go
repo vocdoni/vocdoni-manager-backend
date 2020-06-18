@@ -6,6 +6,7 @@ import (
 )
 
 type Database interface {
+	Ping() error
 	Close() error
 	AddEntity(entityID []byte, info *types.EntityInfo) error
 	Entity(entityID []byte) (*types.Entity, error)

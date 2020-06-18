@@ -464,6 +464,10 @@ func (d *Database) Census(censusID []byte) (*types.Census, error) {
 	return &census, nil
 }
 
+func (d *Database) Ping() error {
+	return d.db.Ping()
+}
+
 // func (p *types.MembersCustomFields) Value() (driver.Value, error) {
 // 	j, err := json.Marshal(p)
 // 	return j, err
