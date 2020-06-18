@@ -1,4 +1,4 @@
-package manager
+package manager_test
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/manager"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/test/testcommon"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
@@ -18,7 +19,7 @@ func TestMain(t *testing.M) {
 	if err := api.Start(nil, ""); err != nil {
 		panic(err)
 	}
-	reg := NewManager(api.EP.Router, api.DB)
+	reg := manager.NewManager(api.EP.Router, api.DB)
 	if err := reg.RegisterMethods(""); err != nil {
 		panic(err)
 	}

@@ -1,4 +1,4 @@
-package registry
+package registry_test
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
+	"gitlab.com/vocdoni/vocdoni-manager-backend/registry"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/test/testcommon"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
@@ -17,7 +18,7 @@ var api testcommon.TestAPI
 func TestMain(t *testing.M) {
 	api = testcommon.TestAPI{}
 	api.Start(nil, "")
-	reg := NewRegistry(api.EP.Router, api.DB)
+	reg := registry.NewRegistry(api.EP.Router, api.DB)
 	if err := reg.RegisterMethods(""); err != nil {
 		panic(err)
 	}
