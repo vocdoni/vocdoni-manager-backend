@@ -2,6 +2,7 @@ package pgsql
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -258,7 +259,7 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	return id, nil
 }
 
-func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error {
+func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error {
 	// TODO: Check if support for Update a Member is needed
 	// TODO: Investigate COPY FROM with pgx
 	var err error
@@ -312,6 +313,72 @@ func (d *Database) AddMemberBulk(entityID []byte, info []types.MemberInfo) error
 					(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
 					VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
 	if result, err = tx.NamedExec(insert, members); err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return rollbackErr
+		}
+		if err != nil {
+			return fmt.Errorf("Error in bulk import %w", err)
+		}
+	}
+	if rows, err = result.RowsAffected(); err != nil || int(rows) != len(members) {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return rollbackErr
+		}
+		if err != nil {
+			return fmt.Errorf("Error in bulk import %w", err)
+		}
+		return fmt.Errorf("Should insert %d rows, while inserted %d rows. Rolled back.", len(members), rows)
+	}
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("Could not commit bulk import %w", err)
+	}
+	return nil
+}
+
+func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error {
+	// TODO: Check if support for Update a Member is needed
+	// TODO: Investigate COPY FROM with pgx
+	var err error
+	var result sql.Result
+	var rows int64
+	if len(members) <= 0 {
+		return fmt.Errorf("No member data provided")
+	}
+	tx, err := d.db.Beginx()
+	if err != nil {
+		return err
+	}
+	users := make([]types.User, len(members))
+	pgMembers := []PGMember{}
+	for idx, member := range members {
+		// User-related
+		if len(member.PubKey) == 0 {
+			return fmt.Errorf("found empty public keys")
+		}
+		users[idx] = types.User{PubKey: member.PubKey, DigestedPubKey: snarks.Poseidon.Hash(member.PubKey)}
+		// Member related
+		if hex.EncodeToString(member.EntityID) != hex.EncodeToString(entityID) {
+			return fmt.Errorf("Trying to import members for other entity")
+		}
+		pgMember, err := ToPGMember(&member)
+		if err != nil {
+			return err
+		}
+		pgMembers = append(pgMembers, *pgMember)
+	}
+	insertUsers := `INSERT INTO users
+				(public_key, digested_public_key) VALUES (:public_key, :digested_public_key)`
+	if result, err = tx.NamedExec(insertUsers, users); err != nil {
+		return fmt.Errorf("Error creating users %w", err)
+	}
+
+	insert := `INSERT INTO members
+					(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
+					VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
+	if result, err = tx.NamedExec(insert, pgMembers); err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
 			return rollbackErr

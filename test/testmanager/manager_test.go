@@ -82,9 +82,9 @@ func TestListMembers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.MemberInfo, len(members))
+	memInfo := make([]types.Member, len(members))
 	for idx, mem := range members {
-		memInfo[idx] = mem.MemberInfo
+		memInfo[idx] = *mem
 	}
 	// add members
 	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
@@ -160,9 +160,9 @@ func TestExportTokens(t *testing.T) {
 
 	// create members
 	_, members, err := testcommon.CreateMembers(entities[0].ID, 3)
-	memInfo := make([]types.MemberInfo, len(members))
+	memInfo := make([]types.Member, len(members))
 	for idx, mem := range members {
-		memInfo[idx] = mem.MemberInfo
+		memInfo[idx] = *mem
 	}
 	// add members
 	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
@@ -207,9 +207,9 @@ func TestImportMembers(t *testing.T) {
 		memInfo[idx] = mem.MemberInfo
 	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
-		t.Fatalf("cannot add members into database: %s", err)
-	}
+	// if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	// 	t.Fatalf("cannot add members into database: %s", err)
+	// }
 	// create and make request
 	var req types.MetaRequest
 	req.MembersInfo = make([]types.MemberInfo, len(members))

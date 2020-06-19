@@ -13,7 +13,8 @@ type Database interface {
 	EntityOrigins(entityID []byte) ([]types.Origin, error)
 	EntityHas(entityID []byte, memberID uuid.UUID) bool
 	AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (uuid.UUID, error)
-	AddMemberBulk(entityID []byte, info []types.MemberInfo) error
+	ImportMembers(entityID []byte, info []types.MemberInfo) error
+	AddMemberBulk(entityID []byte, members []types.Member) error
 	Member(entityID []byte, memberID uuid.UUID) (*types.Member, error)
 	MemberPubKey(entityID, pubKey []byte) (*types.Member, error)
 	ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error)

@@ -230,7 +230,7 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 	}
 
 	// Add members
-	if err = m.db.AddMemberBulk(entityID, request.MembersInfo); err != nil {
+	if err = m.db.ImportMembers(entityID, request.MembersInfo); err != nil {
 		log.Error(err)
 		m.Router.SendError(request, err.Error())
 		return

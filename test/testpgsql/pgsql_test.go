@@ -183,7 +183,7 @@ func TestMember(t *testing.T) {
 		info := types.MemberInfo{FirstName: fmt.Sprintf("Name%d", i), LastName: fmt.Sprintf("LastName%d", i)}
 		bulkMembers = append(bulkMembers, info)
 	}
-	err = api.DB.AddMemberBulk(entity.ID, bulkMembers)
+	err = api.DB.ImportMembers(entity.ID, bulkMembers)
 	if err != nil {
 		t.Fatalf("cannot add members to Postgres DB (pgsql.go:AddMemberBulk): %s", err)
 	}
