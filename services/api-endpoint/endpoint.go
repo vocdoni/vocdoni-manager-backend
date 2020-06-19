@@ -27,7 +27,6 @@ func NewEndpoint(cfg *config.Manager, signer *ethereum.SignKeys) (*EndPoint, err
 	listenerOutput := make(chan types.Message)
 	go ws.Listen(listenerOutput)
 	r := router.InitRouter(listenerOutput, ws, signer)
-	go r.Route()
 	return &EndPoint{Router: r}, nil
 }
 

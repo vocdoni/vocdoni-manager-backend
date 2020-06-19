@@ -212,6 +212,10 @@ func main() {
 		}
 	}
 
+	// Only start routing once we have registered all methods. Otherwise we
+	// have a data race.
+	go ep.Router.Route()
+
 	log.Info("startup complete")
 	// close if interrupt received
 	c := make(chan os.Signal, 1)
