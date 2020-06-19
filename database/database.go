@@ -23,5 +23,6 @@ type Database interface {
 	MembersTokensEmails(entityID []byte) ([]types.Member, error)
 	AddUser(user *types.User) error
 	User(pubKey []byte) (*types.User, error)
+	DumpClaims(entityID []byte) ([][]byte, error)
 	Census(censusID []byte) (*types.Census, error)
 }

@@ -44,6 +44,15 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("importMembers", path+"/manager", m.importMembers, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("listTargets", path+"/manager", m.listTargets, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("getTarget", path+"/manager", m.getTarget, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("dumpTarget", path+"/manager", m.dumpTarget, false); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -225,6 +234,12 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 		return
 	}
 
+	if len(request.MembersInfo) < 1 {
+		log.Warn("importMembers: no member data provided")
+		m.Router.SendError(request, "no member data provided")
+		return
+	}
+
 	for idx := range request.MembersInfo {
 		request.MembersInfo[idx].Origin = types.Token
 	}
@@ -237,6 +252,97 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 	}
 
 	log.Infof("imported Members for Entity with public Key %s", request.SignaturePublicKey)
+	m.send(request, response)
+}
+
+func (m *Manager) listTargets(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.ResponseMessage
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+	log.Debug(entityID)
+
+	response.Targets = []types.Target{{ID: "1234", Name: "all", EntityID: entityID, Filters: map[string]string{}}}
+
+	log.Infof("listing targets for Entity with public Key %s", request.SignaturePublicKey)
+	m.send(request, response)
+}
+
+func (m *Manager) getTarget(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.ResponseMessage
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	if request.TargetID != "1234" {
+		log.Warn("invalid target id")
+		m.Router.SendError(request, "invalid target id")
+		return
+	}
+
+	response.Target = &types.Target{ID: "1234", Name: "all", EntityID: entityID, Filters: map[string]string{}}
+
+	log.Infof("listing target %d for Entity with public Key %s", request.TargetID, request.SignaturePublicKey)
+	m.send(request, response)
+}
+
+func (m *Manager) dumpTarget(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.ResponseMessage
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Warn("invalid target id")
+		m.Router.SendError(request, "invalid target id")
+		return
+	}
+
+	if request.TargetID != "1234" {
+		if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+			m.Router.SendError(request, "invalid target id")
+			return
+		}
+	}
+
+	// TODO: Select Target or Select Members filtered directly by target filters
+	if response.Claims, err = m.db.DumpClaims(entityID); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	log.Infof("listing  %d claims for Entity with public Key %s", len(response.Claims), request.SignaturePublicKey)
 	m.send(request, response)
 }
 

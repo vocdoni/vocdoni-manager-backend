@@ -525,6 +525,20 @@ func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]ty
 	return members, nil
 }
 
+func (d *Database) DumpClaims(entityID []byte) ([][]byte, error) {
+	var claims [][]byte
+	var query string
+	var err error
+	query = `SELECT u.digested_public_key FROM users u 
+			INNER JOIN members m ON m.public_key = u.public_key 
+			WHERE m.entity_id = $1`
+	if err = d.db.Select(&claims, query, entityID); err != nil {
+		log.Debug(err)
+		return nil, err
+	}
+	return claims, nil
+}
+
 func (d *Database) Census(censusID []byte) (*types.Census, error) {
 	var census types.Census
 	census.ID = []byte("0x0")

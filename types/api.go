@@ -34,6 +34,7 @@ type MetaRequest struct {
 	Signature   string       `json:"signature,omitempty"`
 	Scope       string       `json:"scope,omitempty"`
 	Status      *Status      `json:"status,omitempty"`
+	TargetID    string       `json:"targetId"`
 	Timestamp   int32        `json:"timestamp"`
 	Token       string       `json:"token,omitempty"`
 }
@@ -50,15 +51,18 @@ type ResponseMessage struct {
 // Fields must be in alphabetical order
 // Those fields with valid zero-values (such as bool) must be pointers
 type MetaResponse struct {
+	Claims        [][]byte     `json:"claims,omitempty"`
 	Members       []Member     `json:"members,omitempty"`
-	MembersTokens []TokenEmail `json:"membersTokens"`
+	MembersTokens []TokenEmail `json:"membersTokens,omitempty"`
 	Message       string       `json:"message,omitempty"`
 	Ok            bool         `json:"ok"`
 	PublicKey     string       `json:"publicKey,omitempty"`
 	Request       string       `json:"request"`
 	Status        *Status      `json:"status,omitempty"`
+	Target        *Target      `json:"target,omitempty"`
+	Targets       []Target     `json:"targets,omitempty"`
 	Timestamp     int32        `json:"timestamp"`
-	Tokens        []uuid.UUID  `json:"tokens"`
+	Tokens        []uuid.UUID  `json:"tokens,omitempty"`
 }
 
 // SetError sets the MetaResponse's Ok field to false, and Message to a string
