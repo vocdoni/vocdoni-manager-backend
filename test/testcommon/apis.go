@@ -66,6 +66,9 @@ func (t *TestAPI) Start(dbc *config.DB, route string) error {
 		if err := mgr.RegisterMethods(route); err != nil {
 			log.Fatal(err)
 		}
+		// Only start routing once we have registered all methods. Otherwise we
+		// have a data race.
+		go t.EP.Router.Route()
 	}
 	return nil
 }
