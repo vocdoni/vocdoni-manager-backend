@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"gitlab.com/vocdoni/go-dvote/crypto"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/net"
@@ -85,37 +86,39 @@ func (r *Router) Route() {
 	}
 }
 
-// semi-unmarshalls message, returns method name
 func (r *Router) getRequest(namespace string, payload []byte, context dvote.MessageContext) (request RouterRequest, err error) {
-	var msgStruct types.RequestMessage
-	var lazyMsgStruct types.LazyRequestMessage
-	request.Context = context
-	err = json.Unmarshal(payload, &msgStruct)
-	if err != nil {
+	// First unmarshal the outer layer, to obtain the request ID, the signed
+	// request, and the signature.
+	var reqOuter types.RequestMessage
+	if err := json.Unmarshal(payload, &reqOuter); err != nil {
 		return request, err
 	}
-	request.MetaRequest = msgStruct.MetaRequest
-	request.id = msgStruct.ID
-	request.method = msgStruct.Method
+	request.id = reqOuter.ID
+	request.Context = context
+
+	// TODO: verify the signature too?
+	if len(reqOuter.Signature) < 64 {
+		return request, fmt.Errorf("no signature provided")
+	}
+	if request.SignaturePublicKey, err = ethereum.PubKeyFromSignature(reqOuter.MetaRequest, reqOuter.Signature); err != nil {
+		return request, err
+	}
+
+	var reqInner types.MetaRequest
+	if err := json.Unmarshal(reqOuter.MetaRequest, &reqInner); err != nil {
+		return request, err
+	}
+	request.MetaRequest = reqInner
+	request.method = reqInner.Method
 	if request.method == "" {
 		return request, fmt.Errorf("method is empty")
 	}
-	if len(msgStruct.Signature) < 64 {
-		return request, fmt.Errorf("no signature provided")
-	}
+
 	method, ok := r.methods[namespace+request.method]
 	if !ok {
 		return request, fmt.Errorf("method not valid (%s)", request.method)
 	}
 
-	// Extract publicKey and address from signature
-	if err = json.Unmarshal(payload, &lazyMsgStruct); err != nil {
-		return request, fmt.Errorf("unable to unmarshal message ti recover signature")
-	}
-	msg := lazyMsgStruct.MetaRequest
-	if request.SignaturePublicKey, err = ethereum.PubKeyFromSignature(msg, msgStruct.Signature); err != nil {
-		return request, err
-	}
 	// TBD: remove when everything is compressed only
 	if request.SignaturePublicKey, err = ethereum.CompressPubKey(request.SignaturePublicKey); err != nil {
 		return request, err
@@ -142,18 +145,41 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 	return request, err
 }
 
-func (r *Router) BuildReply(request RouterRequest, response types.ResponseMessage) dvote.Message {
-	response.ID = request.id
-	response.Ok = true
-	response.Request = request.id
-	response.Timestamp = int32(time.Now().Unix())
-	var err error
-	response.Signature, err = r.signer.SignJSON(response.MetaResponse)
+func (r *Router) BuildReply(request RouterRequest, resp types.MetaResponse) dvote.Message {
+	// Add any last fields to the inner response, and marshal it with sorted
+	// fields for signing.
+	resp.Ok = true
+	resp.Request = request.id
+	resp.Timestamp = int32(time.Now().Unix())
+	respInner, err := crypto.SortedMarshalJSON(resp)
+	if err != nil {
+		// This should never happen. If it does, return a very simple
+		// plaintext error, and log the error.
+		log.Error(err)
+		return dvote.Message{
+			TimeStamp: int32(time.Now().Unix()),
+			Context:   request.Context,
+			Data:      []byte(err.Error()),
+		}
+	}
+
+	// Sign the marshaled inner response.
+	signature, err := r.signer.Sign(respInner)
 	if err != nil {
 		log.Error(err)
 		// continue without the signature
 	}
-	respData, err := json.Marshal(response)
+
+	// Build the outer response with the already-marshaled inner response
+	// and its signature.
+	respOuter := types.ResponseMessage{
+		ID:           request.id,
+		Signature:    signature,
+		MetaResponse: respInner,
+	}
+	// We don't need to use crypto.SortedMarshalJSON here, since we don't
+	// sign these bytes.
+	respData, err := json.Marshal(respOuter)
 	if err != nil {
 		// This should never happen. If it does, return a very simple
 		// plaintext error, and log the error.
@@ -190,18 +216,34 @@ func (r *Router) registerPublic(namespace, method string, handler func(RouterReq
 
 func (r *Router) SendError(request RouterRequest, errMsg string) {
 	log.Warn(errMsg)
-	var err error
-	var response types.ResponseMessage
-	response.ID = request.id
-	response.MetaResponse.Request = request.id
-	response.MetaResponse.Timestamp = int32(time.Now().Unix())
-	response.MetaResponse.SetError(errMsg)
-	response.Signature, err = r.signer.SignJSON(response.MetaResponse)
+
+	// Add any last fields to the inner response, and marshal it with sorted
+	// fields for signing.
+	response := types.MetaResponse{
+		Request:   request.id,
+		Timestamp: int32(time.Now().Unix()),
+	}
+	response.SetError(errMsg)
+	respInner, err := crypto.SortedMarshalJSON(response)
 	if err != nil {
 		log.Error(err)
+		return
+	}
+
+	// Sign the marshaled inner response.
+	signature, err := r.signer.Sign(respInner)
+	if err != nil {
+		log.Error(err)
+		// continue without the signature
+	}
+
+	respOuter := types.ResponseMessage{
+		ID:           request.id,
+		Signature:    signature,
+		MetaResponse: respInner,
 	}
 	if request.Context != nil {
-		data, err := json.Marshal(response)
+		data, err := json.Marshal(respOuter)
 		if err != nil {
 			log.Warnf("error marshaling response body: %s", err)
 		}

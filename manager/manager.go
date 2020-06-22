@@ -56,7 +56,7 @@ func (m *Manager) RegisterMethods(path string) error {
 	return nil
 }
 
-func (m *Manager) send(req router.RouterRequest, resp types.ResponseMessage) {
+func (m *Manager) send(req router.RouterRequest, resp types.MetaResponse) {
 	m.Router.Transport.Send(m.Router.BuildReply(req, resp))
 }
 
@@ -65,7 +65,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 	var entityInfo *types.EntityInfo
 	var entityAddress []byte
 	var err error
-	var response types.ResponseMessage
+	var response types.MetaResponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
@@ -102,7 +102,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 func (m *Manager) listMembers(request router.RouterRequest) {
 	var entityID []byte
 	var err error
-	var response types.ResponseMessage
+	var response types.MetaResponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
@@ -142,7 +142,7 @@ func (m *Manager) listMembers(request router.RouterRequest) {
 func (m *Manager) generateTokens(request router.RouterRequest) {
 	var entityID []byte
 	var err error
-	var response types.ResponseMessage
+	var response types.MetaResponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
@@ -182,7 +182,7 @@ func (m *Manager) exportTokens(request router.RouterRequest) {
 	var entityID []byte
 	var members []types.Member
 	var err error
-	var response types.ResponseMessage
+	var response types.MetaResponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
@@ -219,7 +219,7 @@ func (m *Manager) exportTokens(request router.RouterRequest) {
 func (m *Manager) importMembers(request router.RouterRequest) {
 	var entityID []byte
 	var err error
-	var response types.ResponseMessage
+	var response types.MetaResponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
@@ -258,7 +258,7 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 func (m *Manager) listTargets(request router.RouterRequest) {
 	var entityID []byte
 	var err error
-	var response types.ResponseMessage
+	var response types.MetaResponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
@@ -283,7 +283,7 @@ func (m *Manager) listTargets(request router.RouterRequest) {
 func (m *Manager) getTarget(request router.RouterRequest) {
 	var entityID []byte
 	var err error
-	var response types.ResponseMessage
+	var response types.MetaResponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
@@ -313,7 +313,7 @@ func (m *Manager) getTarget(request router.RouterRequest) {
 func (m *Manager) dumpTarget(request router.RouterRequest) {
 	var entityID []byte
 	var err error
-	var response types.ResponseMessage
+	var response types.MetaResponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {

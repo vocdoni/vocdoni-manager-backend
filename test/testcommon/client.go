@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"gitlab.com/vocdoni/go-dvote/crypto"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
@@ -38,23 +39,31 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	r.tb.Helper()
 	method := req.Method
 
-	var cmReq types.RequestMessage
-	cmReq.MetaRequest = req
-	cmReq.ID = fmt.Sprintf("%d", rand.Intn(1000))
-	cmReq.Timestamp = int32(time.Now().Unix())
+	req.Timestamp = int32(time.Now().Unix())
+	reqInner, err := crypto.SortedMarshalJSON(req)
+	if err != nil {
+		r.tb.Fatalf("%s: %v", method, err)
+	}
+	var signature string
 	if signer != nil {
-		var err error
-		cmReq.Signature, err = signer.SignJSON(cmReq.MetaRequest)
+		signature, err = signer.Sign(reqInner)
 		if err != nil {
 			r.tb.Fatalf("%s: %v", method, err)
 		}
 	}
-	rawReq, err := json.Marshal(cmReq)
+
+	reqOuter := types.RequestMessage{
+		ID:          fmt.Sprintf("%d", rand.Intn(1000)),
+		Signature:   signature,
+		MetaRequest: reqInner,
+	}
+	reqBody, err := json.Marshal(reqOuter)
 	if err != nil {
 		r.tb.Fatalf("%s: %v", method, err)
 	}
-	log.Infof("request: %s", rawReq)
-	if err := r.Conn.Write(context.TODO(), websocket.MessageText, rawReq); err != nil {
+
+	log.Infof("request: %s", reqBody)
+	if err := r.Conn.Write(context.TODO(), websocket.MessageText, reqBody); err != nil {
 		r.tb.Fatalf("%s: %v", method, err)
 	}
 	_, message, err := r.Conn.Read(context.TODO())
@@ -62,15 +71,19 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 		r.tb.Fatalf("%s: %v", method, err)
 	}
 	log.Infof("response: %s", message)
-	var cmRes types.ResponseMessage
-	if err := json.Unmarshal(message, &cmRes); err != nil {
+	var respOuter types.ResponseMessage
+	if err := json.Unmarshal(message, &respOuter); err != nil {
 		r.tb.Fatalf("%s: %v", method, err)
 	}
-	if cmRes.ID != cmReq.ID {
+	if respOuter.ID != reqOuter.ID {
 		r.tb.Fatalf("%s: %v", method, "request ID doesn'tb match")
 	}
-	if cmRes.Signature == "" {
+	if respOuter.Signature == "" {
 		r.tb.Fatalf("%s: empty signature in response: %s", method, message)
 	}
-	return &cmRes.MetaResponse
+	var respInner types.MetaResponse
+	if err := json.Unmarshal(respOuter.MetaResponse, &respInner); err != nil {
+		r.tb.Fatalf("%s: %v", method, err)
+	}
+	return &respInner
 }

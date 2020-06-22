@@ -46,7 +46,7 @@ func (r *Registry) RegisterMethods(path string) error {
 	return nil
 }
 
-func (r *Registry) send(req router.RouterRequest, resp types.ResponseMessage) {
+func (r *Registry) send(req router.RouterRequest, resp types.MetaResponse) {
 	r.Router.Transport.Send(r.Router.BuildReply(req, resp))
 }
 
@@ -56,7 +56,7 @@ func (r *Registry) register(request router.RouterRequest) {
 	var member *types.Member
 	var user types.User
 	var uid uuid.UUID
-	var response types.ResponseMessage
+	var response types.MetaResponse
 
 	if request.PubKey != "" {
 		// check public key length
@@ -165,7 +165,7 @@ func (r *Registry) register(request router.RouterRequest) {
 
 func (r *Registry) status(request router.RouterRequest) {
 	var member *types.Member
-	var response types.ResponseMessage
+	var response types.MetaResponse
 
 	signaturePubKeyBytes, err := hex.DecodeString(request.SignaturePublicKey)
 	if err != nil {
@@ -226,7 +226,7 @@ func (r *Registry) status(request router.RouterRequest) {
 
 func (r *Registry) subscribe(request router.RouterRequest) {
 	/*
-		var response types.ResponseMessage
+		var response types.MetaResponse
 		var err error
 		var token []byte
 		var uid uuid.UUID
@@ -298,7 +298,7 @@ func (r *Registry) subscribe(request router.RouterRequest) {
 
 func (r *Registry) unsubscribe(request router.RouterRequest) {
 	/*
-		var response types.ResponseMessage
+		var response types.MetaResponse
 		var err error
 		var token []byte
 		var uid uuid.UUID
@@ -362,7 +362,7 @@ func (r *Registry) unsubscribe(request router.RouterRequest) {
 }
 
 func (r *Registry) listSubscriptions(request router.RouterRequest) {
-	var response types.ResponseMessage
+	var response types.MetaResponse
 	r.Router.Transport.Send(r.Router.BuildReply(request, response))
 }
 
