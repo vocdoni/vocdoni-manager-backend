@@ -1,4 +1,4 @@
-FROM postgres:latest
+FROM postgres:12.3
 COPY ./schema.psql /
 ADD ./setup.sh /docker-entrypoint-initdb.d
 RUN chmod 644 /schema.psql
