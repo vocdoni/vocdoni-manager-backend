@@ -118,6 +118,12 @@ func TestMember(t *testing.T) {
 		t.Fatalf("cannot add member to the Postgres DB (pgsql.go:addMember): %s", err)
 	}
 
+	// cannot add twice
+	id2, err := api.DB.AddMember(entity.ID, memberSigner.Public.X.Bytes(), memberInfo)
+	if id2 != uuid.Nil {
+		t.Fatalf("cannot add member twice to the Postgres DB (pgsql.go:addMember): %s", err)
+	}
+
 	// Query by ID
 	member, err := db.Member(entity.ID, id)
 	if err != nil {

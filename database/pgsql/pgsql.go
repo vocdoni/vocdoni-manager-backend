@@ -248,13 +248,21 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
 					 VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)
 				RETURNING id`
+	// no err is returned if tx violated a db constraint,
+	// but we need the result in order to get the created id.
+	// LastInsertedID() is not exposed.
+	// With Exec(), Scan() is not avaiable and with PrepareStmt()
+	// is not possible to use pgmember and a conversion is needed.
+	// So if no error is raised and the result has 0 rows it means
+	// that something went wrong (no member added).
 	if result, err = d.db.NamedQuery(insert, pgmember); err != nil {
 		return uuid.Nil, err
 	}
-	for result.Next() {
-		if err = result.Scan(&id); err != nil {
-			return uuid.Nil, err
-		}
+	if !result.Next() {
+		return uuid.Nil, fmt.Errorf("result has no rows, posible violation of db constraints")
+	}
+	if err := result.Scan(&id); err != nil {
+		return uuid.Nil, err
 	}
 	return id, nil
 }
