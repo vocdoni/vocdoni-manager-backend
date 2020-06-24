@@ -21,6 +21,9 @@ type Database interface {
 	UpdateMember(memberID uuid.UUID, pubKey []byte, info *types.MemberInfo) error
 	CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error
 	MembersTokensEmails(entityID []byte) ([]types.Member, error)
+	AddTarget(entityID []byte, target *types.Target) (uuid.UUID, error)
+	Target(entityID []byte, targetID uuid.UUID) (*types.Target, error)
+	Targets(entityID []byte) ([]types.Target, error)
 	AddUser(user *types.User) error
 	User(pubKey []byte) (*types.User, error)
 	DumpClaims(entityID []byte) ([][]byte, error)

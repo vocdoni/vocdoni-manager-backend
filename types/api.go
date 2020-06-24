@@ -27,7 +27,7 @@ type MetaRequest struct {
 	Signature   string       `json:"signature,omitempty"`
 	Scope       string       `json:"scope,omitempty"`
 	Status      *Status      `json:"status,omitempty"`
-	TargetID    string       `json:"targetId"`
+	TargetID    uuid.UUID    `json:"targetId"`
 	Timestamp   int32        `json:"timestamp"`
 	Token       string       `json:"token,omitempty"`
 }

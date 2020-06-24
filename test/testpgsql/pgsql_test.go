@@ -220,6 +220,43 @@ func TestMember(t *testing.T) {
 	}
 }
 
+func TestTarget(t *testing.T) {
+	var inTarget, outTarget *types.Target
+	var targets []types.Target
+	var targetID uuid.UUID
+	_, entities, err := testcommon.CreateEntities(1)
+	if err != nil {
+		t.Fatalf("cannot create entities: %s", err)
+	}
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	inTarget = &types.Target{EntityID: entities[0].ID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
+
+	// test adding target
+	if targetID, err = api.DB.AddTarget(entities[0].ID, inTarget); err != nil {
+		t.Fatalf("cannot add created target into database: %s", err)
+	}
+
+	// retrieve added target
+	if outTarget, err = api.DB.Target(entities[0].ID, targetID); err != nil || outTarget.Name != inTarget.Name {
+		t.Fatalf("error retrieving created target from database: %s", err)
+	}
+
+	// Check not allowing duplicate targets
+	if targetID, err = api.DB.AddTarget(entities[0].ID, inTarget); err == nil {
+		t.Fatalf("able to add duplicate target into database: %s", err)
+	}
+
+	// Check able to list all (1 for now) targets
+	if targets, err = api.DB.Targets(entities[0].ID); err != nil || len(targets) != 1 {
+		t.Fatalf("errors retrieving all targets: %s", err)
+	}
+
+}
+
 func loadOrGenEntity(address string, db database.Database) (*types.Entity, error) {
 	eid, err := hex.DecodeString(util.TrimHex(address))
 	if err != nil {

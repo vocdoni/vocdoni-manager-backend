@@ -143,8 +143,8 @@ type CensusInfo struct {
 }
 
 type Target struct {
-	ID       string            `json:"id" db:"id"`
-	EntityID []byte            `json:"entityId" db:"entityId"`
-	Name     string            `json:"name" db:"name"`
-	Filters  map[string]string `json:"filters" db:"filters"`
+	ID       uuid.UUID       `json:"id" db:"id"`
+	EntityID []byte          `json:"entityId" db:"entity_id"`
+	Name     string          `json:"name" db:"name"`
+	Filters  json.RawMessage `json:"filters" db:"filters"`
 }

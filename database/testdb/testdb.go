@@ -136,6 +136,16 @@ func (d *Database) DumpClaims(entityID []byte) ([][]byte, error) {
 	return nil, nil
 }
 
+func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
+func (d *Database) Target(entityID []byte, targetID uuid.UUID) (*types.Target, error) {
+	return nil, nil
+}
+func (d *Database) Targets(entityID []byte) ([]types.Target, error) {
+	return nil, nil
+}
+
 func (d *Database) AddUser(user *types.User) error {
 	return nil
 }

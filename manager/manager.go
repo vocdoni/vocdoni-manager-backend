@@ -2,6 +2,7 @@ package manager
 
 import (
 	"database/sql"
+	"encoding/json"
 
 	"fmt"
 	"reflect"
@@ -64,6 +65,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 	var entityID []byte
 	var entityInfo *types.EntityInfo
 	var entityAddress []byte
+	var target *types.Target
 	var err error
 	var response types.MetaResponse
 
@@ -92,6 +94,13 @@ func (m *Manager) signUp(request router.RouterRequest) {
 	if err = m.db.AddEntity(entityID, entityInfo); err != nil {
 		log.Error(err)
 		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	target = &types.Target{EntityID: entityID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
+	if _, err = m.db.AddTarget(entityID, target); err != nil {
+		log.Error("error creating entities generic target")
+		m.Router.SendError(request, "error creating entities generic target")
 		return
 	}
 
@@ -274,7 +283,13 @@ func (m *Manager) listTargets(request router.RouterRequest) {
 	}
 	log.Debug(entityID)
 
-	response.Targets = []types.Target{{ID: "1234", Name: "all", EntityID: entityID, Filters: map[string]string{}}}
+	response.Targets, err = m.db.Targets(entityID)
+	if err != nil || len(response.Targets) == 0 {
+		warn := fmt.Sprintf("targets for entity %s could not be retrieved %s", request.SignaturePublicKey, err.Error())
+		log.Warnf(warn)
+		m.Router.SendError(request, warn)
+		return
+	}
 
 	log.Infof("listing targets for Entity with public Key %s", request.SignaturePublicKey)
 	m.send(request, response)
@@ -298,19 +313,19 @@ func (m *Manager) getTarget(request router.RouterRequest) {
 		return
 	}
 
-	if request.TargetID != "1234" {
-		log.Warn("invalid target id")
-		m.Router.SendError(request, "invalid target id")
+	response.Target, err = m.db.Target(entityID, request.TargetID)
+	if err != nil {
+		log.Warn("requested target not found")
+		m.Router.SendError(request, "requested target not found")
 		return
 	}
 
-	response.Target = &types.Target{ID: "1234", Name: "all", EntityID: entityID, Filters: map[string]string{}}
-
-	log.Infof("listing target %d for Entity with public Key %s", request.TargetID, request.SignaturePublicKey)
+	log.Infof("listing target %s for Entity with public Key %s", request.TargetID.String(), request.SignaturePublicKey)
 	m.send(request, response)
 }
 
 func (m *Manager) dumpTarget(request router.RouterRequest) {
+	var target *types.Target
 	var entityID []byte
 	var err error
 	var response types.MetaResponse
@@ -328,14 +343,13 @@ func (m *Manager) dumpTarget(request router.RouterRequest) {
 		return
 	}
 
-	if request.TargetID != "1234" {
-		if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
-			m.Router.SendError(request, "invalid target id")
-			return
-		}
+	if target, err = m.db.Target(entityID, request.TargetID); err != nil || target.Name != "all" {
+		log.Warn("requested target not found")
+		m.Router.SendError(request, "requested target not found")
+		return
 	}
 
-	// TODO: Select Target or Select Members filtered directly by target filters
+	// TODO: Implement DumpTargetClaims filtered directly by target filters
 	if response.Claims, err = m.db.DumpClaims(entityID); err != nil {
 		log.Warn(err)
 		m.Router.SendError(request, err.Error())

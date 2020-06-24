@@ -127,7 +127,7 @@ ALTER TABLE ONLY push_tokens
 CREATE TABLE targets (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    id serial NOT NULL,
+    id uuid DEFAULT public.gen_random_uuid() NOT NULL,
     entity_id bytea NOT NULL,
     name text NOT NULL,
     filters jsonb NOT NULL DEFAULT '{}'::jsonb
@@ -139,6 +139,9 @@ ALTER TABLE ONLY targets
 ALTER TABLE ONLY targets
     ADD CONSTRAINT targets_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE;
 
+ALTER TABLE ONLY targets
+    ADD CONSTRAINT targets_entity_id_name_unique UNIQUE (entity_id, name);
+
 --------------------------- CENSUS
 -- A census is target that is exported, represinting the members that fullfil the filters of the target. 
 -- census N - 1 entities
@@ -147,7 +150,7 @@ ALTER TABLE ONLY targets
 CREATE TABLE censuses (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    target_id integer NOT NULL,
+    target_id uuid NOT NULL,
     id bytea NOT NULL,
     name text NOT NULL,
     entity_id bytea NOT NULL,

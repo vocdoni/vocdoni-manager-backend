@@ -547,6 +547,76 @@ func (d *Database) DumpClaims(entityID []byte) ([][]byte, error) {
 	return claims, nil
 }
 
+func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, error) {
+	var err error
+	if len(entityID) < 1 {
+		return uuid.Nil, fmt.Errorf("Adding target for other entity")
+	}
+	if len(target.EntityID) == 0 {
+		target.EntityID = entityID
+	}
+	if hex.EncodeToString(target.EntityID) != hex.EncodeToString(entityID) {
+		return uuid.Nil, fmt.Errorf("Trying to add target for another entity")
+	}
+	insert := `INSERT INTO targets
+	 				(entity_id, name, filters)
+					 VALUES (:entity_id, :name, :filters)
+					 RETURNING id`
+	// no err is returned if tx violated a db constraint,
+	// but we need the result in order to get the created id.
+	// LastInsertedID() is not exposed.
+	// With Exec(), Scan() is not avaiable and with PrepareStmt()
+	// is not possible to use pgmember and a conversion is needed.
+	// So if no error is raised and the result has 0 rows it means
+	// that something went wrong (no member added).
+	var result *sqlx.Rows
+	result, err = d.db.NamedQuery(insert, target)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if !result.Next() {
+		return uuid.Nil, fmt.Errorf("result has no rows, posible violation of db constraints")
+	}
+	var id uuid.UUID
+	err = result.Scan(&id)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return id, nil
+}
+
+func (d *Database) Target(entityID []byte, targetID uuid.UUID) (*types.Target, error) {
+	var err error
+	if len(entityID) < 1 {
+		return nil, fmt.Errorf("error retrieving target")
+	}
+	selectQuery := `SELECT id, entity_id, name, filters 
+				FROM targets
+				WHERE entity_id=$1 AND id=$2`
+	var target types.Target
+	err = d.db.Get(&target, selectQuery, entityID, targetID)
+	if err != nil {
+		return nil, err
+	}
+	return &target, nil
+}
+
+func (d *Database) Targets(entityID []byte) ([]types.Target, error) {
+	var err error
+	if len(entityID) < 1 {
+		return nil, fmt.Errorf("error retrieving target")
+	}
+	selectQuery := `SELECT id, entity_id, name, filters 
+				FROM targets
+				WHERE entity_id=$1`
+	var targets []types.Target
+	err = d.db.Select(&targets, selectQuery, entityID)
+	if err != nil {
+		return nil, err
+	}
+	return targets, nil
+}
+
 func (d *Database) Census(censusID []byte) (*types.Census, error) {
 	var census types.Census
 	census.ID = []byte("0x0")
