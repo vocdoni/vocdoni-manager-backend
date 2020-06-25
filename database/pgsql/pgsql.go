@@ -142,8 +142,7 @@ func (d *Database) AddUser(user *types.User) error {
 	insert := `INSERT INTO users
 	 				(public_key, digested_public_key)
 					 VALUES (:public_key, :digested_public_key)`
-	_, err := d.db.NamedExec(insert, user)
-	if err != nil {
+	if _, err := d.db.NamedExec(insert, user); err != nil {
 		return err
 	}
 	return nil
@@ -155,8 +154,7 @@ func (d *Database) User(pubKey []byte) (*types.User, error) {
 	 			public_key, digested_public_key
 				FROM USERS where public_key=$1`
 	row := d.db.QueryRowx(selectQuery, pubKey)
-	err := row.StructScan(&user)
-	if err != nil {
+	if err := row.StructScan(&user); err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -443,12 +441,11 @@ func (d *Database) Member(entityID []byte, memberID uuid.UUID) (*types.Member, e
 	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented
 					FROM members WHERE id = $1 and entity_id =$2`
 	row := d.db.QueryRowx(selectQuery, memberID, entityID)
-	err := row.StructScan(&pgMember)
-	member := ToMember(&pgMember)
-	if err != nil {
+	if err := row.StructScan(&pgMember); err != nil {
 		log.Debug(err)
 		return nil, err
 	}
+	member := ToMember(&pgMember)
 	return member, nil
 }
 
@@ -458,12 +455,11 @@ func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) 
 	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
 					FROM members WHERE public_key =$1 AND entity_id =$2`
 	row := d.db.QueryRowx(selectQuery, pubKey, entityID)
-	err := row.StructScan(&pgMember)
-	member := ToMember(&pgMember)
-	if err != nil {
+	if err := row.StructScan(&pgMember); err != nil {
 		log.Debug(err)
 		return nil, err
 	}
+	member := ToMember(&pgMember)
 	return member, nil
 }
 
@@ -473,8 +469,7 @@ func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) 
 					FROM members WHERE entity_id =$1`
 
 	var pgMembers []PGMember
-	err := d.db.Select(&pgMembers, selectQuery, entityID)
-	if err != nil {
+	if err := d.db.Select(&pgMembers, selectQuery, entityID); err != nil {
 		log.Debug(err)
 		return nil, err
 	}
@@ -536,11 +531,10 @@ func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]ty
 func (d *Database) DumpClaims(entityID []byte) ([][]byte, error) {
 	var claims [][]byte
 	var query string
-	var err error
 	query = `SELECT u.digested_public_key FROM users u 
 			INNER JOIN members m ON m.public_key = u.public_key 
 			WHERE m.entity_id = $1`
-	if err = d.db.Select(&claims, query, entityID); err != nil {
+	if err := d.db.Select(&claims, query, entityID); err != nil {
 		log.Debug(err)
 		return nil, err
 	}
@@ -549,7 +543,7 @@ func (d *Database) DumpClaims(entityID []byte) ([][]byte, error) {
 
 func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, error) {
 	var err error
-	if len(entityID) < 1 {
+	if len(entityID) == 0 {
 		return uuid.Nil, fmt.Errorf("Adding target for other entity")
 	}
 	if len(target.EntityID) == 0 {
@@ -586,41 +580,86 @@ func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, 
 }
 
 func (d *Database) Target(entityID []byte, targetID uuid.UUID) (*types.Target, error) {
-	var err error
-	if len(entityID) < 1 {
+	if len(entityID) == 0 || targetID == uuid.Nil {
 		return nil, fmt.Errorf("error retrieving target")
 	}
 	selectQuery := `SELECT id, entity_id, name, filters 
 				FROM targets
 				WHERE entity_id=$1 AND id=$2`
 	var target types.Target
-	err = d.db.Get(&target, selectQuery, entityID, targetID)
-	if err != nil {
+	if err := d.db.Get(&target, selectQuery, entityID, targetID); err != nil {
 		return nil, err
 	}
 	return &target, nil
 }
 
-func (d *Database) Targets(entityID []byte) ([]types.Target, error) {
-	var err error
-	if len(entityID) < 1 {
+func (d *Database) ListTargets(entityID []byte) ([]types.Target, error) {
+	if len(entityID) == 0 {
 		return nil, fmt.Errorf("error retrieving target")
 	}
 	selectQuery := `SELECT id, entity_id, name, filters 
 				FROM targets
 				WHERE entity_id=$1`
 	var targets []types.Target
-	err = d.db.Select(&targets, selectQuery, entityID)
-	if err != nil {
+	if err := d.db.Select(&targets, selectQuery, entityID); err != nil {
 		return nil, err
 	}
 	return targets, nil
 }
 
-func (d *Database) Census(censusID []byte) (*types.Census, error) {
+func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
+	if len(entityID) == 0 || len(censusID) < 1 {
+		return nil, fmt.Errorf("error retrieving target")
+	}
 	var census types.Census
-	census.ID = []byte("0x0")
+	selectQuery := `SELECT id, entity_id, target_id, name, merkle_root, merkle_tree_uri
+				FROM censuses
+				WHERE entity_id = $1 AND id = $2`
+	row := d.db.QueryRowx(selectQuery, entityID, censusID)
+	if err := row.StructScan(&census); err != nil {
+		return nil, err
+	}
 	return &census, nil
+}
+
+func (d *Database) AddCensus(entityID, censusID []byte, targetID uuid.UUID, info *types.CensusInfo) error {
+	var err error
+	var rows int64
+	if len(entityID) == 0 || len(censusID) == 0 || targetID == uuid.Nil {
+		return fmt.Errorf("invalid arguments")
+	}
+	// TODO check valid target selecting
+
+	var census types.Census
+	census = types.Census{ID: censusID, EntityID: entityID, TargetID: targetID, CensusInfo: *info}
+	insert := `INSERT INTO censuses
+	 				(id, entity_id, target_id, name, merkle_root, merkle_tree_uri)
+					 VALUES (:id, :entity_id, :target_id, :name, :merkle_root, :merkle_tree_uri)`
+	var result sql.Result
+
+	if result, err = d.db.NamedExec(insert, census); err == nil {
+		if rows, err = result.RowsAffected(); err == nil && rows != 1 {
+			return fmt.Errorf("failed to add census: rows != 1")
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("failed to add census: %+v", err)
+	}
+	return nil
+}
+
+func (d *Database) ListCensus(entityID []byte) ([]types.Census, error) {
+	if len(entityID) == 0 {
+		return nil, fmt.Errorf("error retrieving target")
+	}
+	selectQuery := `SELECT id, entity_id, target_id, name, merkle_root, merkle_tree_uri
+				FROM censuses
+				WHERE entity_id=$1`
+	var censuses []types.Census
+	if err := d.db.Select(&censuses, selectQuery, entityID); err != nil {
+		return nil, err
+	}
+	return censuses, nil
 }
 
 func (d *Database) Ping() error {

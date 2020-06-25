@@ -129,17 +129,17 @@ type User struct {
 }
 
 type Census struct {
-	EntityID []byte `json:"entityId" db:"entityId"`
-	ID       []byte `json:"id" db:"id"`
-	TargetID string `json:"targetId" db:"targetId"`
+	EntityID []byte    `json:"entityId" db:"entity_id"`
+	ID       []byte    `json:"id" db:"id"`
+	TargetID uuid.UUID `json:"targetId" db:"target_id"`
 	CensusInfo
 }
 
 type CensusInfo struct {
-	Created time.Time `json:"created,omitempty"`
-	Name    string    `json:"name,omitempty"`
-	Root    []byte    `json:"root,omitempty"`
-	URI     string    `json:"uri,omitempty"`
+	CreatedUpdated
+	Name          string `json:"name,omitempty" db:"name"`
+	MerkleRoot    []byte `json:"merkleRoot,omitempty" db:"merkle_root"`
+	MerkleTreeURI string `json:"merkleTreeUri,omitempty" db:"merkle_tree_uri"`
 }
 
 type Target struct {

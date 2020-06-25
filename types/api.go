@@ -16,7 +16,8 @@ type RequestMessage struct {
 
 type MetaRequest struct {
 	Amount      int          `json:"amount,omitempty"`
-	Census      *Census      `json:"census,omitempty"`
+	Census      *CensusInfo  `json:"census,omitempty"`
+	CensusID    string       `json:"censusId,omitempty"`
 	EntityID    string       `json:"entityId,omitempty"`
 	Filter      *Target      `json:"filter,omitempty"`
 	ListOptions *ListOptions `json:"listOptions,omitempty"`
@@ -27,7 +28,7 @@ type MetaRequest struct {
 	Signature   string       `json:"signature,omitempty"`
 	Scope       string       `json:"scope,omitempty"`
 	Status      *Status      `json:"status,omitempty"`
-	TargetID    uuid.UUID    `json:"targetId"`
+	TargetID    uuid.UUID    `json:"targetId,omitempty"`
 	Timestamp   int32        `json:"timestamp"`
 	Token       string       `json:"token,omitempty"`
 }
@@ -44,6 +45,8 @@ type ResponseMessage struct {
 // Fields must be in alphabetical order
 // Those fields with valid zero-values (such as bool) must be pointers
 type MetaResponse struct {
+	Census        *Census      `json:"census,omitempty"`
+	Censuses      []Census     `json:"censuses,omitempty"`
 	Claims        [][]byte     `json:"claims,omitempty"`
 	Members       []Member     `json:"members,omitempty"`
 	MembersTokens []TokenEmail `json:"membersTokens,omitempty"`

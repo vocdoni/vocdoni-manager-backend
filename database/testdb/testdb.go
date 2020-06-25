@@ -102,10 +102,18 @@ func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]ty
 	return nil, nil
 }
 
-func (d *Database) Census(censusID []byte) (*types.Census, error) {
+func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
 	var census types.Census
 	census.ID = []byte("0x0")
 	return &census, nil
+}
+
+func (d *Database) ListCensus(entityID []byte) ([]types.Census, error) {
+	return nil, nil
+}
+
+func (d *Database) AddCensus(entityID, censusID []byte, targetID uuid.UUID, info *types.CensusInfo) error {
+	return nil
 }
 
 func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (uuid.UUID, error) {
@@ -142,7 +150,7 @@ func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, 
 func (d *Database) Target(entityID []byte, targetID uuid.UUID) (*types.Target, error) {
 	return nil, nil
 }
-func (d *Database) Targets(entityID []byte) ([]types.Target, error) {
+func (d *Database) ListTargets(entityID []byte) ([]types.Target, error) {
 	return nil, nil
 }
 

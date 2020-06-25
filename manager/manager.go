@@ -2,6 +2,7 @@ package manager
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
+	dvoteUtil "gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/router"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
@@ -52,6 +54,15 @@ func (m *Manager) RegisterMethods(path string) error {
 		return err
 	}
 	if err := m.Router.AddHandler("dumpTarget", path+"/manager", m.dumpTarget, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("addCensus", path+"/manager", m.addCensus, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("getCensus", path+"/manager", m.getCensus, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("listCensus", path+"/manager", m.listCensus, false); err != nil {
 		return err
 	}
 	return nil
@@ -281,13 +292,24 @@ func (m *Manager) listTargets(request router.RouterRequest) {
 		m.Router.SendError(request, err.Error())
 		return
 	}
-	log.Debug(entityID)
 
-	response.Targets, err = m.db.Targets(entityID)
+	// check filter
+	if err = checkOptions(request.ListOptions); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	// Retrieve targets
+	// Implement filters in DB
+	response.Targets, err = m.db.ListTargets(entityID)
 	if err != nil || len(response.Targets) == 0 {
-		warn := fmt.Sprintf("targets for entity %s could not be retrieved %s", request.SignaturePublicKey, err.Error())
-		log.Warnf(warn)
-		m.Router.SendError(request, warn)
+		if err == sql.ErrNoRows {
+			m.Router.SendError(request, "no targets found")
+			return
+		}
+		log.Error(err)
+		m.Router.SendError(request, "cannot query for targets")
 		return
 	}
 
@@ -357,6 +379,151 @@ func (m *Manager) dumpTarget(request router.RouterRequest) {
 	}
 
 	log.Infof("listing  %d claims for Entity with public Key %s", len(response.Claims), request.SignaturePublicKey)
+	m.send(request, response)
+}
+
+func (m *Manager) addCensus(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	if len(request.TargetID) == 0 {
+		m.Router.SendError(request, "invalid target id")
+		return
+	}
+
+	if len(request.CensusID) == 0 {
+		m.Router.SendError(request, "invalid census id")
+		return
+	}
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey)
+	if err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	target, err := m.db.Target(entityID, request.TargetID)
+	if err != nil && target != nil {
+		log.Warnf("entity with pubKey %s requested to add census with invalid target id", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid target id")
+		return
+	}
+
+	var censusID []byte
+	censusID, err = hex.DecodeString(dvoteUtil.TrimHex(request.CensusID))
+	if err != nil {
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	err = m.db.AddCensus(entityID, censusID, request.TargetID, request.Census)
+	if err != nil {
+		log.Error(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+	log.Debugf("Entity:%s addCensus:%s", request.SignaturePublicKey, request.CensusID)
+	log.Infof("addCensus")
+	m.send(request, response)
+}
+
+func (m *Manager) getCensus(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	if len(request.CensusID) == 0 {
+		m.Router.SendError(request, "invalid census id")
+		return
+	}
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey)
+	if err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	if len(request.CensusID) == 0 {
+		m.Router.SendError(request, "invalid census id")
+		return
+	}
+
+	var censusID []byte
+	censusID, err = hex.DecodeString(dvoteUtil.TrimHex(request.CensusID))
+	if err != nil {
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	response.Census, err = m.db.Census(entityID, censusID)
+	if err != nil {
+		log.Error(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+	log.Debugf("Entity:%s getCensus:%s", request.SignaturePublicKey, request.CensusID)
+	log.Infof("getCensus")
+	m.send(request, response)
+}
+
+func (m *Manager) listCensus(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey)
+	if err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	// check filter
+	err = checkOptions(request.ListOptions)
+	if err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	// Query for members
+	// TODO Implement listCensus in Db that supports filters
+	response.Censuses, err = m.db.ListCensus(entityID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			m.Router.SendError(request, "no censuses found")
+			return
+		}
+		log.Errorf("error in retrieving censuses for entity %s : %+v", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot query for censuses")
+		return
+	}
+	log.Debugf("Entity:%s listCensuses", request.SignaturePublicKey)
+	log.Info("listCensuses")
 	m.send(request, response)
 }
 

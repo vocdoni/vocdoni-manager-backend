@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -216,7 +217,7 @@ func TestMember(t *testing.T) {
 	// Test Selecting all members and retrieving just their uuids and emails
 	tokenMembers, err := api.DB.MembersTokensEmails(entity.ID)
 	if len(tokenMembers) != len(allMembers) {
-		t.Fatal("cannot fetch tokens and emails from the Prostgres DB (pgsql.go:MembersTokensEmails")
+		t.Fatal("cannot fetch tokens and emails from the Prostgres DB (pgsql.go:MembersTokensEmails)")
 	}
 }
 
@@ -224,6 +225,8 @@ func TestTarget(t *testing.T) {
 	var inTarget, outTarget *types.Target
 	var targets []types.Target
 	var targetID uuid.UUID
+
+	// create entity
 	_, entities, err := testcommon.CreateEntities(1)
 	if err != nil {
 		t.Fatalf("cannot create entities: %s", err)
@@ -231,6 +234,11 @@ func TestTarget(t *testing.T) {
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	// Check able to list 0 targets
+	if targets, err = api.DB.ListTargets(entities[0].ID); err != nil || len(targets) != 0 {
+		t.Fatalf("errors retrieving all targets: %s", err)
 	}
 
 	inTarget = &types.Target{EntityID: entities[0].ID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
@@ -251,10 +259,95 @@ func TestTarget(t *testing.T) {
 	}
 
 	// Check able to list all (1 for now) targets
-	if targets, err = api.DB.Targets(entities[0].ID); err != nil || len(targets) != 1 {
+	if targets, err = api.DB.ListTargets(entities[0].ID); err != nil || len(targets) != 1 {
 		t.Fatalf("errors retrieving all targets: %s", err)
 	}
+}
 
+func TestCensus(t *testing.T) {
+	var root, idBytes []byte
+	// create entity
+	_, entities, err := testcommon.CreateEntities(1)
+	if err != nil {
+		t.Fatalf("cannot create entities: %s", err)
+	}
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	// add target
+	target := &types.Target{EntityID: entities[0].ID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
+
+	var targetID uuid.UUID
+	targetID, err = api.DB.AddTarget(entities[0].ID, target)
+	if err != nil {
+		t.Fatalf("cannot add target into database: %s", err)
+	}
+
+	// Genrate ID and root
+	id := util.RandomHex(len(entities[0].ID))
+	if idBytes, err = hex.DecodeString(util.TrimHex(id)); err != nil {
+		t.Fatalf("cannot decode random id: %s", err)
+	}
+	if root, err = hex.DecodeString(util.RandomHex(len(entities[0].ID))); err != nil {
+		t.Fatalf("cannot generate root: %s", err)
+	}
+	name := fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
+	// create census info
+	censusInfo := &types.CensusInfo{
+		Name:          name,
+		MerkleRoot:    root,
+		MerkleTreeURI: fmt.Sprintf("ipfs://%s", util.TrimHex(id)),
+	}
+
+	if err := api.DB.AddCensus(entities[0].ID, idBytes, targetID, censusInfo); err != nil {
+		t.Fatalf("cannot add census into database: %s", err)
+	}
+
+	//Verify that census exists
+	if census, err := api.DB.Census(entities[0].ID, idBytes); err != nil || census.Name != name {
+		t.Fatalf("unable to recover created census: %s", err)
+	}
+
+	//Verify that cannot add duplicate census
+	if err := api.DB.AddCensus(entities[0].ID, idBytes, targetID, censusInfo); err == nil {
+		t.Fatal("able to create duplicate census into database")
+	}
+
+	//Verify that cannot add  census for inexisting target
+	id = util.RandomHex(len(entities[0].ID))
+	if idBytes, err = hex.DecodeString(util.TrimHex(id)); err != nil {
+		t.Fatalf("cannot decode random id: %s", err)
+	}
+	if err := api.DB.AddCensus(entities[0].ID, idBytes, uuid.UUID{}, censusInfo); err == nil {
+		t.Fatal("able to create census for inexisting target (pgsql.go:AddCensus)")
+	}
+
+	//Add second census (needs second target)
+	target = &types.Target{EntityID: entities[0].ID, Name: "all1", Filters: json.RawMessage([]byte("{}"))}
+
+	targetID, err = api.DB.AddTarget(entities[0].ID, target)
+	if err != nil {
+		t.Fatalf("cannot add second target into database: %s", err)
+	}
+	id = util.RandomHex(len(entities[0].ID))
+	idBytes, err = hex.DecodeString(util.TrimHex(id))
+	if err != nil {
+		t.Fatalf("cannot decode random id: %s", err)
+	}
+	censusInfo.Name = fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
+
+	err = api.DB.AddCensus(entities[0].ID, idBytes, targetID, censusInfo)
+	if err != nil {
+		t.Fatal("unable to create second census (pgsql.go:AddCensus)")
+	}
+
+	var censuses []types.Census
+	censuses, err = api.DB.ListCensus(entities[0].ID)
+	if err != nil || len(censuses) != 2 {
+		t.Fatal("unable to list censuses correctly (pgsql.go:Censuses)")
+	}
 }
 
 func loadOrGenEntity(address string, db database.Database) (*types.Entity, error) {
