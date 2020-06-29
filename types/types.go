@@ -1,10 +1,12 @@
 package types
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
+	"gitlab.com/vocdoni/go-dvote/util"
 )
 
 type CreatedUpdated struct {
@@ -135,11 +137,23 @@ type Census struct {
 	CensusInfo
 }
 
+type HexBytes []byte
+
+func (h *HexBytes) UnmarshalJSON(src []byte) error {
+	var s string
+	if err := json.Unmarshal(src, &s); err != nil {
+		return err
+	}
+	b, err := hex.DecodeString(util.TrimHex(s))
+	*h = b
+	return err
+}
+
 type CensusInfo struct {
 	CreatedUpdated
-	Name          string `json:"name,omitempty" db:"name"`
-	MerkleRoot    []byte `json:"merkleRoot,omitempty" db:"merkle_root"`
-	MerkleTreeURI string `json:"merkleTreeUri,omitempty" db:"merkle_tree_uri"`
+	Name          string   `json:"name,omitempty" db:"name"`
+	MerkleRoot    HexBytes `json:"merkleRoot,omitempty" db:"merkle_root"`
+	MerkleTreeURI string   `json:"merkleTreeUri,omitempty" db:"merkle_tree_uri"`
 }
 
 type Target struct {
