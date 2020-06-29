@@ -3,6 +3,7 @@ package util
 import (
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/util"
@@ -50,4 +51,41 @@ func SignerEntityID(singer ethereum.SignKeys) ([]byte, error) {
 		return nil, fmt.Errorf("cannot decode entityAddress")
 	}
 	return ethereum.HashRaw(address), nil
+}
+
+func DecodeCensusID(id string, pubKey string) ([]byte, error) {
+	var err error
+	split := strings.Split(id, "/")
+	iter := 0
+	// Check for correct format 0xffdf.../0xfdf5f...
+	if len(split) > 2 || len(split) < 1 {
+		return nil, fmt.Errorf("invalid census ID format")
+	}
+	if len(split) == 2 { // "0x.../0x.... format"
+		addressIn := util.TrimHex(split[iter])
+		iter += iter
+
+		// Check that the first component is the correct address
+		if !util.IsHex(addressIn) {
+			return nil, fmt.Errorf("invalid census ID format")
+		}
+
+		var address []byte
+		if address, err = PubKeyToAddress(pubKey); err != nil {
+			return nil, fmt.Errorf("cannot extract entity address %+v", err)
+		}
+		if hex.EncodeToString(address) != addressIn {
+			return nil, fmt.Errorf("invalid census id")
+		}
+	}
+	censusIDIn := util.TrimHex(split[iter])
+	if !util.IsHex(censusIDIn) {
+		return nil, fmt.Errorf("invalid census ID format")
+	}
+
+	var censusID []byte
+	if censusID, err = hex.DecodeString(censusIDIn); err != nil {
+		return nil, fmt.Errorf("cannot decode censusID: %+v", err)
+	}
+	return censusID, nil
 }

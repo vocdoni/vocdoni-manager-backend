@@ -2,7 +2,6 @@ package manager
 
 import (
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 
 	"fmt"
@@ -12,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
-	dvoteUtil "gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/router"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
@@ -411,17 +409,16 @@ func (m *Manager) addCensus(request router.RouterRequest) {
 		return
 	}
 
+	var censusID []byte
+	if censusID, err = util.DecodeCensusID(request.CensusID, request.SignaturePublicKey); err != nil {
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
 	target, err := m.db.Target(entityID, request.TargetID)
 	if err != nil && target != nil {
 		log.Warnf("entity with pubKey %s requested to add census with invalid target id", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid target id")
-		return
-	}
-
-	var censusID []byte
-	censusID, err = hex.DecodeString(dvoteUtil.TrimHex(request.CensusID))
-	if err != nil {
-		m.Router.SendError(request, err.Error())
 		return
 	}
 
@@ -466,8 +463,7 @@ func (m *Manager) getCensus(request router.RouterRequest) {
 	}
 
 	var censusID []byte
-	censusID, err = hex.DecodeString(dvoteUtil.TrimHex(request.CensusID))
-	if err != nil {
+	if censusID, err = util.DecodeCensusID(request.CensusID, request.SignaturePublicKey); err != nil {
 		m.Router.SendError(request, err.Error())
 		return
 	}

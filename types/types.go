@@ -132,7 +132,7 @@ type User struct {
 
 type Census struct {
 	EntityID []byte    `json:"entityId" db:"entity_id"`
-	ID       []byte    `json:"id" db:"id"`
+	ID       HexBytes  `json:"id" db:"id"`
 	TargetID uuid.UUID `json:"targetId" db:"target_id"`
 	CensusInfo
 }
@@ -147,6 +147,10 @@ func (h *HexBytes) UnmarshalJSON(src []byte) error {
 	b, err := hex.DecodeString(util.TrimHex(s))
 	*h = b
 	return err
+}
+
+func (h *HexBytes) MarshalJSON() ([]byte, error) {
+	return json.Marshal("0x" + hex.EncodeToString(*h))
 }
 
 type CensusInfo struct {
