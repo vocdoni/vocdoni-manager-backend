@@ -48,6 +48,7 @@ type MetaResponse struct {
 	Census        *Census      `json:"census,omitempty"`
 	Censuses      []Census     `json:"censuses,omitempty"`
 	Claims        [][]byte     `json:"claims,omitempty"`
+	Count         int          `json:"count,omitempty"`
 	Members       []Member     `json:"members,omitempty"`
 	MembersTokens []TokenEmail `json:"membersTokens,omitempty"`
 	Message       string       `json:"message,omitempty"`

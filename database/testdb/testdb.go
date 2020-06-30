@@ -98,6 +98,10 @@ func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) 
 	return &member, nil
 }
 
+func (d *Database) CountMembers(entityID []byte) (int, error) {
+	return 0, nil
+}
+
 func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error) {
 	return nil, nil
 }

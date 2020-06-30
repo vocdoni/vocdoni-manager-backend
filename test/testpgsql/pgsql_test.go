@@ -95,9 +95,10 @@ func TestUser(t *testing.T) {
 
 func TestMember(t *testing.T) {
 	var id uuid.UUID
+	var initialCount, count int
 	db := api.DB
 	// Create or retrieve existing entity
-	entityAddress := "30ed83726db2f7d28a58ecf0071b7dcd08f7b1e2"
+	entityAddress := "0f6371C0a6F062407Be4064C48449d7FE95D9884"
 	entity, err := loadOrGenEntity(entityAddress, api.DB)
 	if err != nil {
 		t.Fatalf("cannot create or fetch entity address: %s", err)
@@ -114,9 +115,18 @@ func TestMember(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot add user to the Postgres DB (pgsql.go:addUser) %s", err)
 	}
+	if initialCount, err = api.DB.CountMembers(entity.ID); err != nil {
+		t.Fatalf("cannot count members correctly: %+v", err)
+	}
+
 	id, err = api.DB.AddMember(entity.ID, memberSigner.Public.X.Bytes(), memberInfo)
 	if err != nil {
 		t.Fatalf("cannot add member to the Postgres DB (pgsql.go:addMember): %s", err)
+	}
+
+	if count, err = api.DB.CountMembers(entity.ID); err != nil || count != initialCount+1 {
+		t.Errorf("counted %d", count)
+		t.Fatalf("cannot count members correctly: %+v", err)
 	}
 
 	// cannot add twice
@@ -193,6 +203,11 @@ func TestMember(t *testing.T) {
 	err = api.DB.ImportMembers(entity.ID, bulkMembers)
 	if err != nil {
 		t.Fatalf("cannot add members to Postgres DB (pgsql.go:AddMemberBulk): %s", err)
+	}
+
+	if count, err = api.DB.CountMembers(entity.ID); err != nil || count != initialCount+11 {
+		t.Errorf("Error:counted %d", count)
+		t.Fatalf("cannot count members correctly: %+v", err)
 	}
 
 	// Test Selecting all members

@@ -480,6 +480,18 @@ func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) 
 	return members, nil
 }
 
+func (d *Database) CountMembers(entityID []byte) (int, error) {
+	if len(entityID) == 0 {
+		return 0, fmt.Errorf("error retrieving target")
+	}
+	selectQuery := `SELECT COUNT(*) FROM members WHERE entity_id=$1`
+	var membersCount int
+	if err := d.db.Get(&membersCount, selectQuery, entityID); err != nil {
+		return 0, err
+	}
+	return membersCount, nil
+}
+
 func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error) {
 	var order, offset, limit string
 	orderQuery := ""

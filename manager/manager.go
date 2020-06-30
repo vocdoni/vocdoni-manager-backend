@@ -33,6 +33,9 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("signUp", path+"/manager", m.signUp, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("countMembers", path+"/manager", m.countMembers, false); err != nil {
+		return err
+	}
 	if err := m.Router.AddHandler("listMembers", path+"/manager", m.listMembers, false); err != nil {
 		return err
 	}
@@ -154,6 +157,35 @@ func (m *Manager) listMembers(request router.RouterRequest) {
 	}
 
 	log.Info("listMembers")
+	m.send(request, response)
+}
+
+func (m *Manager) countMembers(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	// Query for members
+	if response.Count, err = m.db.CountMembers(entityID); err != nil {
+		log.Errorf("cannot count members for %s : %+v", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot count members")
+		return
+	}
+
+	log.Debugf("Entity %s countMembers: %d members", request.SignaturePublicKey, response.Count)
 	m.send(request, response)
 }
 
