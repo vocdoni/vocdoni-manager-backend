@@ -407,6 +407,13 @@ func (m *Manager) getTarget(request router.RouterRequest) {
 		return
 	}
 
+	response.Members, err = m.db.TargetMembers(entityID, request.TargetID)
+	if err != nil {
+		log.Warn("members for requested target could not be retrieved")
+		m.Router.SendError(request, "members for requested target could not be retrieved")
+		return
+	}
+
 	log.Infof("listing target %s for Entity with public Key %s", request.TargetID.String(), request.SignaturePublicKey)
 	m.send(request, response)
 }

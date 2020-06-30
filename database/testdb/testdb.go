@@ -164,6 +164,9 @@ func (d *Database) ListTargets(entityID []byte) ([]types.Target, error) {
 func (d *Database) CountTargets(entityID []byte) (int, error) {
 	return 0, nil
 }
+func (d *Database) TargetMembers(entityID []byte, targetID uuid.UUID) ([]types.Member, error) {
+	return nil, nil
+}
 
 func (d *Database) AddUser(user *types.User) error {
 	return nil

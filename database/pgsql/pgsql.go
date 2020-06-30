@@ -631,6 +631,11 @@ func (d *Database) ListTargets(entityID []byte) ([]types.Target, error) {
 	return targets, nil
 }
 
+func (d *Database) TargetMembers(entityID []byte, targetID uuid.UUID) ([]types.Member, error) {
+	// TODO: Implement filters
+	return d.ListMembers(entityID, &types.ListOptions{})
+}
+
 func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
 	if len(entityID) == 0 || len(censusID) < 1 {
 		return nil, fmt.Errorf("error retrieving target")
@@ -656,7 +661,8 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID uuid.UUID, info
 
 	var census types.Census
 	census = types.Census{ID: censusID, EntityID: entityID, TargetID: targetID, CensusInfo: *info}
-	insert := `INSERT INTO censuses
+	insert := `INSERT  
+	INTO censuses
 	 				(id, entity_id, target_id, name, merkle_root, merkle_tree_uri)
 					 VALUES (:id, :entity_id, :target_id, :name, :merkle_root, :merkle_tree_uri)`
 	var result sql.Result

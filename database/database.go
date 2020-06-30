@@ -26,6 +26,7 @@ type Database interface {
 	Target(entityID []byte, targetID uuid.UUID) (*types.Target, error)
 	CountTargets(entityID []byte) (int, error)
 	ListTargets(entityID []byte) ([]types.Target, error)
+	TargetMembers(entityID []byte, targetID uuid.UUID) ([]types.Member, error)
 	AddUser(user *types.User) error
 	User(pubKey []byte) (*types.User, error)
 	DumpClaims(entityID []byte) ([][]byte, error)
