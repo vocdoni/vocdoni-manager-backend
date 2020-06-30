@@ -506,6 +506,14 @@ func (m *Manager) getCensus(request router.RouterRequest) {
 		m.Router.SendError(request, err.Error())
 		return
 	}
+
+	response.Target, err = m.db.Target(entityID, response.Census.TargetID)
+	if err != nil {
+		log.Warn("census target not found")
+		m.Router.SendError(request, "census target not found")
+		return
+	}
+
 	log.Debugf("Entity:%s getCensus:%s", request.SignaturePublicKey, request.CensusID)
 	log.Infof("getCensus")
 	m.send(request, response)

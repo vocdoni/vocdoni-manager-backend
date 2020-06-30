@@ -483,21 +483,24 @@ func TestGetCensus(t *testing.T) {
 
 	resp := wsc.Request(req, entitySigners[0])
 	if !resp.Ok {
-		t.Fatalf("unable to create a random census: %s", resp.Message)
+		t.Fatalf("unable to retrieve a random census: %s", resp.Message)
+	}
+	if resp.Target.ID != targetID {
+		t.Fatalf("target from retrieved census does not match original target: %s", resp.Message)
 	}
 
 	//Test that empty censusID fails
 	req.CensusID = ""
 	resp = wsc.Request(req, entitySigners[0])
 	if resp.Ok {
-		t.Fatalf("able to create a census without censusId: %s", resp.Message)
+		t.Fatalf("able to retrieve a census without censusId: %s", resp.Message)
 	}
 
 	//Test that random censusID fails
 	req.CensusID = util.RandomHex(len(entities[0].ID))
 	resp = wsc.Request(req, entitySigners[0])
 	if resp.Ok {
-		t.Fatalf("able to create a census without censusId: %s", resp.Message)
+		t.Fatalf("able to retrieve a census without censusId: %s", resp.Message)
 	}
 }
 
