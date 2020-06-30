@@ -112,6 +112,10 @@ func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
 	return &census, nil
 }
 
+func (d *Database) CountCensus(entityID []byte) (int, error) {
+	return 0, nil
+}
+
 func (d *Database) ListCensus(entityID []byte) ([]types.Census, error) {
 	return nil, nil
 }
@@ -156,6 +160,9 @@ func (d *Database) Target(entityID []byte, targetID uuid.UUID) (*types.Target, e
 }
 func (d *Database) ListTargets(entityID []byte) ([]types.Target, error) {
 	return nil, nil
+}
+func (d *Database) CountTargets(entityID []byte) (int, error) {
+	return 0, nil
 }
 
 func (d *Database) AddUser(user *types.User) error {

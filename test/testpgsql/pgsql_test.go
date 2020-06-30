@@ -256,6 +256,12 @@ func TestTarget(t *testing.T) {
 		t.Fatalf("errors retrieving all targets: %s", err)
 	}
 
+	//Verify that 0 targets are counted
+	if count, err := api.DB.CountTargets(entities[0].ID); err != nil || count != 0 {
+		t.Errorf("counted %d", count)
+		t.Fatalf("cannot count targets correctly: %+v", err)
+	}
+
 	inTarget = &types.Target{EntityID: entities[0].ID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
 
 	// test adding target
@@ -276,6 +282,12 @@ func TestTarget(t *testing.T) {
 	// Check able to list all (1 for now) targets
 	if targets, err = api.DB.ListTargets(entities[0].ID); err != nil || len(targets) != 1 {
 		t.Fatalf("errors retrieving all targets: %s", err)
+	}
+
+	//Verify that 0 targets are counted
+	if count, err := api.DB.CountTargets(entities[0].ID); err != nil || count != 1 {
+		t.Errorf("counted %d", count)
+		t.Fatalf("cannot count targets correctly: %+v", err)
 	}
 }
 
@@ -316,6 +328,12 @@ func TestCensus(t *testing.T) {
 		MerkleTreeURI: fmt.Sprintf("ipfs://%s", util.TrimHex(id)),
 	}
 
+	//Verify that 0 census are counted
+	if count, err := api.DB.CountCensus(entities[0].ID); err != nil || count != 0 {
+		t.Errorf("counted %d", count)
+		t.Fatalf("cannot count censuses correctly: %+v", err)
+	}
+
 	if err := api.DB.AddCensus(entities[0].ID, idBytes, targetID, censusInfo); err != nil {
 		t.Fatalf("cannot add census into database: %s", err)
 	}
@@ -323,6 +341,12 @@ func TestCensus(t *testing.T) {
 	//Verify that census exists
 	if census, err := api.DB.Census(entities[0].ID, idBytes); err != nil || census.Name != name {
 		t.Fatalf("unable to recover created census: %s", err)
+	}
+
+	//Verify that one census is counted
+	if count, err := api.DB.CountCensus(entities[0].ID); err != nil || count != 1 {
+		t.Errorf("counted %d", count)
+		t.Fatalf("cannot count censuses correctly: %+v", err)
 	}
 
 	//Verify that cannot add duplicate census
@@ -356,6 +380,12 @@ func TestCensus(t *testing.T) {
 	err = api.DB.AddCensus(entities[0].ID, idBytes, targetID, censusInfo)
 	if err != nil {
 		t.Fatal("unable to create second census (pgsql.go:AddCensus)")
+	}
+
+	//Verify that one census is counted
+	if count, err := api.DB.CountCensus(entities[0].ID); err != nil || count != 2 {
+		t.Errorf("counted %d", count)
+		t.Fatalf("cannot count censuses correctly: %+v", err)
 	}
 
 	var censuses []types.Census

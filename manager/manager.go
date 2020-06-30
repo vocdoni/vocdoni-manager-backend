@@ -48,6 +48,9 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("importMembers", path+"/manager", m.importMembers, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("countTargets", path+"/manager", m.countTargets, false); err != nil {
+		return err
+	}
 	if err := m.Router.AddHandler("listTargets", path+"/manager", m.listTargets, false); err != nil {
 		return err
 	}
@@ -61,6 +64,9 @@ func (m *Manager) RegisterMethods(path string) error {
 		return err
 	}
 	if err := m.Router.AddHandler("getCensus", path+"/manager", m.getCensus, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("countCensus", path+"/manager", m.countCensus, false); err != nil {
 		return err
 	}
 	if err := m.Router.AddHandler("listCensus", path+"/manager", m.listCensus, false); err != nil {
@@ -305,6 +311,35 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 	m.send(request, response)
 }
 
+func (m *Manager) countTargets(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	// Query for members
+	if response.Count, err = m.db.CountTargets(entityID); err != nil {
+		log.Errorf("cannot count targets for %s : %+v", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot count targets")
+		return
+	}
+
+	log.Debugf("Entity %s countTargets: %d targets", request.SignaturePublicKey, response.Count)
+	m.send(request, response)
+}
+
 func (m *Manager) listTargets(request router.RouterRequest) {
 	var entityID []byte
 	var err error
@@ -516,6 +551,35 @@ func (m *Manager) getCensus(request router.RouterRequest) {
 
 	log.Debugf("Entity:%s getCensus:%s", request.SignaturePublicKey, request.CensusID)
 	log.Infof("getCensus")
+	m.send(request, response)
+}
+
+func (m *Manager) countCensus(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	// Query for members
+	if response.Count, err = m.db.CountCensus(entityID); err != nil {
+		log.Errorf("cannot count censuses for %s : %+v", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot count censuses")
+		return
+	}
+
+	log.Debugf("Entity %s countCensus: %d censuses", request.SignaturePublicKey, response.Count)
 	m.send(request, response)
 }
 

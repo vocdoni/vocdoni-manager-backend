@@ -24,11 +24,13 @@ type Database interface {
 	MembersTokensEmails(entityID []byte) ([]types.Member, error)
 	AddTarget(entityID []byte, target *types.Target) (uuid.UUID, error)
 	Target(entityID []byte, targetID uuid.UUID) (*types.Target, error)
+	CountTargets(entityID []byte) (int, error)
 	ListTargets(entityID []byte) ([]types.Target, error)
 	AddUser(user *types.User) error
 	User(pubKey []byte) (*types.User, error)
 	DumpClaims(entityID []byte) ([][]byte, error)
 	Census(entityID, censusID []byte) (*types.Census, error)
 	AddCensus(entityID, censusID []byte, targetID uuid.UUID, info *types.CensusInfo) error
+	CountCensus(entityID []byte) (int, error)
 	ListCensus(entityID []byte) ([]types.Census, error)
 }

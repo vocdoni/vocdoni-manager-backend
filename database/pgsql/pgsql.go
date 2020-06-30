@@ -482,7 +482,7 @@ func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) 
 
 func (d *Database) CountMembers(entityID []byte) (int, error) {
 	if len(entityID) == 0 {
-		return 0, fmt.Errorf("error retrieving target")
+		return 0, fmt.Errorf("invalid entity id")
 	}
 	selectQuery := `SELECT COUNT(*) FROM members WHERE entity_id=$1`
 	var membersCount int
@@ -605,6 +605,18 @@ func (d *Database) Target(entityID []byte, targetID uuid.UUID) (*types.Target, e
 	return &target, nil
 }
 
+func (d *Database) CountTargets(entityID []byte) (int, error) {
+	if len(entityID) == 0 {
+		return 0, fmt.Errorf("invalid entity id")
+	}
+	selectQuery := `SELECT COUNT(*) FROM targets WHERE entity_id=$1`
+	var targetsCount int
+	if err := d.db.Get(&targetsCount, selectQuery, entityID); err != nil {
+		return 0, err
+	}
+	return targetsCount, nil
+}
+
 func (d *Database) ListTargets(entityID []byte) ([]types.Target, error) {
 	if len(entityID) == 0 {
 		return nil, fmt.Errorf("error retrieving target")
@@ -658,6 +670,18 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID uuid.UUID, info
 		return fmt.Errorf("failed to add census: %+v", err)
 	}
 	return nil
+}
+
+func (d *Database) CountCensus(entityID []byte) (int, error) {
+	if len(entityID) == 0 {
+		return 0, fmt.Errorf("invalid entity id")
+	}
+	selectQuery := `SELECT COUNT(*) FROM censuses WHERE entity_id=$1`
+	var censusCount int
+	if err := d.db.Get(&censusCount, selectQuery, entityID); err != nil {
+		return 0, err
+	}
+	return censusCount, nil
 }
 
 func (d *Database) ListCensus(entityID []byte) ([]types.Census, error) {
