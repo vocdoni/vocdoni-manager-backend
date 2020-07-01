@@ -236,7 +236,13 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	member := &types.Member{EntityID: entityID, PubKey: pubKey, MemberInfo: *info}
 	_, err = d.User(pubKey)
 	if err != nil {
-		return uuid.Nil, err
+		if err == sql.ErrNoRows {
+			user := &types.User{PubKey: pubKey}
+			err = d.AddUser(user)
+		}
+		if err != nil { // enters if err from d.USer != sql.ErrNoRows or err is from d.AddUser
+			return uuid.Nil, err
+		}
 	}
 	pgmember, err := ToPGMember(member)
 	if err != nil {

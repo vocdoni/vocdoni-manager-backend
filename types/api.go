@@ -21,6 +21,7 @@ type MetaRequest struct {
 	EntityID    string       `json:"entityId,omitempty"`
 	Filter      *Target      `json:"filter,omitempty"`
 	ListOptions *ListOptions `json:"listOptions,omitempty"`
+	MemberID    uuid.UUID    `json:"memberId,omitempty"`
 	Member      *Member      `json:"member,omitempty"`
 	MembersInfo []MemberInfo `json:"membersInfo,omitempty"`
 	Method      string       `json:"method"`
@@ -49,6 +50,7 @@ type MetaResponse struct {
 	Censuses      []Census     `json:"censuses,omitempty"`
 	Claims        [][]byte     `json:"claims,omitempty"`
 	Count         int          `json:"count,omitempty"`
+	Member        *Member      `json:"member,omitempty"`
 	Members       []Member     `json:"members,omitempty"`
 	MembersTokens []TokenEmail `json:"membersTokens,omitempty"`
 	Message       string       `json:"message,omitempty"`

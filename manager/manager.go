@@ -39,6 +39,9 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("listMembers", path+"/manager", m.listMembers, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("getMember", path+"/manager", m.getMember, false); err != nil {
+		return err
+	}
 	if err := m.Router.AddHandler("generateTokens", path+"/manager", m.generateTokens, false); err != nil {
 		return err
 	}
@@ -163,6 +166,35 @@ func (m *Manager) listMembers(request router.RouterRequest) {
 	}
 
 	log.Info("listMembers")
+	m.send(request, response)
+}
+
+func (m *Manager) getMember(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	response.Member, err = m.db.Member(entityID, request.MemberID)
+	if err != nil {
+		log.Warn("member not found")
+		m.Router.SendError(request, "member not found")
+		return
+	}
+
+	log.Infof("listing member %s for Entity with public Key %s", request.MemberID.String(), request.SignaturePublicKey)
 	m.send(request, response)
 }
 
