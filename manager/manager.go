@@ -187,12 +187,26 @@ func (m *Manager) getMember(request router.RouterRequest) {
 		return
 	}
 
-	response.Member, err = m.db.Member(entityID, request.MemberID)
-	if err != nil {
-		log.Warn("member not found")
-		m.Router.SendError(request, "member not found")
+	if response.Member, err = m.db.Member(entityID, request.MemberID); err != nil {
+		if err == sql.ErrNoRows {
+
+			log.Warn("member not found")
+			m.Router.SendError(request, "member not found")
+			return
+		}
+		log.Error("cannot retrieve member %s for entity %s : %+v", request.MemberID, request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot retrieve member")
 		return
 	}
+
+	// TODO: Change when targets are implemented
+	var targets []types.Target
+	if targets, err = m.db.ListTargets(entityID); err != nil {
+		log.Error("cannot retrieve member %s targets for entity %s : %+v", request.MemberID, request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot retrieve member targets")
+		return
+	}
+	response.Target = &targets[0]
 
 	log.Infof("listing member %s for Entity with public Key %s", request.MemberID.String(), request.SignaturePublicKey)
 	m.send(request, response)
