@@ -128,8 +128,7 @@ func TestMember(t *testing.T) {
 	}
 
 	if count, err = api.DB.CountMembers(entity.ID); err != nil || count != initialCount+1 {
-		t.Errorf("counted %d", count)
-		t.Fatalf("cannot count members correctly: %+v", err)
+		t.Fatalf("expected %d counted: %d\ncannot count members correctly: %+v", initialCount+1, count, err)
 	}
 
 	// cannot add twice
@@ -193,8 +192,11 @@ func TestMember(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot fetch user from the Postgres DB (pgsql.go:Member): %s", err)
 	}
-	if newMember.Email != "updated@mail.com" || newMember.FirstName != "Lak" {
+	if newMember.Email != "updated@mail.com" {
 		t.Fatal("updateMember failed to update member Email in the Postgres DB (pgsql.go:Member)")
+	}
+	if newMember.FirstName != "Lak" {
+		t.Fatal("updateMember with an empty string ovewrites the Name field while it shouldn't(pgsql.go:updateMember)")
 	}
 
 	// Test Bulk Info
@@ -209,8 +211,7 @@ func TestMember(t *testing.T) {
 	}
 
 	if count, err = api.DB.CountMembers(entity.ID); err != nil || count != initialCount+11 {
-		t.Errorf("Error:counted %d", count)
-		t.Fatalf("cannot count members correctly: %+v", err)
+		t.Fatalf("expected %d counted: %d\ncannot count members correctly: %+v", initialCount+11, count, err)
 	}
 
 	// Test Selecting all members
@@ -241,7 +242,7 @@ func TestMember(t *testing.T) {
 	// Test deleting member
 	// 1. Can delete existing member
 	if err := api.DB.DeleteMember(entity.ID, member.ID); err != nil {
-		t.Fatalf("error deleting mebmber %+v", err)
+		t.Fatalf("error deleting member %+v", err)
 	}
 	if _, err = db.Member(entity.ID, member.ID); err != sql.ErrNoRows {
 		t.Fatalf("error retrieving deleting member %+v", err)
@@ -275,8 +276,7 @@ func TestTarget(t *testing.T) {
 
 	//Verify that 0 targets are counted
 	if count, err := api.DB.CountTargets(entities[0].ID); err != nil || count != 0 {
-		t.Errorf("counted %d", count)
-		t.Fatalf("cannot count targets correctly: %+v", err)
+		t.Fatalf("expected %d counted: %d\ncannot count targets correctly: %+v", 0, count, err)
 	}
 
 	inTarget = &types.Target{EntityID: entities[0].ID, Name: "all", Filters: json.RawMessage([]byte("{}"))}

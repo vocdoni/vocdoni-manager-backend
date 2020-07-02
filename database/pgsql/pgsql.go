@@ -230,21 +230,42 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 // TODO: Implement import members
 
 func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (uuid.UUID, error) {
+	var tx *sqlx.Tx
 	var err error
 	var result *sqlx.Rows
 	var id uuid.UUID
 	member := &types.Member{EntityID: entityID, PubKey: pubKey, MemberInfo: *info}
-	_, err = d.User(pubKey)
+	tx, err = d.db.Beginx()
 	if err != nil {
-		if err == sql.ErrNoRows {
-			user := &types.User{PubKey: pubKey}
-			err = d.AddUser(user)
+		return uuid.Nil, fmt.Errorf("unable to initiate transaction %v", err)
+	}
+	_, err = d.User(pubKey)
+	if err != nil && err != sql.ErrNoRows {
+		return uuid.Nil, fmt.Errorf("error retrieving members corresponding user: %v", err)
+	} else if err == sql.ErrNoRows {
+		user := &types.User{PubKey: pubKey}
+		if len(user.DigestedPubKey) == 0 {
+			user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
 		}
-		if err != nil { // enters if err from d.USer != sql.ErrNoRows or err is from d.AddUser
-			return uuid.Nil, err
+		insert := `INSERT INTO users
+							 (public_key, digested_public_key)
+							 VALUES (:public_key, :digested_public_key)`
+		var result sql.Result
+		if result, err = tx.NamedExec(insert, user); err == nil {
+			var rows int64
+			if rows, err = result.RowsAffected(); err != nil || rows != 1 {
+				return uuid.Nil, fmt.Errorf("error creating user for member: %v", err)
+			}
+		}
+		if err != nil {
+			if rollErr := tx.Rollback(); err != nil {
+				return uuid.Nil, fmt.Errorf("error rolling back user creation for member: %v", rollErr)
+			}
+			return uuid.Nil, fmt.Errorf("error creating user for member: %v", err)
 		}
 	}
-	pgmember, err := ToPGMember(member)
+	var pgmember *PGMember
+	pgmember, err = ToPGMember(member)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -259,16 +280,43 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	// is not possible to use pgmember and a conversion is needed.
 	// So if no error is raised and the result has 0 rows it means
 	// that something went wrong (no member added).
-	if result, err = d.db.NamedQuery(insert, pgmember); err != nil {
-		return uuid.Nil, err
+	if result, err = tx.NamedQuery(insert, pgmember); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			fmt.Println(1)
+			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v", rollErr)
+		}
+		return uuid.Nil, fmt.Errorf("error adding member to the DB: %v", err)
 	}
 	if !result.Next() {
-		return uuid.Nil, fmt.Errorf("result has no rows, posible violation of db constraints")
+		if rollErr := tx.Rollback(); err != nil {
+			fmt.Println(2)
+			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v", rollErr)
+		}
+		return uuid.Nil, fmt.Errorf("no rows affected after adding member, posible violation of db constraints")
 	}
-	if err := result.Scan(&id); err != nil {
-		return uuid.Nil, err
+	if err = result.Scan(&id); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			fmt.Println(3)
+			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v", rollErr)
+		}
+		return uuid.Nil, fmt.Errorf("error retrieving new member id: %v", err)
 	}
-	return id, nil
+	if err = result.Close(); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			fmt.Println(3)
+			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v", rollErr)
+		}
+		return uuid.Nil, fmt.Errorf("error retrieving new member id: %v", err)
+	}
+	if err = tx.Commit(); err != nil {
+		fmt.Println(err)
+		if rollErr := tx.Rollback(); err != nil {
+			fmt.Println()
+			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v", rollErr)
+		}
+		return uuid.Nil, fmt.Errorf("error commiting add member transactions to the DB: %v", err)
+	}
+	return id, err
 }
 
 func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error {
@@ -435,10 +483,7 @@ func (d *Database) UpdateMember(entityID []byte, memberID uuid.UUID, info *types
 					:email IS DISTINCT FROM email OR
 					:date_of_birth IS DISTINCT FROM date_of_birth)`
 	var result sql.Result
-	// if result, err = d.db.Exec(test, pgmember.StreetAddress, pgmember.FirstName, pgmember.LastName, pgmember.Email, pgmember.ID, pgmember.EntityID); err == nil {
 	if result, err = d.db.NamedExec(update, pgmember); err == nil {
-		// if result, err = stmt.Exec(strt); err == nil {
-		// if result, err = tx.NamedStmt(stmt).Exec(strt); err == nil {
 		var rows int64
 		if rows, err = result.RowsAffected(); err == nil && rows != 1 {
 			return fmt.Errorf("nothing to update: %+v", err)

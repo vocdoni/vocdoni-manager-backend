@@ -207,12 +207,18 @@ func (m *Manager) getMember(request router.RouterRequest) {
 
 	// TODO: Change when targets are implemented
 	var targets []types.Target
-	if targets, err = m.db.ListTargets(entityID); err != nil {
-		log.Error("cannot retrieve member %s targets for entity %s : %+v", request.MemberID, request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot retrieve member targets")
+	targets, err = m.db.ListTargets(entityID)
+	if err == sql.ErrNoRows || len(targets) == 0 {
+		log.Warn("no targets found for member %s of entity %s", request.MemberID, request.SignaturePublicKey)
+		response.Target = &types.Target{}
+	} else if err == nil {
+		log.Warn("Hi")
+		response.Target = &targets[0]
+	} else {
+		log.Errorf("error retrieving member %s targets for entity %s : %+v", request.MemberID, request.SignaturePublicKey, err)
+		m.Router.SendError(request, "error retrieving member targets")
 		return
 	}
-	response.Target = &targets[0]
 
 	log.Infof("listing member %s for Entity with public Key %s", request.MemberID.String(), request.SignaturePublicKey)
 	m.send(request, response)
@@ -274,7 +280,6 @@ func (m *Manager) deleteMember(request router.RouterRequest) {
 		return
 	}
 
-	// If a string Member property is sent as "" then it is not updated
 	if err = m.db.DeleteMember(entityID, request.MemberID); err != nil {
 		log.Error("cannot delete member %s for entity %s : %+v", request.MemberID, request.SignaturePublicKey, err)
 		m.Router.SendError(request, "cannot delete member")
