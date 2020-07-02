@@ -151,7 +151,7 @@ func (r *Registry) register(request router.RouterRequest) {
 			r.Router.SendError(request, "invalid token id")
 			return
 		}
-		if err = r.db.UpdateMember(uid, user.PubKey, &request.Member.MemberInfo); err != nil {
+		if err = r.db.UpdateMember(entityID, uid, &request.Member.MemberInfo); err != nil {
 			log.Warn(err)
 			r.Router.SendError(request, fmt.Sprintf("cannot set member info: (%s)", err))
 			return

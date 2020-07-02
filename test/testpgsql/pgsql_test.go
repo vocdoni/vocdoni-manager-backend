@@ -108,6 +108,8 @@ func TestMember(t *testing.T) {
 	memberSigner := new(ethereum.SignKeys)
 	memberSigner.Generate()
 	memberInfo := &types.MemberInfo{}
+	memberInfo.FirstName = "Lak"
+	memberInfo.LastName = "Lik"
 	memberInfo.DateOfBirth.Round(time.Microsecond).UTC()
 	memberInfo.Verified.Round(time.Microsecond)
 	user := &types.User{PubKey: memberSigner.Public.X.Bytes()}
@@ -181,17 +183,17 @@ func TestMember(t *testing.T) {
 	}
 
 	// Test SetMemberInfo
-	newInfo := &types.MemberInfo{Consented: true}
-	err = api.DB.UpdateMember(member.ID, nil, newInfo)
+	newInfo := &types.MemberInfo{Email: "updated@mail.com", FirstName: ""}
+	err = api.DB.UpdateMember(entity.ID, member.ID, newInfo)
 	if err != nil {
-		t.Fatalf("cannot update user info to the Postgres DB (pgsql.go:setMemberInfo): %s", err)
+		t.Fatalf("cannot update user info to the Postgres DB (pgsql.go:updateMember): %s", err)
 	}
 	newMember, err := db.Member(entity.ID, member.ID)
 	if err != nil {
 		t.Fatalf("cannot fetch user from the Postgres DB (pgsql.go:Member): %s", err)
 	}
-	if newMember.Consented != true {
-		t.Fatal("setMemberInfo failed to update member Consent in the Postgres DB (pgsql.go:Member)")
+	if newMember.Email != "updated@mail.com" || newMember.FirstName != "Lak" {
+		t.Fatal("updateMember failed to update member Email in the Postgres DB (pgsql.go:Member)")
 	}
 
 	// Test Bulk Info
@@ -213,7 +215,7 @@ func TestMember(t *testing.T) {
 	// Test Selecting all members
 	allMembers, err := api.DB.ListMembers(entity.ID, &types.ListOptions{})
 	if err != nil {
-		t.Fatalf("cannot select all members from Postgres DB (pgsql.go:MembersFiltered): %s", err)
+		t.Fatalf("cannot select all members from Postgres DB (pgsql.go:ListMembers): %s", err)
 	}
 
 	// Test Selecting filtered members

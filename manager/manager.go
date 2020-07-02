@@ -42,6 +42,9 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("getMember", path+"/manager", m.getMember, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("updateMember", path+"/manager", m.updateMember, false); err != nil {
+		return err
+	}
 	if err := m.Router.AddHandler("generateTokens", path+"/manager", m.generateTokens, false); err != nil {
 		return err
 	}
@@ -209,6 +212,35 @@ func (m *Manager) getMember(request router.RouterRequest) {
 	response.Target = &targets[0]
 
 	log.Infof("listing member %s for Entity with public Key %s", request.MemberID.String(), request.SignaturePublicKey)
+	m.send(request, response)
+}
+
+func (m *Manager) updateMember(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	// If a string Member property is sent as "" then it is not updated
+	if err = m.db.UpdateMember(entityID, request.Member.ID, &request.Member.MemberInfo); err != nil {
+		log.Error("cannot update member %s for entity %s : %+v", request.Member.ID, request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot update member")
+		return
+	}
+
+	log.Infof("i[date] member %s for Entity with public Key %s", request.Member.ID.String(), request.SignaturePublicKey)
 	m.send(request, response)
 }
 

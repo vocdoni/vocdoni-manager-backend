@@ -19,7 +19,7 @@ type Database interface {
 	MemberPubKey(entityID, pubKey []byte) (*types.Member, error)
 	CountMembers(entityID []byte) (int, error)
 	ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error)
-	UpdateMember(memberID uuid.UUID, pubKey []byte, info *types.MemberInfo) error
+	UpdateMember(entityID []byte, memberID uuid.UUID, info *types.MemberInfo) error
 	CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error
 	MembersTokensEmails(entityID []byte) ([]types.Member, error)
 	AddTarget(entityID []byte, target *types.Target) (uuid.UUID, error)

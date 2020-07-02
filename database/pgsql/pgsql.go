@@ -416,27 +416,36 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 	return nil
 }
 
-func (d *Database) UpdateMember(memberID uuid.UUID, pubKey []byte, info *types.MemberInfo) error {
-	member := &types.Member{ID: memberID, PubKey: pubKey, MemberInfo: *info}
+func (d *Database) UpdateMember(entityID []byte, memberID uuid.UUID, info *types.MemberInfo) error {
+	member := &types.Member{ID: memberID, EntityID: entityID, MemberInfo: *info}
 	pgmember, err := ToPGMember(member)
 	if err != nil {
 		return err
 	}
-	var update string
-	if pubKey != nil {
-		update = `UPDATE members
-	 				SET (public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, consented)
-					= (:public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :consented)
-					WHERE id = :id`
-	} else {
-		update = `UPDATE members
-	 				SET (street_address, first_name, last_name, email, phone, date_of_birth, verified, consented)
-					= (:street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :consented)
-					WHERE id = :id`
+	update := `UPDATE members SET
+					street_address = COALESCE(NULLIF(:street_address, ''),  street_address),
+					first_name = COALESCE(NULLIF(:first_name, ''), first_name),
+					last_name = COALESCE(NULLIF(:last_name, ''), last_name),
+					email = COALESCE(NULLIF(:email, ''), email),
+					date_of_birth = COALESCE(NULLIF(:date_of_birth, date_of_birth), date_of_birth)
+				WHERE (id = :id AND entity_id = :entity_id)
+				AND  (:street_address IS DISTINCT FROM street_address OR
+					:first_name IS DISTINCT FROM first_name OR
+					:last_name IS DISTINCT FROM last_name OR
+					:email IS DISTINCT FROM email OR
+					:date_of_birth IS DISTINCT FROM date_of_birth)`
+	var result sql.Result
+	// if result, err = d.db.Exec(test, pgmember.StreetAddress, pgmember.FirstName, pgmember.LastName, pgmember.Email, pgmember.ID, pgmember.EntityID); err == nil {
+	if result, err = d.db.NamedExec(update, pgmember); err == nil {
+		// if result, err = stmt.Exec(strt); err == nil {
+		// if result, err = tx.NamedStmt(stmt).Exec(strt); err == nil {
+		var rows int64
+		if rows, err = result.RowsAffected(); err == nil && rows != 1 {
+			return fmt.Errorf("nothing to update: %+v", err)
+		}
 	}
-	_, err = d.db.NamedExec(update, pgmember)
 	if err != nil {
-		return err
+		return fmt.Errorf("error updating member: %+v", err)
 	}
 	return nil
 }
