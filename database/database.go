@@ -16,6 +16,7 @@ type Database interface {
 	ImportMembers(entityID []byte, info []types.MemberInfo) error
 	AddMemberBulk(entityID []byte, members []types.Member) error
 	Member(entityID []byte, memberID uuid.UUID) (*types.Member, error)
+	DeleteMember(entityID []byte, memberID uuid.UUID) error
 	MemberPubKey(entityID, pubKey []byte) (*types.Member, error)
 	CountMembers(entityID []byte) (int, error)
 	ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error)

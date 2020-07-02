@@ -45,6 +45,9 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("updateMember", path+"/manager", m.updateMember, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("deleteMember", path+"/manager", m.deleteMember, false); err != nil {
+		return err
+	}
 	if err := m.Router.AddHandler("generateTokens", path+"/manager", m.generateTokens, false); err != nil {
 		return err
 	}
@@ -220,6 +223,10 @@ func (m *Manager) updateMember(request router.RouterRequest) {
 	var err error
 	var response types.MetaResponse
 
+	if request.Member == nil {
+		m.Router.SendError(request, "invalid member struct")
+	}
+
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
 		m.Router.SendError(request, "invalid public key")
@@ -240,7 +247,41 @@ func (m *Manager) updateMember(request router.RouterRequest) {
 		return
 	}
 
-	log.Infof("i[date] member %s for Entity with public Key %s", request.Member.ID.String(), request.SignaturePublicKey)
+	log.Infof("update member %s for Entity with public Key %s", request.Member.ID.String(), request.SignaturePublicKey)
+	m.send(request, response)
+}
+
+func (m *Manager) deleteMember(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	if request.MemberID == uuid.Nil {
+		m.Router.SendError(request, "invalid member ID")
+		return
+	}
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Warn(err)
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	// If a string Member property is sent as "" then it is not updated
+	if err = m.db.DeleteMember(entityID, request.MemberID); err != nil {
+		log.Error("cannot delete member %s for entity %s : %+v", request.MemberID, request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot delete member")
+		return
+	}
+
+	log.Infof("deleted member %s for Entity with public Key %s", request.MemberID.String(), request.SignaturePublicKey)
 	m.send(request, response)
 }
 

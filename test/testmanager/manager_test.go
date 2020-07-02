@@ -1,6 +1,7 @@
 package testmanager
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -219,6 +220,51 @@ func TestUpdateMember(t *testing.T) {
 	}
 	if member.StreetAddress != members[0].StreetAddress {
 		t.Fatalf("updating non corresponding fields")
+	}
+
+}
+
+func TestDeleteMember(t *testing.T) {
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// create entity
+	entitySigners, entities, err := testcommon.CreateEntities(1)
+	if err != nil {
+		t.Fatalf("cannot create entities: %s", err)
+	}
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	// add members
+	// create members
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 1)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
+
+	// add member
+	if members[0].ID, err = api.DB.AddMember(entities[0].ID, members[0].PubKey, &members[0].MemberInfo); err != nil {
+		t.Fatalf("cannot add member into database: %s", err)
+	}
+
+	// create and make request
+	var req types.MetaRequest
+	req.Method = "deleteMember"
+	req.MemberID = members[0].ID
+	resp := wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if !resp.Ok {
+		t.Fatalf("request failed: %+v", req)
+	}
+
+	if _, err := api.DB.Member(entities[0].ID, members[0].ID); err != sql.ErrNoRows {
+		t.Fatalf("could retrieve deleted member from database: %s", err)
 	}
 
 }

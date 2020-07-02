@@ -464,6 +464,22 @@ func (d *Database) Member(entityID []byte, memberID uuid.UUID) (*types.Member, e
 	return member, nil
 }
 
+func (d *Database) DeleteMember(entityID []byte, memberID uuid.UUID) error {
+	var result sql.Result
+	var err error
+	deleteQuery := `DELETE FROM members WHERE id = $1 and entity_id =$2`
+	if result, err = d.db.Exec(deleteQuery, memberID, entityID); err == nil {
+		var rows int64
+		if rows, err = result.RowsAffected(); rows != 1 {
+			return fmt.Errorf("nothing to delete")
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("error deleting member: %+v", err)
+	}
+	return nil
+}
+
 func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) {
 	var pgMember PGMember
 	selectQuery := `SELECT

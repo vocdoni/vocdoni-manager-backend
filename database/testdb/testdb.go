@@ -129,6 +129,10 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	return uuid.Nil, nil
 }
 
+func (d *Database) DeleteMember(entityID []byte, memberID uuid.UUID) error {
+	return nil
+}
+
 func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error {
 	return nil
 }

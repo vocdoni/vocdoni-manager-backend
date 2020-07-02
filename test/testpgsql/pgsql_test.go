@@ -2,6 +2,7 @@ package testpgsql
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -235,6 +236,20 @@ func TestMember(t *testing.T) {
 	tokenMembers, err := api.DB.MembersTokensEmails(entity.ID)
 	if len(tokenMembers) != len(allMembers) {
 		t.Fatal("cannot fetch tokens and emails from the Prostgres DB (pgsql.go:MembersTokensEmails)")
+	}
+
+	// Test deleting member
+	// 1. Can delete existing member
+	if err := api.DB.DeleteMember(entity.ID, member.ID); err != nil {
+		t.Fatalf("error deleting mebmber %+v", err)
+	}
+	if _, err = db.Member(entity.ID, member.ID); err != sql.ErrNoRows {
+		t.Fatalf("error retrieving deleting member %+v", err)
+	}
+
+	// 2. Get error deleting inexisting member
+	if err := api.DB.DeleteMember(entity.ID, uuid.UUID{}); err == nil {
+		t.Fatalf("managed to delete random member %+v", err)
 	}
 }
 
