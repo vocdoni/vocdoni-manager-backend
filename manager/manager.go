@@ -248,7 +248,7 @@ func (m *Manager) updateMember(request router.RouterRequest) {
 
 	// If a string Member property is sent as "" then it is not updated
 	if err = m.db.UpdateMember(entityID, request.Member.ID, &request.Member.MemberInfo); err != nil {
-		log.Error("cannot update member %s for entity %s : %+v", request.Member.ID, request.SignaturePublicKey, err)
+		log.Error("cannot update member %s for entity %s : %+v", request.Member.ID.String(), request.SignaturePublicKey, err)
 		m.Router.SendError(request, "cannot update member")
 		return
 	}

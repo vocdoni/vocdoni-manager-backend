@@ -73,14 +73,14 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	}
 	// TODO: Calculate EntityID (consult go-dvote)
 	insert := `INSERT INTO entities
-					(id, address, email, name, census_managers_addresses)
-					VALUES (:id, :address, :email, :name, :pg_census_managers_addresses)`
+			(id, address, email, name, census_managers_addresses)
+			VALUES (:id, :address, :email, :name, :pg_census_managers_addresses)`
 	_, err = tx.NamedExec(insert, pgEntity)
 	if err != nil {
 		return err
 	}
 	insertOrigins := `INSERT INTO entities_origins (entity_id,origin)
-						VALUES ($1, unnest(cast($2 AS Origins[])))`
+					VALUES ($1, unnest(cast($2 AS Origins[])))`
 	_, err = tx.Exec(insertOrigins, entityID, pgEntity.Origins)
 	if err != nil {
 		rollbackErr := tx.Rollback()
@@ -140,8 +140,8 @@ func (d *Database) AddUser(user *types.User) error {
 		user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
 	}
 	insert := `INSERT INTO users
-	 				(public_key, digested_public_key)
-					 VALUES (:public_key, :digested_public_key)`
+				(public_key, digested_public_key)
+				VALUES (:public_key, :digested_public_key)`
 	if _, err := d.db.NamedExec(insert, user); err != nil {
 		return err
 	}
@@ -151,8 +151,8 @@ func (d *Database) AddUser(user *types.User) error {
 func (d *Database) User(pubKey []byte) (*types.User, error) {
 	var user types.User
 	selectQuery := `SELECT
-	 			public_key, digested_public_key
-				FROM USERS where public_key=$1`
+	 				public_key, digested_public_key
+					FROM USERS where public_key=$1`
 	row := d.db.QueryRowx(selectQuery, pubKey)
 	if err := row.StructScan(&user); err != nil {
 		return nil, err
@@ -179,11 +179,8 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 		return err
 	}
 	insert := `INSERT INTO members
-					(id, entity_id)
-					VALUES (:id, :entity_id)`
-	insert = `INSERT INTO members
-	(id,entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified)
-	VALUES (:id, :entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified)`
+				(id,entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified)
+				VALUES (:id, :entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified)`
 	// result, err = tx.NamedExec(insert, pgmembers)
 	if result, err = tx.NamedExec(insert, pgmembers); err != nil {
 		rollbackErr := tx.Rollback()
@@ -204,21 +201,6 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 		}
 		return fmt.Errorf("Should insert %d rows, while inserted %d rows. Rolled back.", len(pgmembers), rows)
 	}
-	// rows, errRows := result.RowsAffected()
-	// if err != nil || int(rows) != len(pgmembers) {
-
-	// 	rollbackErr := tx.Rollback()
-	// 	if rollbackErr != nil {
-	// 		return rollbackErr
-	// 	}
-	// 	if err != nil {
-	// 		return fmt.Errorf("Error in bulk import %w", err)
-	// 	}
-	// 	if errRows != nil {
-	// 		return fmt.Errorf("Error in bulk import %w", errRows)
-	// 	}
-	// 	return fmt.Errorf("Should insert %d rows, while inserted %d rows. Rolled back.", len(pgmembers), rows)
-	// }
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("Could not commit bulk import %w", err)
@@ -248,8 +230,8 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 			user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
 		}
 		insert := `INSERT INTO users
-							 (public_key, digested_public_key)
-							 VALUES (:public_key, :digested_public_key)`
+					(public_key, digested_public_key)
+					VALUES (:public_key, :digested_public_key)`
 		var result sql.Result
 		if result, err = tx.NamedExec(insert, user); err == nil {
 			var rows int64
@@ -264,14 +246,13 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 			return uuid.Nil, fmt.Errorf("error creating user for member: %v", err)
 		}
 	}
-	var pgmember *PGMember
-	pgmember, err = ToPGMember(member)
+	pgmember, err := ToPGMember(member)
 	if err != nil {
 		return uuid.Nil, err
 	}
 	insert := `INSERT INTO members
-	 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
-					 VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)
+	 			(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
+				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)
 				RETURNING id`
 	// no err is returned if tx violated a db constraint,
 	// but we need the result in order to get the created id.
@@ -282,36 +263,30 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	// that something went wrong (no member added).
 	if result, err = tx.NamedQuery(insert, pgmember); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			fmt.Println(1)
 			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v", rollErr)
 		}
 		return uuid.Nil, fmt.Errorf("error adding member to the DB: %v", err)
 	}
 	if !result.Next() {
 		if rollErr := tx.Rollback(); err != nil {
-			fmt.Println(2)
 			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v", rollErr)
 		}
 		return uuid.Nil, fmt.Errorf("no rows affected after adding member, posible violation of db constraints")
 	}
 	if err = result.Scan(&id); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			fmt.Println(3)
 			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v", rollErr)
 		}
 		return uuid.Nil, fmt.Errorf("error retrieving new member id: %v", err)
 	}
 	if err = result.Close(); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			fmt.Println(3)
 			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v", rollErr)
 		}
 		return uuid.Nil, fmt.Errorf("error retrieving new member id: %v", err)
 	}
 	if err = tx.Commit(); err != nil {
-		fmt.Println(err)
 		if rollErr := tx.Rollback(); err != nil {
-			fmt.Println()
 			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v", rollErr)
 		}
 		return uuid.Nil, fmt.Errorf("error commiting add member transactions to the DB: %v", err)
@@ -370,8 +345,8 @@ func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error
 		return err
 	}
 	insert := `INSERT INTO members
-					(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
-					VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
+				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
+				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
 	if result, err = tx.NamedExec(insert, members); err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
@@ -430,14 +405,14 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 		pgMembers = append(pgMembers, *pgMember)
 	}
 	insertUsers := `INSERT INTO users
-				(public_key, digested_public_key) VALUES (:public_key, :digested_public_key)`
+					(public_key, digested_public_key) VALUES (:public_key, :digested_public_key)`
 	if result, err = tx.NamedExec(insertUsers, users); err != nil {
 		return fmt.Errorf("Error creating users %w", err)
 	}
 
 	insert := `INSERT INTO members
-					(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
-					VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
+				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
+				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
 	if result, err = tx.NamedExec(insert, pgMembers); err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
@@ -471,26 +446,26 @@ func (d *Database) UpdateMember(entityID []byte, memberID uuid.UUID, info *types
 		return err
 	}
 	update := `UPDATE members SET
-					street_address = COALESCE(NULLIF(:street_address, ''),  street_address),
-					first_name = COALESCE(NULLIF(:first_name, ''), first_name),
-					last_name = COALESCE(NULLIF(:last_name, ''), last_name),
-					email = COALESCE(NULLIF(:email, ''), email),
-					date_of_birth = COALESCE(NULLIF(:date_of_birth, date_of_birth), date_of_birth)
+				street_address = COALESCE(NULLIF(:street_address, ''),  street_address),
+				first_name = COALESCE(NULLIF(:first_name, ''), first_name),
+				last_name = COALESCE(NULLIF(:last_name, ''), last_name),
+				email = COALESCE(NULLIF(:email, ''), email),
+				date_of_birth = COALESCE(NULLIF(:date_of_birth, date_of_birth), date_of_birth)
 				WHERE (id = :id AND entity_id = :entity_id)
 				AND  (:street_address IS DISTINCT FROM street_address OR
-					:first_name IS DISTINCT FROM first_name OR
-					:last_name IS DISTINCT FROM last_name OR
-					:email IS DISTINCT FROM email OR
-					:date_of_birth IS DISTINCT FROM date_of_birth)`
+				:first_name IS DISTINCT FROM first_name OR
+				:last_name IS DISTINCT FROM last_name OR
+				:email IS DISTINCT FROM email OR
+				:date_of_birth IS DISTINCT FROM date_of_birth)`
 	var result sql.Result
-	if result, err = d.db.NamedExec(update, pgmember); err == nil {
-		var rows int64
-		if rows, err = result.RowsAffected(); err == nil && rows != 1 {
-			return fmt.Errorf("nothing to update: %+v", err)
-		}
-	}
-	if err != nil {
+	if result, err = d.db.NamedExec(update, pgmember); err != nil {
 		return fmt.Errorf("error updating member: %+v", err)
+	}
+	var rows int64
+	if rows, err = result.RowsAffected(); err != nil {
+		return fmt.Errorf("cannot get affected rows: %v", err)
+	} else if rows != 1 { /* Nothing to update? */
+		return fmt.Errorf("nothing to update: %+v", err)
 	}
 	return nil
 }
@@ -641,9 +616,9 @@ func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, 
 		return uuid.Nil, fmt.Errorf("Trying to add target for another entity")
 	}
 	insert := `INSERT INTO targets
-	 				(entity_id, name, filters)
-					 VALUES (:entity_id, :name, :filters)
-					 RETURNING id`
+	 			(entity_id, name, filters)
+				VALUES (:entity_id, :name, :filters)
+				RETURNING id`
 	// no err is returned if tx violated a db constraint,
 	// but we need the result in order to get the created id.
 	// LastInsertedID() is not exposed.
@@ -672,8 +647,8 @@ func (d *Database) Target(entityID []byte, targetID uuid.UUID) (*types.Target, e
 		return nil, fmt.Errorf("error retrieving target")
 	}
 	selectQuery := `SELECT id, entity_id, name, filters 
-				FROM targets
-				WHERE entity_id=$1 AND id=$2`
+					FROM targets
+					WHERE entity_id=$1 AND id=$2`
 	var target types.Target
 	if err := d.db.Get(&target, selectQuery, entityID, targetID); err != nil {
 		return nil, err
@@ -698,8 +673,8 @@ func (d *Database) ListTargets(entityID []byte) ([]types.Target, error) {
 		return nil, fmt.Errorf("error retrieving target")
 	}
 	selectQuery := `SELECT id, entity_id, name, filters 
-				FROM targets
-				WHERE entity_id=$1`
+					FROM targets
+					WHERE entity_id=$1`
 	var targets []types.Target
 	if err := d.db.Select(&targets, selectQuery, entityID); err != nil {
 		return nil, err
@@ -718,8 +693,8 @@ func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
 	}
 	var census types.Census
 	selectQuery := `SELECT id, entity_id, target_id, name, merkle_root, merkle_tree_uri
-				FROM censuses
-				WHERE entity_id = $1 AND id = $2`
+					FROM censuses
+					WHERE entity_id = $1 AND id = $2`
 	row := d.db.QueryRowx(selectQuery, entityID, censusID)
 	if err := row.StructScan(&census); err != nil {
 		return nil, err
@@ -738,9 +713,9 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID uuid.UUID, info
 	var census types.Census
 	census = types.Census{ID: censusID, EntityID: entityID, TargetID: targetID, CensusInfo: *info}
 	insert := `INSERT  
-	INTO censuses
-	 				(id, entity_id, target_id, name, merkle_root, merkle_tree_uri)
-					 VALUES (:id, :entity_id, :target_id, :name, :merkle_root, :merkle_tree_uri)`
+				INTO censuses
+	 			(id, entity_id, target_id, name, merkle_root, merkle_tree_uri)
+				VALUES (:id, :entity_id, :target_id, :name, :merkle_root, :merkle_tree_uri)`
 	var result sql.Result
 
 	if result, err = d.db.NamedExec(insert, census); err == nil {
@@ -771,8 +746,8 @@ func (d *Database) ListCensus(entityID []byte) ([]types.Census, error) {
 		return nil, fmt.Errorf("error retrieving target")
 	}
 	selectQuery := `SELECT id, entity_id, target_id, name, merkle_root, merkle_tree_uri
-				FROM censuses
-				WHERE entity_id=$1`
+					FROM censuses
+					WHERE entity_id=$1`
 	var censuses []types.Census
 	if err := d.db.Select(&censuses, selectQuery, entityID); err != nil {
 		return nil, err
