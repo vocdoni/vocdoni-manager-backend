@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -35,7 +36,6 @@ func newConfig() (*config.Manager, config.Error) {
 		}
 		return nil, cfgError
 	}
-	fmt.Printf("action 0: %s", cfg.Migrate.Action)
 	// flags
 	flag.StringVar(&cfg.DataDir, "dataDir", home+"/.dvotemanager", "directory where data is stored")
 	cfg.Mode = *flag.String("mode", "all", fmt.Sprintf("operation mode: %s", func() (modes []string) {
@@ -58,8 +58,8 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.DB.User = *flag.String("dbUser", "user", "DB Username")
 	cfg.DB.Password = *flag.String("dbPassword", "password", "DB password")
 	cfg.DB.Dbname = *flag.String("dbName", "database", "DB database name")
-	cfg.DB.Sslmode = *flag.String("dbSslmode", "require", "DB postgres sslmode")
-	cfg.Migrate.Action = *flag.String("action", "", "Migration action (up,down,status)")
+	cfg.DB.Sslmode = *flag.String("dbSslmode", "prefer", "DB postgres sslmode")
+	cfg.Migrate.Action = *flag.String("dbAction", "", "Migration action (up,down,status)")
 	// parse flags
 	flag.Parse()
 
@@ -68,6 +68,9 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.AddConfigPath(cfg.DataDir)
 	viper.SetConfigName("dvotemanager")
 	viper.SetConfigType("yml")
+	viper.SetEnvPrefix("DVOTE")
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// binding flags to viper
 
@@ -88,7 +91,7 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("db.password", flag.Lookup("dbPassword"))
 	viper.BindPFlag("db.dbName", flag.Lookup("dbName"))
 	viper.BindPFlag("db.sslMode", flag.Lookup("dbSslmode"))
-	viper.BindPFlag("migrate.action", flag.Lookup("action"))
+	viper.BindPFlag("migrate.action", flag.Lookup("migrateAction"))
 
 	// check if config file exists
 	_, err = os.Stat(cfg.DataDir + "/dvotemanager.yml")
@@ -199,7 +202,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	log.Debugf("initializing config %+v", *cfg)
+	log.Debugf("initializing config %+v %+v %+v", *cfg, *cfg.API, *cfg.DB)
 	if !cfg.ValidMode() {
 		log.Fatalf("invalid mode %s", cfg.Mode)
 	}

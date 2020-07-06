@@ -12,8 +12,17 @@ $ docker-compose build
 
 #### Run
 
+Start postgres, dvotemanager and a testing frontend:
+
 ```bash
 $ docker-compose up
+```
+
+Start only postgres and the fronted:
+
+```bash
+$ docker-compose up postgres -d
+$ docker-compose up webmanager -d
 ```
 
 #### Stop and delete database

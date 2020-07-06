@@ -1,8 +1,33 @@
 version: '3.5'
 
 services:
+  dvotemanager:
+    build:
+      context: ./
+    image: "vocdoni/manager-backend:latest"
+    env_file: env
+    volumes:
+      - "run:/app/run"
+      - ./misc:/app/misc
+    ports:
+      - "8000:8000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "10"
+    depends_on:
+      - "postgres"
+    networks:
+      - postgres
+
+  webmanager:
+    image: vocdoni/manager-frontend:latest
+    env_file: env
+    ports:
+      - "8080:8080"
+
   postgres:
-    container_name: postgres_mgr
     container_name: postgres
     build: ./misc/db/
     environment:
@@ -17,21 +42,6 @@ services:
       - postgres
     restart: unless-stopped
   
-  pgadmin:
-    container_name: pgadmin_mgr
-    image: dpage/pgadmin4
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin@vocdoni.io}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-vocdoni}
-    volumes:
-       - ./pgadmin.json:/pgadmin4/servers.json
-       - pgadmin:/root/.pgadmin
-    ports:
-      - "127.0.0.1:5050:80"
-    networks:
-      - postgres
-    restart: unless-stopped
-
 networks:
   postgres:
     driver: bridge
@@ -39,4 +49,4 @@ networks:
 volumes:
     postgres:
     pgadmin:
-
+    run:

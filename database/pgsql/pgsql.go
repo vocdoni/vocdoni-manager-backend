@@ -1,6 +1,7 @@
 package pgsql
 
 import (
+	"context"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -8,6 +9,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -15,10 +17,13 @@ import (
 
 	_ "github.com/jackc/pgx/stdlib"
 	"gitlab.com/vocdoni/go-dvote/crypto/snarks"
+	"gitlab.com/vocdoni/go-dvote/log"
 
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
+
+const connectionRetries = 5
 
 type Database struct {
 	db *sqlx.DB
@@ -27,12 +32,31 @@ type Database struct {
 	// pgxCtx context.Context
 }
 
+// New creates a new postgres SQL database connection
 func New(dbc *config.DB) (*Database, error) {
 	db, err := sqlx.Open("pgx", fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s client_encoding=%s",
 		dbc.Host, dbc.Port, dbc.User, dbc.Password, dbc.Dbname, dbc.Sslmode, "UTF8"))
 	if err != nil {
 		return nil, fmt.Errorf("error initializing postgres connection handler: %v", err)
 	}
+
+	// Try to get a connection, if fails connectionRetries times, return error.
+	// This is necessary for ensuting the database connection is alive before going forward.
+	for i := 0; i < connectionRetries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+		log.Infof("trying to connecto to postgress")
+		if _, err = db.Conn(ctx); err == nil {
+			break
+		}
+		log.Warnf("database connection error (%s), retrying...", err)
+		time.Sleep(time.Second * 2)
+	}
+	if err != nil {
+		return nil, err
+	}
+	log.Info("connected to the database")
+
 	// For using pgx connector
 	// ctx := context.Background()
 	// pgx, err := pgxpool.Connect(ctx, connectionString)
