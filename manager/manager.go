@@ -200,7 +200,7 @@ func (m *Manager) getMember(request router.RouterRequest) {
 			m.Router.SendError(request, "member not found")
 			return
 		}
-		log.Error("cannot retrieve member %s for entity %s : %+v", request.MemberID, request.SignaturePublicKey, err)
+		log.Errorf("cannot retrieve member %s for entity %s : %+v", request.MemberID, request.SignaturePublicKey, err)
 		m.Router.SendError(request, "cannot retrieve member")
 		return
 	}
@@ -209,10 +209,9 @@ func (m *Manager) getMember(request router.RouterRequest) {
 	var targets []types.Target
 	targets, err = m.db.ListTargets(entityID)
 	if err == sql.ErrNoRows || len(targets) == 0 {
-		log.Warn("no targets found for member %s of entity %s", request.MemberID, request.SignaturePublicKey)
+		log.Warnf("no targets found for member %s of entity %s", request.MemberID, request.SignaturePublicKey)
 		response.Target = &types.Target{}
 	} else if err == nil {
-		log.Warn("Hi")
 		response.Target = &targets[0]
 	} else {
 		log.Errorf("error retrieving member %s targets for entity %s : %+v", request.MemberID, request.SignaturePublicKey, err)
@@ -248,7 +247,7 @@ func (m *Manager) updateMember(request router.RouterRequest) {
 
 	// If a string Member property is sent as "" then it is not updated
 	if err = m.db.UpdateMember(entityID, request.Member.ID, &request.Member.MemberInfo); err != nil {
-		log.Error("cannot update member %s for entity %s : %+v", request.Member.ID.String(), request.SignaturePublicKey, err)
+		log.Errorf("cannot update member %s for entity %s : %+v", request.Member.ID.String(), request.SignaturePublicKey, err)
 		m.Router.SendError(request, "cannot update member")
 		return
 	}
@@ -281,7 +280,7 @@ func (m *Manager) deleteMember(request router.RouterRequest) {
 	}
 
 	if err = m.db.DeleteMember(entityID, request.MemberID); err != nil {
-		log.Error("cannot delete member %s for entity %s : %+v", request.MemberID, request.SignaturePublicKey, err)
+		log.Errorf("cannot delete member %s for entity %s : %+v", request.MemberID, request.SignaturePublicKey, err)
 		m.Router.SendError(request, "cannot delete member")
 		return
 	}
