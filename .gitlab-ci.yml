@@ -1,0 +1,60 @@
+stages:
+  - build
+  - test
+  - release
+
+variables:
+  # DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
+  MANAGER_BUILD_IMAGE: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
+  MANAGER_RELEASE_IMAGE: ${CI_REGISTRY_IMAGE}:latest
+
+  GOPATH: ${CI_PROJECT_DIR}/.cache/gopath # to cache Go module downloads
+  GOCACHE: ${CI_PROJECT_DIR}/.cache/gocache # to cache Go build archives
+  GOFLAGS: -mod=readonly
+
+cache:
+  key: ${CI_JOB_NAME} # separate caches by job, but not by branch
+  paths:
+    - .cache/
+
+go-test:
+  image: golang:1.14.4
+  stage: test
+  script:
+    # we run vet in another step
+    - go test -vet=off -timeout=1m ./...
+    # -race can easily make the crypto stuff 10x slower
+    - go test -vet=off -timeout=10m -race ./...
+  only:
+    - merge_requests
+    - branches
+
+go-analyze:
+  image: golang:1.14.4
+  stage: test
+  script:
+    - diff -u <(echo -n) <(gofmt -s -d $(git ls-files '*.go'))
+    - go vet ./...
+    - curl -L https://github.com/dominikh/go-tools/releases/download/2020.1.4/staticcheck_linux_amd64.tar.gz | tar -xzf -
+    - ./staticcheck/staticcheck ./...
+  only:
+    - merge_requests
+    - branches
+
+docker-release:
+  image: docker:stable
+  services:
+    - docker:dind
+  stage: release
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  script:
+    - docker build -t ${MANAGER_BUILD_IMAGE} .
+    - docker tag ${MANAGER_BUILD_IMAGE} ${MANAGER_RELEASE_IMAGE}
+    #- docker login -u gitlab-ci-token -p ${CI_BUILD_TOKEN} ${CI_REGISTRY}
+    - docker push ${MANAGER_BUILD_IMAGE}
+    - docker push ${MANAGER_RELEASE_IMAGE}
+  only:
+    - master
+    - /^release-*$/
