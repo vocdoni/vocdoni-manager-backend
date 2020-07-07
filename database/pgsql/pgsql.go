@@ -3,6 +3,7 @@ package pgsql
 import (
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	migrate "github.com/rubenv/sql-migrate"
 
 	_ "github.com/jackc/pgx/stdlib"
 	"gitlab.com/vocdoni/go-dvote/crypto/snarks"
@@ -757,6 +759,26 @@ func (d *Database) ListCensus(entityID []byte) ([]types.Census, error) {
 
 func (d *Database) Ping() error {
 	return d.db.Ping()
+}
+
+func (d *Database) Migrate(source migrate.MigrationSource, dir migrate.MigrationDirection) (int, error) {
+	n, err := migrate.Exec(d.db.DB, "postgres", source, dir)
+	if err != nil {
+		return 0, fmt.Errorf("failed migration: %v", err)
+	}
+	return n, nil
+}
+
+func (d *Database) MigrateStatus() (string, error) {
+	record, err := migrate.GetMigrationRecords(d.db.DB, "postgres")
+	if err != nil {
+		return "nil", fmt.Errorf("cannot  retrieve migrations status: %v", err)
+	}
+	recordB, err := json.Marshal(record)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse migration status: %v", err)
+	}
+	return string(recordB), nil
 }
 
 // func (p *types.MembersCustomFields) Value() (driver.Value, error) {

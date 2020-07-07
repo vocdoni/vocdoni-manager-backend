@@ -25,6 +25,8 @@ type Manager struct {
 	SaveConfig bool
 	// SigningKey is the ECDSA hexString private key for signing messages
 	SigningKey string
+	// Migration options
+	Migrate *Migrate
 }
 
 func (m *Manager) ValidMode() bool {
@@ -34,8 +36,9 @@ func (m *Manager) ValidMode() bool {
 // NewConfig initializes the fields in the config stuct
 func NewConfig() *Manager {
 	return &Manager{
-		API: new(API),
-		DB:  new(DB),
+		API:     new(API),
+		DB:      new(DB),
+		Migrate: new(Migrate),
 	}
 }
 
@@ -67,4 +70,9 @@ type Error struct {
 	Critical bool
 	// Message error message
 	Message string
+}
+
+type Migrate struct {
+	// Action defines the migration action to be taken (up, down, status)
+	Action string
 }

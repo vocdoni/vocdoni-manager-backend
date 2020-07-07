@@ -10,6 +10,8 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	migrate "github.com/rubenv/sql-migrate"
+
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
@@ -33,7 +35,7 @@ func newConfig() (*config.Manager, config.Error) {
 		}
 		return nil, cfgError
 	}
-
+	fmt.Printf("action 0: %s", cfg.Migrate.Action)
 	// flags
 	flag.StringVar(&cfg.DataDir, "dataDir", home+"/.dvotemanager", "directory where data is stored")
 	cfg.Mode = *flag.String("mode", "all", fmt.Sprintf("operation mode: %s", func() (modes []string) {
@@ -57,6 +59,7 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.DB.Password = *flag.String("dbPassword", "password", "DB password")
 	cfg.DB.Dbname = *flag.String("dbName", "database", "DB database name")
 	cfg.DB.Sslmode = *flag.String("dbSslmode", "require", "DB postgres sslmode")
+	cfg.Migrate.Action = *flag.String("action", "", "Migration action (up,down,status)")
 	// parse flags
 	flag.Parse()
 
@@ -85,6 +88,7 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("db.password", flag.Lookup("dbPassword"))
 	viper.BindPFlag("db.dbName", flag.Lookup("dbName"))
 	viper.BindPFlag("db.sslMode", flag.Lookup("dbSslmode"))
+	viper.BindPFlag("migrate.action", flag.Lookup("action"))
 
 	// check if config file exists
 	_, err = os.Stat(cfg.DataDir + "/dvotemanager.yml")
@@ -149,6 +153,35 @@ func newConfig() (*config.Manager, config.Error) {
 	return cfg, cfgError
 }
 
+func migrator(action string, db database.Database) error {
+	switch action {
+	case "up", "down":
+		op := migrate.Up
+		if action == "down" {
+			op = migrate.Down
+		}
+		migrations := &migrate.FileMigrationSource{
+			Dir: "misc/db/migrations",
+		}
+		n, err := db.Migrate(migrations, op)
+		if err != nil {
+			return err
+		}
+		log.Infof("%s migration complete. \tApplied %d migrations!\n", action, n)
+		fallthrough
+	case "status":
+		record, err := db.MigrateStatus()
+		if err != nil {
+			return err
+		}
+		log.Infof("Existing migrations: %s \n", record)
+		return nil
+	default:
+		return fmt.Errorf("unknown migrate command")
+	}
+
+}
+
 func main() {
 	var err error
 	// setup config
@@ -210,6 +243,15 @@ func main() {
 		if err := mgr.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}
+	}
+	// Migrations
+	if cfg.Migrate.Action != "" {
+		log.Info("starting migration task")
+		if err := migrator(cfg.Migrate.Action, db); err != nil {
+			log.Fatal(err)
+		}
+		log.Infof("finished migration task")
+		return
 	}
 
 	// Only start routing once we have registered all methods. Otherwise we

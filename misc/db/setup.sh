@@ -6,10 +6,7 @@
 set -e
 DB='vocdonimgr'
 
-# read -s -p "Password for $USER": pass
-# createdb $DB  # Create main database
 psql --username "$POSTGRES_USER" --dbname "postgres" --command "CREATE DATABASE $DB ENCODING = 'UTF8' LC_COLLATE = 'en_US.utf8' LC_CTYPE = 'en_US.utf8';"
 # psql -d $DB -c "CREATE USER $POSTGRES_USER WITH PASSWORD '$POSTGRES_PASSWORD';" # Create user Devicehub uses to access db
 psql --username "$POSTGRES_USER" --dbname "$DB" -c "GRANT ALL PRIVILEGES ON DATABASE $DB TO $POSTGRES_USER;" # Give access to the db
 psql --username "$POSTGRES_USER" --dbname "$DB"  -c "CREATE EXTENSION pgcrypto SCHEMA public;" # Enable pgcrypto
-psql --username "$POSTGRES_USER" --dbname "$DB" -a -f /schema.psql

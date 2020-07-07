@@ -2,6 +2,7 @@ package database
 
 import (
 	"github.com/google/uuid"
+	migrate "github.com/rubenv/sql-migrate"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
 
@@ -35,4 +36,6 @@ type Database interface {
 	AddCensus(entityID, censusID []byte, targetID uuid.UUID, info *types.CensusInfo) error
 	CountCensus(entityID []byte) (int, error)
 	ListCensus(entityID []byte) ([]types.Census, error)
+	Migrate(source migrate.MigrationSource, dir migrate.MigrationDirection) (int, error)
+	MigrateStatus() (string, error)
 }

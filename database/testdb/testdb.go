@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
+	migrate "github.com/rubenv/sql-migrate"
 	"gitlab.com/vocdoni/go-dvote/crypto/snarks"
 	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
@@ -181,4 +182,12 @@ func (d *Database) User(pubKey []byte) (*types.User, error) {
 		PubKey:         pubKey,
 		DigestedPubKey: snarks.Poseidon.Hash(pubKey),
 	}, nil
+}
+
+func (d *Database) Migrate(source migrate.MigrationSource, dir migrate.MigrationDirection) (int, error) {
+	return 0, nil
+}
+
+func (d *Database) MigrateStatus() (string, error) {
+	return "", nil
 }
