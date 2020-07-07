@@ -24,10 +24,10 @@ func PubKeyToAddress(pubKey string) ([]byte, error) {
 	var err error
 	var addressB []byte
 	if address, err = ethereum.AddrFromPublicKey(pubKey); err != nil {
-		return nil, fmt.Errorf("Error extracting address from public key %w", err)
+		return nil, fmt.Errorf("error extracting address from public key %v", err)
 	}
 	if addressB, err = hex.DecodeString(util.TrimHex(address)); err != nil {
-		return nil, fmt.Errorf("Error extracting address from public key %w", err)
+		return nil, fmt.Errorf("error extracting address from public key %v", err)
 	}
 	return addressB, nil
 }
