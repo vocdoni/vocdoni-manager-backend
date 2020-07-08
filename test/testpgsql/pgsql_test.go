@@ -17,7 +17,6 @@ import (
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/test/testcommon"
 	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
 )
@@ -99,10 +98,14 @@ func TestMember(t *testing.T) {
 	var initialCount, count int
 	db := api.DB
 	// Create or retrieve existing entity
-	entityAddress := "0f6371C0a6F062407Be4064C48449d7FE95D9884"
-	entity, err := loadOrGenEntity(entityAddress, api.DB)
+	// create entity
+	_, entities, err := testcommon.CreateEntities(1)
 	if err != nil {
-		t.Fatalf("cannot create or fetch entity address: %s", err)
+		t.Fatalf("cannot create entities: %s", err)
+	}
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
 	}
 
 	// Create pubkey and Add membmer to the db
@@ -118,33 +121,33 @@ func TestMember(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot add user to the Postgres DB (pgsql.go:addUser) %s", err)
 	}
-	if initialCount, err = api.DB.CountMembers(entity.ID); err != nil {
+	if initialCount, err = api.DB.CountMembers(entities[0].ID); err != nil {
 		t.Fatalf("cannot count members correctly: %+v", err)
 	}
 
-	id, err = api.DB.AddMember(entity.ID, memberSigner.Public.X.Bytes(), memberInfo)
+	id, err = api.DB.AddMember(entities[0].ID, memberSigner.Public.X.Bytes(), memberInfo)
 	if err != nil {
 		t.Fatalf("cannot add member to the Postgres DB (pgsql.go:addMember): %s", err)
 	}
 
-	if count, err = api.DB.CountMembers(entity.ID); err != nil || count != initialCount+1 {
+	if count, err = api.DB.CountMembers(entities[0].ID); err != nil || count != initialCount+1 {
 		t.Fatalf("expected %d counted: %d\ncannot count members correctly: %+v", initialCount+1, count, err)
 	}
 
 	// cannot add twice
-	id2, err := api.DB.AddMember(entity.ID, memberSigner.Public.X.Bytes(), memberInfo)
+	id2, err := api.DB.AddMember(entities[0].ID, memberSigner.Public.X.Bytes(), memberInfo)
 	if id2 != uuid.Nil {
 		t.Fatalf("cannot add member twice to the Postgres DB (pgsql.go:addMember): %s", err)
 	}
 
 	// Query by ID
-	member, err := db.Member(entity.ID, id)
+	member, err := db.Member(entities[0].ID, id)
 	if err != nil {
 		t.Errorf("Error retrieving member from the Postgres DB (pgsql.go:Member): %s", err)
 	}
 
 	// Query by Public Key
-	member, err = db.MemberPubKey(entity.ID, memberSigner.Public.X.Bytes())
+	member, err = db.MemberPubKey(entities[0].ID, memberSigner.Public.X.Bytes())
 	if err != nil {
 		t.Fatalf("cannot fetch member from the Postgres DB (pgsql.go:MemberPubKey): %s", err)
 	}
@@ -174,7 +177,7 @@ func TestMember(t *testing.T) {
 	}
 
 	// Query by UUID
-	member, err = db.Member(entity.ID, member.ID)
+	member, err = db.Member(entities[0].ID, member.ID)
 	if err != nil {
 		t.Fatalf("cannot fetch user from the Postgres DB (pgsql.go:Member): %s", err)
 	}
@@ -184,11 +187,11 @@ func TestMember(t *testing.T) {
 
 	// Test SetMemberInfo
 	newInfo := &types.MemberInfo{Email: "updated@mail.com", FirstName: ""}
-	err = api.DB.UpdateMember(entity.ID, member.ID, newInfo)
+	err = api.DB.UpdateMember(entities[0].ID, member.ID, newInfo)
 	if err != nil {
 		t.Fatalf("cannot update user info to the Postgres DB (pgsql.go:updateMember): %s", err)
 	}
-	newMember, err := db.Member(entity.ID, member.ID)
+	newMember, err := db.Member(entities[0].ID, member.ID)
 	if err != nil {
 		t.Fatalf("cannot fetch user from the Postgres DB (pgsql.go:Member): %s", err)
 	}
@@ -205,17 +208,17 @@ func TestMember(t *testing.T) {
 		info := types.MemberInfo{FirstName: fmt.Sprintf("Name%d", i), LastName: fmt.Sprintf("LastName%d", i)}
 		bulkMembers = append(bulkMembers, info)
 	}
-	err = api.DB.ImportMembers(entity.ID, bulkMembers)
+	err = api.DB.ImportMembers(entities[0].ID, bulkMembers)
 	if err != nil {
 		t.Fatalf("cannot add members to Postgres DB (pgsql.go:AddMemberBulk): %s", err)
 	}
 
-	if count, err = api.DB.CountMembers(entity.ID); err != nil || count != initialCount+11 {
+	if count, err = api.DB.CountMembers(entities[0].ID); err != nil || count != initialCount+11 {
 		t.Fatalf("expected %d counted: %d\ncannot count members correctly: %+v", initialCount+11, count, err)
 	}
 
 	// Test Selecting all members
-	allMembers, err := api.DB.ListMembers(entity.ID, &types.ListOptions{})
+	allMembers, err := api.DB.ListMembers(entities[0].ID, &types.ListOptions{})
 	if err != nil {
 		t.Fatalf("cannot select all members from Postgres DB (pgsql.go:ListMembers): %s", err)
 	}
@@ -228,28 +231,28 @@ func TestMember(t *testing.T) {
 		SortBy: "lastName",
 		Order:  "desc",
 	}
-	members, err := api.DB.ListMembers(entity.ID, filter)
+	members, err := api.DB.ListMembers(entities[0].ID, filter)
 	if len(members) > limit {
 		t.Fatalf("expected limit to be less than members length, %d <= %d", len(members), limit)
 	}
 
 	// Test Selecting all members and retrieving just their uuids and emails
-	tokenMembers, err := api.DB.MembersTokensEmails(entity.ID)
+	tokenMembers, err := api.DB.MembersTokensEmails(entities[0].ID)
 	if len(tokenMembers) != len(allMembers) {
 		t.Fatal("cannot fetch tokens and emails from the Prostgres DB (pgsql.go:MembersTokensEmails)")
 	}
 
 	// Test deleting member
 	// 1. Can delete existing member
-	if err := api.DB.DeleteMember(entity.ID, member.ID); err != nil {
+	if err := api.DB.DeleteMember(entities[0].ID, member.ID); err != nil {
 		t.Fatalf("error deleting member %+v", err)
 	}
-	if _, err = db.Member(entity.ID, member.ID); err != sql.ErrNoRows {
+	if _, err = db.Member(entities[0].ID, member.ID); err != sql.ErrNoRows {
 		t.Fatalf("error retrieving deleting member %+v", err)
 	}
 
 	// 2. Get error deleting inexisting member
-	if err := api.DB.DeleteMember(entity.ID, uuid.UUID{}); err == nil {
+	if err := api.DB.DeleteMember(entities[0].ID, uuid.UUID{}); err == nil {
 		t.Fatalf("managed to delete random member %+v", err)
 	}
 }
@@ -410,28 +413,4 @@ func TestCensus(t *testing.T) {
 	if err != nil || len(censuses) != 2 {
 		t.Fatal("unable to list censuses correctly (pgsql.go:Censuses)")
 	}
-}
-
-func loadOrGenEntity(address string, db database.Database) (*types.Entity, error) {
-	eid, err := hex.DecodeString(util.TrimHex(address))
-	if err != nil {
-		return nil, err
-	}
-	entityID := ethereum.HashRaw(eid)
-	entity, err := api.DB.Entity(entityID)
-	if err != nil {
-		info := &types.EntityInfo{
-			Address: eid,
-			// Email:                   "entity@entity.org",
-			Name:                    "test entity",
-			CensusManagersAddresses: [][]byte{{1, 2, 3}},
-			Origins:                 []types.Origin{types.Token},
-		}
-		entity = &types.Entity{ID: ethereum.HashRaw(eid), EntityInfo: *info}
-		err = api.DB.AddEntity(entityID, info)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return entity, nil
 }

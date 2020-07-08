@@ -294,6 +294,7 @@ func (r *Registry) subscribe(request router.RouterRequest) {
 		// already subscribed
 		r.Router.SendError(request, "already subscribed")
 	*/
+	r.send(request, types.MetaResponse{Ok: true})
 }
 
 func (r *Registry) unsubscribe(request router.RouterRequest) {
@@ -359,6 +360,7 @@ func (r *Registry) unsubscribe(request router.RouterRequest) {
 		// not subscribed
 		r.Router.SendError(request, "not subscribed")
 	*/
+	r.send(request, types.MetaResponse{Ok: true})
 }
 
 func (r *Registry) listSubscriptions(request router.RouterRequest) {

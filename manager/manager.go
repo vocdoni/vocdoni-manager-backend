@@ -199,7 +199,6 @@ func (m *Manager) getMember(request router.RouterRequest) {
 
 	if response.Member, err = m.db.Member(entityID, request.MemberID); err != nil {
 		if err == sql.ErrNoRows {
-
 			log.Warn("member not found")
 			m.Router.SendError(request, "member not found")
 			return
