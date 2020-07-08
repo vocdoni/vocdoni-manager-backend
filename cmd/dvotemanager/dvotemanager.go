@@ -15,13 +15,13 @@ import (
 
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	log "gitlab.com/vocdoni/go-dvote/log"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/database/pgsql"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/manager"
+	"gitlab.com/vocdoni/manager/manager-backend/config"
+	"gitlab.com/vocdoni/manager/manager-backend/database"
+	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
+	"gitlab.com/vocdoni/manager/manager-backend/manager"
 
-	"gitlab.com/vocdoni/vocdoni-manager-backend/registry"
-	endpoint "gitlab.com/vocdoni/vocdoni-manager-backend/services/api-endpoint"
+	"gitlab.com/vocdoni/manager/manager-backend/registry"
+	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
 )
 
 func newConfig() (*config.Manager, config.Error) {
@@ -59,7 +59,7 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.DB.Password = *flag.String("dbPassword", "password", "DB password")
 	cfg.DB.Dbname = *flag.String("dbName", "database", "DB database name")
 	cfg.DB.Sslmode = *flag.String("dbSslmode", "prefer", "DB postgres sslmode")
-	cfg.Migrate.Action = *flag.String("dbAction", "", "Migration action (up,down,status)")
+	cfg.Migrate.Action = *flag.String("migrateAction", "", "Migration action (up,down,status)")
 	// parse flags
 	flag.Parse()
 

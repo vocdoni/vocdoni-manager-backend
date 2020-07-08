@@ -12,7 +12,7 @@ import (
 	migrate "github.com/rubenv/sql-migrate"
 	"gitlab.com/vocdoni/go-dvote/crypto/snarks"
 	"gitlab.com/vocdoni/go-dvote/util"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
+	"gitlab.com/vocdoni/manager/manager-backend/types"
 )
 
 var Signers = []struct {

@@ -11,7 +11,7 @@ import (
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/net"
 	dvote "gitlab.com/vocdoni/go-dvote/types"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
+	"gitlab.com/vocdoni/manager/manager-backend/types"
 )
 
 type registeredMethod struct {

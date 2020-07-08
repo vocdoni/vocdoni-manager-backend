@@ -11,11 +11,11 @@ import (
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/net"
 	gtypes "gitlab.com/vocdoni/go-dvote/types"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/database/testdb"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/registry"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/router"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/test/testcommon"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
+	"gitlab.com/vocdoni/manager/manager-backend/database/testdb"
+	"gitlab.com/vocdoni/manager/manager-backend/registry"
+	"gitlab.com/vocdoni/manager/manager-backend/router"
+	"gitlab.com/vocdoni/manager/manager-backend/test/testcommon"
+	"gitlab.com/vocdoni/manager/manager-backend/types"
 )
 
 var api testcommon.TestAPI

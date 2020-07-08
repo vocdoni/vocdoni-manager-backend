@@ -3,7 +3,7 @@ package database
 import (
 	"github.com/google/uuid"
 	migrate "github.com/rubenv/sql-migrate"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
+	"gitlab.com/vocdoni/manager/manager-backend/types"
 )
 
 type Database interface {

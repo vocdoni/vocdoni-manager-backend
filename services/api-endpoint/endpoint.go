@@ -5,8 +5,8 @@ import (
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/net"
 	"gitlab.com/vocdoni/go-dvote/types"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/router"
+	"gitlab.com/vocdoni/manager/manager-backend/config"
+	"gitlab.com/vocdoni/manager/manager-backend/router"
 )
 
 // EndPoint handles the Websocket connection

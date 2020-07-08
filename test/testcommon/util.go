@@ -10,8 +10,8 @@ import (
 
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	// dvote "gitlab.com/vocdoni/go-dvote/util"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/util"
+	"gitlab.com/vocdoni/manager/manager-backend/types"
+	"gitlab.com/vocdoni/manager/manager-backend/util"
 )
 
 // CreateEntities a given number of random entities

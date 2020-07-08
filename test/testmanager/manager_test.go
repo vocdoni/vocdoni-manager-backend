@@ -14,9 +14,9 @@ import (
 
 	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/util"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/test/testcommon"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
+	"gitlab.com/vocdoni/manager/manager-backend/config"
+	"gitlab.com/vocdoni/manager/manager-backend/test/testcommon"
+	"gitlab.com/vocdoni/manager/manager-backend/types"
 )
 
 var api testcommon.TestAPI

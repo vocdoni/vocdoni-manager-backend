@@ -19,8 +19,8 @@ import (
 	"gitlab.com/vocdoni/go-dvote/crypto/snarks"
 	"gitlab.com/vocdoni/go-dvote/log"
 
-	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
+	"gitlab.com/vocdoni/manager/manager-backend/config"
+	"gitlab.com/vocdoni/manager/manager-backend/types"
 )
 
 const connectionRetries = 5

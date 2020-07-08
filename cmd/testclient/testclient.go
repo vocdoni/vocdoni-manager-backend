@@ -16,7 +16,7 @@ import (
 	"gitlab.com/vocdoni/go-dvote/crypto"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
+	"gitlab.com/vocdoni/manager/manager-backend/types"
 	"nhooyr.io/websocket"
 )
 

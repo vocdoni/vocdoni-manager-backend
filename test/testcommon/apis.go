@@ -3,14 +3,14 @@ package testcommon
 import (
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/config"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/database/pgsql"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/database/testdb"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/manager"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/registry"
+	"gitlab.com/vocdoni/manager/manager-backend/config"
+	"gitlab.com/vocdoni/manager/manager-backend/database"
+	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
+	"gitlab.com/vocdoni/manager/manager-backend/database/testdb"
+	"gitlab.com/vocdoni/manager/manager-backend/manager"
+	"gitlab.com/vocdoni/manager/manager-backend/registry"
 
-	endpoint "gitlab.com/vocdoni/vocdoni-manager-backend/services/api-endpoint"
+	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
 )
 
 type TestAPI struct {

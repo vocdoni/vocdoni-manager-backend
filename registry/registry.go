@@ -10,9 +10,9 @@ import (
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/util"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/router"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
+	"gitlab.com/vocdoni/manager/manager-backend/database"
+	"gitlab.com/vocdoni/manager/manager-backend/router"
+	"gitlab.com/vocdoni/manager/manager-backend/types"
 )
 
 type Registry struct {

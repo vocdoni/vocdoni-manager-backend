@@ -11,10 +11,10 @@ import (
 	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/database"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/router"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/types"
-	"gitlab.com/vocdoni/vocdoni-manager-backend/util"
+	"gitlab.com/vocdoni/manager/manager-backend/database"
+	"gitlab.com/vocdoni/manager/manager-backend/router"
+	"gitlab.com/vocdoni/manager/manager-backend/types"
+	"gitlab.com/vocdoni/manager/manager-backend/util"
 )
 
 type Manager struct {
@@ -128,7 +128,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 
 	target = &types.Target{EntityID: entityID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
 	if _, err = m.db.AddTarget(entityID, target); err != nil {
-		log.Error("cannot create entity's %q generic target: (%v)", request.SignaturePublicKey, err)
+		log.Errorf("cannot create entity's %q generic target: (%v)", request.SignaturePublicKey, err)
 		m.Router.SendError(request, "cannot create entity generic target")
 		return
 	}
@@ -420,7 +420,7 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 	}
 
 	if len(request.MembersInfo) < 1 {
-		log.Warn("no member data provided for import members by %s", request.SignaturePublicKey)
+		log.Warnf("no member data provided for import members by %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "no member data provided")
 		return
 	}
@@ -537,7 +537,7 @@ func (m *Manager) getTarget(request router.RouterRequest) {
 			m.Router.SendError(request, "target not found")
 			return
 		}
-		log.Errorf("could not retrieve target for %q: %+", request.SignaturePublicKey, err)
+		log.Errorf("could not retrieve target for %q: %+v", request.SignaturePublicKey, err)
 		m.Router.SendError(request, "could not retrieve target")
 		return
 	}
@@ -652,7 +652,7 @@ func (m *Manager) addCensus(request router.RouterRequest) {
 
 	err = m.db.AddCensus(entityID, censusID, request.TargetID, request.Census)
 	if err != nil {
-		log.Errorf("cannot add census %q to for: (%v)", request.CensusID, request.SignaturePublicKey, err)
+		log.Errorf("cannot add census %q to for: (%v) because of %+v", request.CensusID, request.SignaturePublicKey, err)
 		m.Router.SendError(request, "cannot add census")
 		return
 	}
