@@ -791,24 +791,41 @@ func (d *Database) Ping() error {
 	return d.db.Ping()
 }
 
-func (d *Database) Migrate(source migrate.MigrationSource, dir migrate.MigrationDirection) (int, error) {
-	n, err := migrate.Exec(d.db.DB, "postgres", source, dir)
+// Migrate performs a concrete migration (up or down)
+func (d *Database) Migrate(dir migrate.MigrationDirection) (int, error) {
+	n, err := migrate.ExecMax(d.db.DB, "postgres", Migrations, dir, 1)
 	if err != nil {
 		return 0, fmt.Errorf("failed migration: %v", err)
 	}
 	return n, nil
 }
 
-func (d *Database) MigrateStatus() (string, error) {
+// Migrate returns the total and applied number of migrations,
+// as well a string describing the perform migrations
+func (d *Database) MigrateStatus() (int, int, string, error) {
+	total, err := Migrations.FindMigrations()
+	if err != nil {
+		return 0, 0, "", fmt.Errorf("cannot retrieve total migrations status: %v", err)
+	}
 	record, err := migrate.GetMigrationRecords(d.db.DB, "postgres")
 	if err != nil {
-		return "nil", fmt.Errorf("cannot  retrieve migrations status: %v", err)
+		return len(total), 0, "", fmt.Errorf("cannot  retrieve applied migrations status: %v", err)
 	}
 	recordB, err := json.Marshal(record)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse migration status: %v", err)
+		return len(total), len(record), "", fmt.Errorf("failed to parse migration status: %v", err)
 	}
-	return string(recordB), nil
+	return len(total), len(record), string(recordB), nil
+}
+
+// MigrationUpSync performs the missing up migrations in order to reach to highest migration
+// available in migrations.go
+func (d *Database) MigrationUpSync() (int, error) {
+	n, err := migrate.ExecMax(d.db.DB, "postgres", Migrations, migrate.Up, 0)
+	if err != nil {
+		return 0, fmt.Errorf("cannot  perform missing migrations: %v", err)
+	}
+	return n, nil
 }
 
 // func (p *types.MembersCustomFields) Value() (driver.Value, error) {

@@ -314,10 +314,14 @@ func (d *Database) User(pubKey []byte) (*types.User, error) {
 	}, nil
 }
 
-func (d *Database) Migrate(source migrate.MigrationSource, dir migrate.MigrationDirection) (int, error) {
+func (d *Database) Migrate(dir migrate.MigrationDirection) (int, error) {
 	return 0, nil
 }
 
-func (d *Database) MigrateStatus() (string, error) {
-	return "", nil
+func (d *Database) MigrateStatus() (int, int, string, error) {
+	return 0, 0, "", nil
+}
+
+func (d *Database) MigrationUpSync() (int, error) {
+	return 0, nil
 }

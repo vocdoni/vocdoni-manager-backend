@@ -158,30 +158,50 @@ func newConfig() (*config.Manager, config.Error) {
 
 func migrator(action string, db database.Database) error {
 	switch action {
+	case "upSync":
+		log.Infof("checking if DB is up to date")
+		mTotal, mApplied, _, err := db.MigrateStatus()
+		if err != nil {
+			return fmt.Errorf("could not retrieve migrations status: (%v)", err)
+		}
+		if mTotal > mApplied {
+			log.Infof("applying missing %d migrations to DB", mTotal-mApplied)
+			n, err := db.MigrationUpSync()
+			if err != nil {
+				return fmt.Errorf("could not apply necessary migrations (%v)", err)
+			}
+			if n != mTotal-mApplied {
+				return fmt.Errorf("could not apply all necessary migrations (%v)", err)
+			}
+		} else if mTotal < mApplied {
+			return fmt.Errorf("someting goes terribly wrong with the DB migrations")
+		}
 	case "up", "down":
+		log.Info("applying migration")
 		op := migrate.Up
 		if action == "down" {
 			op = migrate.Down
 		}
-		migrations := &migrate.FileMigrationSource{
-			Dir: "misc/db/migrations",
-		}
-		n, err := db.Migrate(migrations, op)
+		n, err := db.Migrate(op)
 		if err != nil {
-			return err
+			return fmt.Errorf("error applying migration: (%v)", err)
 		}
-		log.Infof("%s migration complete. \tApplied %d migrations!\n", action, n)
-		fallthrough
+		if n != 1 {
+			return fmt.Errorf("reported applied migrations !=1")
+		}
+		log.Infof("%q migration complete", action)
 	case "status":
-		record, err := db.MigrateStatus()
-		if err != nil {
-			return err
-		}
-		log.Infof("Existing migrations: %s \n", record)
-		return nil
+		break
 	default:
 		return fmt.Errorf("unknown migrate command")
 	}
+
+	total, actual, record, err := db.MigrateStatus()
+	if err != nil {
+		return fmt.Errorf("could not retrieve migrations status: (%v)", err)
+	}
+	log.Infof("Total Migrations: %d\nApplied migrations: %d (%s)", total, actual, record)
+	return nil
 
 }
 
@@ -230,6 +250,20 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Standalone Migrations
+	if cfg.Migrate.Action != "" {
+		if err := migrator(cfg.Migrate.Action, db); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
+	// Check that all migrations are applied before proceeding
+	// and if not apply them
+	if err := migrator("upSync", db); err != nil {
+		log.Fatal(err)
+	}
+
 	// User registry
 	if cfg.Mode == "registry" || cfg.Mode == "all" {
 		log.Infof("enabling Registry API methods")
@@ -246,15 +280,6 @@ func main() {
 		if err := mgr.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}
-	}
-	// Migrations
-	if cfg.Migrate.Action != "" {
-		log.Info("starting migration task")
-		if err := migrator(cfg.Migrate.Action, db); err != nil {
-			log.Fatal(err)
-		}
-		log.Infof("finished migration task")
-		return
 	}
 
 	// Only start routing once we have registered all methods. Otherwise we

@@ -1,7 +1,19 @@
--- +migrate Up
---------------------------------------------------
-----------------  UP ---------------------------
---------------------------------------------------
+package pgsql
+
+import migrate "github.com/rubenv/sql-migrate"
+
+// Migrations available
+var Migrations = migrate.MemoryMigrationSource{
+	Migrations: []*migrate.Migration{
+		{
+			Id:   "1",
+			Up:   []string{migration1up},
+			Down: []string{migration1down},
+		},
+	},
+}
+
+const migration1up = `
 -- NOTES
 -- 1. pgcrpyto is assumed to be enabled in public needing superuser access
 --    CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
@@ -189,14 +201,9 @@ ALTER TABLE ONLY census_members
 
 ALTER TABLE ONLY census_members
     ADD CONSTRAINT census_members_census_id_fkey FOREIGN KEY (census_id) REFERENCES censuses(id) ON DELETE CASCADE;
+`
 
-
-
--- +migrate Down
---------------------------------------------------
-----------------  DOWN ---------------------------
---------------------------------------------------
--- SQL in section 'Down' is executed when this migration is applied
+const migration1down = `
 DROP TABLE census_members;
 DROP TABLE censuses;
 DROP TABLE targets;
@@ -206,4 +213,4 @@ DROP TABLE users;
 DROP TABLE entities_origins;
 DROP TYPE origins;
 DROP TABLE entities;
-
+`

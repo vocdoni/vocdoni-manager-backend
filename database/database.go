@@ -36,6 +36,7 @@ type Database interface {
 	AddCensus(entityID, censusID []byte, targetID uuid.UUID, info *types.CensusInfo) error
 	CountCensus(entityID []byte) (int, error)
 	ListCensus(entityID []byte) ([]types.Census, error)
-	Migrate(source migrate.MigrationSource, dir migrate.MigrationDirection) (int, error)
-	MigrateStatus() (string, error)
+	Migrate(dir migrate.MigrationDirection) (int, error)
+	MigrateStatus() (int, int, string, error)
+	MigrationUpSync() (int, error)
 }
