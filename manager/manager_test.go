@@ -18,15 +18,10 @@ import (
 )
 
 var api testcommon.TestAPI
-var signers []*ethereum.SignKeys
 
 func TestMain(m *testing.M) {
 	api = testcommon.TestAPI{Port: 12000 + rand.Intn(1000)}
 	api.Start(nil, "/api")
-	mgr := manager.NewManager(api.EP.Router, api.DB)
-	if err := mgr.RegisterMethods(""); err != nil {
-		panic(err)
-	}
 	os.Exit(m.Run())
 }
 
@@ -78,7 +73,7 @@ func TestSend(t *testing.T) {
 
 func TestSignUp(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -133,7 +128,7 @@ func TestSignUp(t *testing.T) {
 
 func TestListMembers(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -212,7 +207,7 @@ func TestListMembers(t *testing.T) {
 
 func TestGetMember(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -285,7 +280,7 @@ func TestGetMember(t *testing.T) {
 
 func TestUpdateMember(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -319,7 +314,7 @@ func TestUpdateMember(t *testing.T) {
 }
 
 func TestDeleteMember(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -353,7 +348,7 @@ func TestDeleteMember(t *testing.T) {
 }
 
 func TestCountMembers(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -385,7 +380,7 @@ func TestCountMembers(t *testing.T) {
 }
 
 func TestGenerateTokens(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -432,7 +427,7 @@ func TestGenerateTokens(t *testing.T) {
 }
 
 func TestExportTokens(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -477,7 +472,7 @@ func TestExportTokens(t *testing.T) {
 }
 
 func TestImportMembers(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -522,7 +517,7 @@ func TestImportMembers(t *testing.T) {
 }
 
 func TestCountTargets(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -554,7 +549,7 @@ func TestCountTargets(t *testing.T) {
 }
 
 func TestListTargets(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -616,7 +611,7 @@ func TestListTargets(t *testing.T) {
 }
 
 func TestGetTarget(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -663,7 +658,7 @@ func TestGetTarget(t *testing.T) {
 }
 
 func TestDumpTarget(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -714,7 +709,7 @@ func TestDumpTarget(t *testing.T) {
 }
 
 func TestAddCensus(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -799,7 +794,7 @@ func TestAddCensus(t *testing.T) {
 }
 
 func TestGetCensus(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -855,7 +850,7 @@ func TestGetCensus(t *testing.T) {
 }
 
 func TestCountCensus(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -888,7 +883,7 @@ func TestCountCensus(t *testing.T) {
 }
 
 func TestListCensus(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/manager", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)

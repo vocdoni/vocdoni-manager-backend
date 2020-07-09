@@ -27,7 +27,10 @@ func TestMain(m *testing.M) {
 		Sslmode:  "disable",
 		User:     "vocdoni",
 	}
-	api.Start(db, "/api")
+	if err := api.Start(db, "/api"); err != nil {
+		log.Printf("SKIPPING: could not start the API: %v", err)
+		return
+	}
 	if err := api.DB.Ping(); err != nil {
 		log.Printf("SKIPPING: could not connect to DB: %v", err)
 		return

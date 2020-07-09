@@ -33,7 +33,11 @@ func TestMain(m *testing.M) {
 		Sslmode:  "disable",
 		User:     "vocdoni",
 	}
-	api.Start(db, "")
+	if err := api.Start(db, ""); err != nil {
+		log.Printf("SKIPPING: could not start the API: %v", err)
+		return
+	}
+	os.Exit(m.Run())
 	if err := api.DB.Ping(); err != nil {
 		log.Printf("SKIPPING: could not connect to DB: %v", err)
 		return
@@ -69,9 +73,12 @@ func TestEntity(t *testing.T) {
 		t.Fatalf("cannot fetch entity from the Postgres DB (pgsql.go:Entity): %s", err)
 	}
 	marshalledEntityInfo, err := json.Marshal(entity.EntityInfo)
+	if err != nil {
+		t.Fatalf("cannot marshal retrieved Entity info: %s", err)
+	}
 	marshalledInfo, err := json.Marshal(info)
 	if err != nil {
-		t.Fatalf("cannot marshal Entity info: %s", err)
+		t.Fatalf("cannot marshal provided Entity info: %s", err)
 	}
 	if string(marshalledEntityInfo) != string(marshalledInfo) {
 		t.Fatalf("expected %s info, but got %s", string(marshalledEntityInfo), string(marshalledInfo))
@@ -147,9 +154,12 @@ func TestMember(t *testing.T) {
 	}
 
 	// Query by Public Key
-	member, err = db.MemberPubKey(entities[0].ID, memberSigner.Public.X.Bytes())
+	memberPubKey, err := db.MemberPubKey(entities[0].ID, memberSigner.Public.X.Bytes())
 	if err != nil {
 		t.Fatalf("cannot fetch member from the Postgres DB (pgsql.go:MemberPubKey): %s", err)
+	}
+	if memberPubKey.ID != member.ID {
+		t.Fatalf("error retrieving member using MemberPubKey")
 	}
 	// Check first timestamps that need different handling
 	// and then assing one to another so that the rest of test doesnt fail
@@ -232,14 +242,20 @@ func TestMember(t *testing.T) {
 		Order:  "desc",
 	}
 	members, err := api.DB.ListMembers(entities[0].ID, filter)
+	if err != nil {
+		t.Fatalf("cannot select all members from Postgres DB (pgsql.go:ListMembers): %s", err)
+	}
 	if len(members) > limit {
 		t.Fatalf("expected limit to be less than members length, %d <= %d", len(members), limit)
 	}
 
 	// Test Selecting all members and retrieving just their uuids and emails
 	tokenMembers, err := api.DB.MembersTokensEmails(entities[0].ID)
-	if len(tokenMembers) != len(allMembers) {
+	if err != nil {
 		t.Fatal("cannot fetch tokens and emails from the Prostgres DB (pgsql.go:MembersTokensEmails)")
+	}
+	if len(tokenMembers) != len(allMembers) {
+		t.Fatalf("Expected retrieving tokens for %d members but instead retrieved %d (pgsql.go:MembersTokensEmails)", len(allMembers), len(tokenMembers))
 	}
 
 	// Test deleting member

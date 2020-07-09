@@ -24,10 +24,6 @@ func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
 	api = testcommon.TestAPI{Port: 12000 + rand.Intn(1000)}
 	api.Start(nil, "/api")
-	reg := registry.NewRegistry(api.EP.Router, api.DB)
-	if err := reg.RegisterMethods(""); err != nil {
-		panic(err)
-	}
 	os.Exit(m.Run())
 }
 
@@ -84,7 +80,7 @@ func TestRegister(t *testing.T) {
 	s := ethereum.SignKeys{}
 	s.Generate()
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/registry", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -361,7 +357,7 @@ func TestStatus(t *testing.T) {
 	// generate signing keys
 	s.Generate()
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/registry", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -444,7 +440,7 @@ func TestSubscribe(t *testing.T) {
 	// generate signing keys
 	s.Generate()
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/registry", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -461,7 +457,7 @@ func TestUnsubscribe(t *testing.T) {
 	// generate signing keys
 	s.Generate()
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/registry", api.Port), t)
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)

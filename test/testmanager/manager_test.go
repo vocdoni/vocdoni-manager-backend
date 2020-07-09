@@ -32,7 +32,10 @@ func TestMain(m *testing.M) {
 		Sslmode:  "disable",
 		User:     "vocdoni",
 	}
-	api.Start(db, "/api")
+	if err := api.Start(db, "/api"); err != nil {
+		log.Printf("SKIPPING: could not start the API: %v", err)
+		return
+	}
 	if err := api.DB.Ping(); err != nil {
 		log.Printf("SKIPPING: could not connect to DB: %v", err)
 		return
@@ -320,6 +323,9 @@ func TestExportTokens(t *testing.T) {
 
 	// create members
 	_, members, err := testcommon.CreateMembers(entities[0].ID, 3)
+	if err != nil {
+		t.Fatalf("unable to create testing members: %s", err)
+	}
 	memInfo := make([]types.Member, len(members))
 	for idx, mem := range members {
 		memInfo[idx] = *mem
