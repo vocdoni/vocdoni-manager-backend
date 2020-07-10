@@ -158,6 +158,12 @@ type CensusInfo struct {
 	Name          string   `json:"name,omitempty" db:"name"`
 	MerkleRoot    HexBytes `json:"merkleRoot,omitempty" db:"merkle_root"`
 	MerkleTreeURI string   `json:"merkleTreeUri,omitempty" db:"merkle_tree_uri"`
+	Size          int      `json:"size" db:"size"`
+}
+
+type CensusMember struct {
+	MemberID uuid.UUID `json:"memberId,omitempty" db:"member_id"`
+	CensusID HexBytes  `json:"censusId" db:"census_id"`
 }
 
 type Target struct {

@@ -541,6 +541,21 @@ func TestAddCensus(t *testing.T) {
 		t.Fatalf("cannot add created target into database: %s", err)
 	}
 
+	// add members
+	// create members
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 3)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
+	memInfo := make([]types.Member, len(members))
+	for idx, mem := range members {
+		memInfo[idx] = *mem
+	}
+	// add members
+	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+
 	// Genreate ID and root
 	id := util.RandomHex(len(entities[0].ID))
 	if idBytes, err = hex.DecodeString(util.TrimHex(id)); err != nil {

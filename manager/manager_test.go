@@ -752,19 +752,20 @@ func TestAddCensus(t *testing.T) {
 		t.Fatal("should fail if cannot decode censusId")
 	}
 
+	// TODO  Enable when targets implemented
 	// should fail if db Target() fails
-	var req4 types.MetaRequest
-	s2 := ethereum.SignKeys{}
-	s2.AddHexKey(testdb.Signers[3].Priv)
-	req4.Method = "addCensus"
-	req4.TargetID = uuid.New()
-	req4.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
-	// make request
-	resp4 := wsc.Request(req4, &s2)
-	// check register went successful
-	if resp4.Ok {
-		t.Fatal("should fail if db Target() fails")
-	}
+	// var req4 types.MetaRequest
+	// s2 := ethereum.SignKeys{}
+	// s2.AddHexKey(testdb.Signers[3].Priv)
+	// req4.Method = "addCensus"
+	// req4.TargetID = uuid.New()
+	// req4.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
+	// // make request
+	// resp4 := wsc.Request(req4, &s2)
+	// // check register went successful
+	// if resp4.Ok {
+	// 	t.Fatal("should fail if db Target() fails")
+	// }
 
 	// should fail if addCensus fails
 	var req5 types.MetaRequest

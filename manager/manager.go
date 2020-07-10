@@ -430,7 +430,7 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 	}
 
 	// Add members
-	if err = m.db.ImportMembers(entityID, request.MembersInfo); err != nil {
+	if err = m.db.TempImportMembers(entityID, request.MembersInfo); err != nil {
 		log.Errorf("could not import members for %q: (%v)", request.SignaturePublicKey, err)
 		m.Router.SendError(request, err.Error())
 		return
@@ -638,25 +638,14 @@ func (m *Manager) addCensus(request router.RouterRequest) {
 		return
 	}
 
-	target, err := m.db.Target(entityID, request.TargetID)
-	if err != nil && target != nil {
-		if err == sql.ErrNoRows {
-			log.Debugf("invalid targetID %q found for %s", request.TargetID, request.SignaturePublicKey)
-			m.Router.SendError(request, "invalid targetID")
-			return
-		}
-		log.Errorf("cannot recover targetID %q for (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover targetID")
+	size, err := m.db.AddCensusWithMembers(entityID, censusID, request.TargetID, request.Census)
+	if err != nil {
+		log.Errorf("cannot add census %q  target members for: %q: (%v)", request.CensusID, request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot add census members")
 		return
 	}
 
-	err = m.db.AddCensus(entityID, censusID, request.TargetID, request.Census)
-	if err != nil {
-		log.Errorf("cannot add census %q to for: (%v) because of %+v", request.CensusID, request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot add census")
-		return
-	}
-	log.Debugf("Entity: %q addCensus: %s", request.SignaturePublicKey, request.CensusID)
+	log.Debugf("Entity: %q addCensus: %s  %d members", request.SignaturePublicKey, request.CensusID, size)
 	log.Infof("addCensus")
 	m.send(request, response)
 }

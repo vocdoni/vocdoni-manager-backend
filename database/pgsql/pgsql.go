@@ -16,6 +16,7 @@ import (
 	migrate "github.com/rubenv/sql-migrate"
 
 	_ "github.com/jackc/pgx/stdlib"
+	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/crypto/snarks"
 	"gitlab.com/vocdoni/go-dvote/log"
 
@@ -331,6 +332,80 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 		return uuid.Nil, fmt.Errorf("error commiting add member transactions to the DB: %v", err)
 	}
 	return id, err
+}
+
+// CreateEthRandomKeysBatch creates a set of eth random signing keys
+func createEthRandomKeysBatch(n int) []*ethereum.SignKeys {
+	s := make([]*ethereum.SignKeys, n)
+	for i := 0; i < n; i++ {
+		s[i] = new(ethereum.SignKeys)
+		if err := s[i].Generate(); err != nil {
+			return nil
+		}
+	}
+	return s
+}
+
+func (d *Database) TempImportMembers(entityID []byte, info []types.MemberInfo) error {
+	var err error
+	var result sql.Result
+	var rows int64
+	if len(info) <= 0 {
+		return fmt.Errorf("no member data provided")
+	}
+	keys := createEthRandomKeysBatch(len(info))
+	members := []PGMember{}
+	for idx, member := range info {
+		pub, _ := keys[idx].HexString()
+		pubBytes, err := hex.DecodeString(pub)
+		if err != nil {
+			return fmt.Errorf("error decoding generated pubKey: %v", err)
+		}
+		user := &types.User{PubKey: pubBytes}
+		err = d.AddUser(user)
+		if err != nil {
+			return fmt.Errorf("error creating generated user for imported member: %v", err)
+		}
+		newMember := &types.Member{EntityID: entityID, PubKey: pubBytes, MemberInfo: member}
+		pgMember, err := ToPGMember(newMember)
+		if err != nil {
+			return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
+		}
+
+		members = append(members, *pgMember)
+	}
+
+	tx, err := d.db.Beginx()
+	if err != nil {
+		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
+	}
+	insert := `INSERT INTO members
+				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
+				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
+	if result, err = tx.NamedExec(insert, members); err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		}
+		if err != nil {
+			return fmt.Errorf("error in bulk import %v", err)
+		}
+	}
+	if rows, err = result.RowsAffected(); err != nil || int(rows) != len(members) {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		}
+		if err != nil {
+			return fmt.Errorf("error in bulk import %v", err)
+		}
+		return fmt.Errorf("should insert %d rows, while inserted %d rows. Rolled back", len(members), rows)
+	}
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("could not commit bulk import %v", err)
+	}
+	return nil
 }
 
 func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error {
@@ -725,7 +800,7 @@ func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
 		return nil, fmt.Errorf("error retrieving target")
 	}
 	var census types.Census
-	selectQuery := `SELECT id, entity_id, target_id, name, merkle_root, merkle_tree_uri
+	selectQuery := `SELECT id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri
 					FROM censuses
 					WHERE entity_id = $1 AND id = $2`
 	row := d.db.QueryRowx(selectQuery, entityID, censusID)
@@ -746,8 +821,8 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID uuid.UUID, info
 	census := types.Census{ID: censusID, EntityID: entityID, TargetID: targetID, CensusInfo: *info}
 	insert := `INSERT  
 				INTO censuses
-	 			(id, entity_id, target_id, name, merkle_root, merkle_tree_uri)
-				VALUES (:id, :entity_id, :target_id, :name, :merkle_root, :merkle_tree_uri)`
+	 			(id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri)
+				VALUES (:id, :entity_id, :target_id, :name, :size, :merkle_root, :merkle_tree_uri)`
 	var result sql.Result
 
 	if result, err = d.db.NamedExec(insert, census); err == nil {
@@ -759,6 +834,103 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID uuid.UUID, info
 		return fmt.Errorf("failed to add census: %v", err)
 	}
 	return nil
+}
+
+func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID uuid.UUID, info *types.CensusInfo) (int64, error) {
+	var err error
+	if len(entityID) == 0 || len(censusID) == 0 || targetID == uuid.Nil {
+		return 0, fmt.Errorf("invalid arguments")
+	}
+	// TODO check valid target selecting
+
+	// TODO Enable upon implementing targets (also enalbe manager_test targets)
+	// members, err := d.TargetMembers(entityID, targetID)
+	// if err != nil {
+	// 	return 0, fmt.Errorf("failed to recover target members: %v", err)
+	// }
+	// if len(members) == 0 {
+	// 	return 0, fmt.Errorf("target contains 0 members")
+	// }
+	// TODO Disable upon implementing targets
+	members, err := d.ListMembers(entityID, &types.ListOptions{})
+	if err != nil {
+		return 0, fmt.Errorf("failed to recover target members: %v", err)
+	}
+	if len(members) == 0 {
+		return 0, fmt.Errorf("target contains 0 members")
+	}
+
+	census := types.Census{ID: censusID, EntityID: entityID, TargetID: targetID, CensusInfo: *info}
+	tx, err := d.db.Beginx()
+	if err != nil {
+		return 0, fmt.Errorf("cannot initialize postgres transaction: %v", err)
+	}
+	insertCensus := `INSERT  INTO censuses
+					(id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri)
+					VALUES (:id, :entity_id, :target_id, :name, :size, :merkle_root, :merkle_tree_uri)`
+	result, err := tx.NamedExec(insertCensus, census)
+	if err != nil {
+		return 0, fmt.Errorf("cannot add census: %v", err)
+	}
+	if rows, err := result.RowsAffected(); err != nil || rows != 1 {
+		return 0, fmt.Errorf("cannot add census: %v", err)
+	}
+
+	censusMembers := make([]types.CensusMember, len(members))
+	for idx, member := range members {
+		censusMembers[idx].CensusID = censusID
+		censusMembers[idx].MemberID = member.ID
+	}
+
+	insertMembers := `INSERT INTO census_members (census_id, member_id)
+				  VALUES (:census_id, :member_id)`
+	result, err = tx.NamedExec(insertMembers, censusMembers)
+	if err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return 0, fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		}
+		return 0, fmt.Errorf("rolled back due to error inserting census members: %v", err)
+	}
+	var addedRows int64
+	if addedRows, err = result.RowsAffected(); err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return 0, fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		}
+		return 0, fmt.Errorf("rolled back error retriveing census members added count: %v", err)
+	}
+	if addedRows != int64(len(censusMembers)) {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return 0, fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		}
+		return 0, fmt.Errorf("rolled back because failed to add census members, expected to add %d members but added %d", len(censusMembers), addedRows)
+	}
+	updateCensus := `UPDATE censuses SET size = $1 WHERE id = $2`
+	result, err = tx.Exec(updateCensus, addedRows, censusID)
+	if err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return 0, fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		}
+		return 0, fmt.Errorf("rolled back due to error updating census size: %v", err)
+	}
+	if updated, err := result.RowsAffected(); err != nil || updated != 1 {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return 0, fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		}
+		return 0, fmt.Errorf("rolled back due to error updating census size: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			return 0, fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		}
+		return 0, fmt.Errorf("rolled back because could not commit addCensus and addCensusMembers: %v", err)
+	}
+	return addedRows, nil
 }
 
 func (d *Database) CountCensus(entityID []byte) (int, error) {

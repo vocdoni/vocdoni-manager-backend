@@ -171,7 +171,8 @@ CREATE TABLE censuses (
     name text NOT NULL,
     entity_id bytea NOT NULL,
     merkle_root bytea NOT NULL, 
-    merkle_tree_uri text NOT NULL
+    merkle_tree_uri text NOT NULL,
+    size integer NOT NULL
 );
 
 ALTER TABLE ONLY censuses

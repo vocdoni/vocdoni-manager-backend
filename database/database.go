@@ -14,6 +14,7 @@ type Database interface {
 	EntityOrigins(entityID []byte) ([]types.Origin, error)
 	EntityHas(entityID []byte, memberID uuid.UUID) bool
 	AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (uuid.UUID, error)
+	TempImportMembers(entityID []byte, info []types.MemberInfo) error
 	ImportMembers(entityID []byte, info []types.MemberInfo) error
 	AddMemberBulk(entityID []byte, members []types.Member) error
 	Member(entityID []byte, memberID uuid.UUID) (*types.Member, error)
@@ -34,6 +35,7 @@ type Database interface {
 	DumpClaims(entityID []byte) ([][]byte, error)
 	Census(entityID, censusID []byte) (*types.Census, error)
 	AddCensus(entityID, censusID []byte, targetID uuid.UUID, info *types.CensusInfo) error
+	AddCensusWithMembers(entityID, censusID []byte, targetID uuid.UUID, info *types.CensusInfo) (int64, error)
 	CountCensus(entityID []byte) (int, error)
 	ListCensus(entityID []byte) ([]types.Census, error)
 	Migrate(dir migrate.MigrationDirection) (int, error)
