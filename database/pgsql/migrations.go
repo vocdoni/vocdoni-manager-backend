@@ -19,6 +19,7 @@ const migration1up = `
 --    CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 -- 2. All columns are defined as NOT NULL to ease communication with Golang
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto SCHEMA public;
 
 -- SQL in section 'Up' is executed when this migration is applied
 --------------------------- TABLES DEFINITION
@@ -214,4 +215,5 @@ DROP TABLE users;
 DROP TABLE entities_origins;
 DROP TYPE origins;
 DROP TABLE entities;
+DROP EXTENSION IF EXISTS pgcrypto;
 `
