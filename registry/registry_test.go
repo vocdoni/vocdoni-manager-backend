@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestNewRegistry(t *testing.T) {
-	registry := registry.NewRegistry(nil, nil)
+	registry := registry.NewRegistry(nil, nil, nil)
 	if registry == nil {
 		t.Fatal("cannot create registry")
 	}
@@ -61,7 +61,7 @@ func TestRegisterMethods(t *testing.T) {
 		t.Fatalf("cannot create DB: %v", err)
 	}
 	// create registry
-	registry := registry.NewRegistry(r, db)
+	registry := registry.NewRegistry(r, db, nil)
 	// register methods
 	if err := registry.RegisterMethods(""); err != nil {
 		t.Fatalf("cannot register methods: %v", err)

@@ -11,22 +11,25 @@ import (
 
 	"github.com/badoux/checkmail"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/manager/manager-backend/database"
 	"gitlab.com/vocdoni/manager/manager-backend/router"
+	"gitlab.com/vocdoni/manager/manager-backend/services/metrics"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
 )
 
 type Registry struct {
 	Router *router.Router
 	db     database.Database
+	ma     *metrics.Agent
 }
 
 // NewRegistry creates a new registry handler for the Router
-func NewRegistry(r *router.Router, d database.Database) *Registry {
-	return &Registry{Router: r, db: d}
+func NewRegistry(r *router.Router, d database.Database, ma *metrics.Agent) *Registry {
+	return &Registry{Router: r, db: d, ma: ma}
 }
 
 // RegisterMethods registers all registry methods behind the given path
@@ -50,6 +53,7 @@ func (r *Registry) RegisterMethods(path string) error {
 	if err := r.Router.AddHandler("listSubscriptions", path+"/registry", r.listSubscriptions, false); err != nil {
 		return err
 	}
+	r.registerMetrics()
 	return nil
 }
 
@@ -63,6 +67,8 @@ func (r *Registry) register(request router.RouterRequest) {
 	var user types.User
 	var uid uuid.UUID
 	var response types.MetaResponse
+	// increase stats counter
+	RegistryRequests.With(prometheus.Labels{"method": "register"}).Inc()
 
 	if user.PubKey, err = hex.DecodeString(request.SignaturePublicKey); err != nil {
 		log.Warn(err)
@@ -92,6 +98,9 @@ func (r *Registry) register(request router.RouterRequest) {
 
 	log.Infof("new member added %+v for entity %s", member, request.EntityID)
 	r.send(request, response)
+
+	// increase stats counter
+	RegistryRequests.With(prometheus.Labels{"method": "register_success"}).Inc()
 }
 
 func (r *Registry) validateToken(request router.RouterRequest) {
@@ -187,6 +196,9 @@ func (r *Registry) status(request router.RouterRequest) {
 	var member *types.Member
 	var response types.MetaResponse
 
+	// increase stats counter
+	RegistryRequests.With(prometheus.Labels{"method": "status"}).Inc()
+
 	signaturePubKeyBytes, err := hex.DecodeString(request.SignaturePublicKey)
 	if err != nil {
 		log.Warn(err)
@@ -236,6 +248,8 @@ func (r *Registry) status(request router.RouterRequest) {
 	}
 	// user exists and is member
 	if member != nil {
+		// increase stats counter
+		RegistryRequests.With(prometheus.Labels{"method": "status_exists"}).Inc()
 		response.Status = &types.Status{
 			Registered:  true,
 			NeedsUpdate: false,

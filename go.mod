@@ -13,6 +13,7 @@ require (
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jmoiron/sqlx v1.2.1-0.20200324155115-ee514944af4b
 	github.com/lib/pq v1.5.2
+	github.com/prometheus/client_golang v1.5.1
 	github.com/rogpeppe/rjson v0.0.0-20151026200957-77220b71d327
 	github.com/rubenv/sql-migrate v0.0.0-20200616145509-8d140a17f351
 	github.com/spf13/cast v1.3.1 // indirect

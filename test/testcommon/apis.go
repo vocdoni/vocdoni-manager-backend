@@ -58,7 +58,7 @@ func (t *TestAPI) Start(dbc *config.DB, route string) error {
 
 	if route != "" {
 		log.Infof("enabling Registry API methods")
-		reg := registry.NewRegistry(t.EP.Router, t.DB)
+		reg := registry.NewRegistry(t.EP.Router, t.DB, nil)
 		if err := reg.RegisterMethods(route); err != nil {
 			log.Fatal(err)
 		}

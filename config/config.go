@@ -17,6 +17,8 @@ type Manager struct {
 	LogOutput string
 	// ErrorLogFile for logging warning, error and fatal messages
 	LogErrorFile string
+	// Metrics config options
+	Metrics *MetricsCfg
 	// Mode is the main operation mode
 	Mode string
 	// DataDir path where the gateway files will be stored
@@ -39,6 +41,7 @@ func NewConfig() *Manager {
 		API:     new(API),
 		DB:      new(DB),
 		Migrate: new(Migrate),
+		Metrics: new(MetricsCfg),
 	}
 }
 
@@ -75,4 +78,10 @@ type Error struct {
 type Migrate struct {
 	// Action defines the migration action to be taken (up, down, status)
 	Action string
+}
+
+// MetricsCfg initializes the metrics config
+type MetricsCfg struct {
+	Enabled         bool
+	RefreshInterval int
 }

@@ -21,8 +21,8 @@ $ docker-compose up
 Start only postgres and the fronted:
 
 ```bash
-$ docker-compose up postgres -d
-$ docker-compose up webmanager -d
+$ docker-compose up -d postgres
+$ docker-compose up -d webmanager
 ```
 
 #### Stop and delete database

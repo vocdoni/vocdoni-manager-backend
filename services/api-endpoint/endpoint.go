@@ -1,21 +1,29 @@
 package endpoint
 
 import (
+	"fmt"
+	"time"
+
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/net"
 	"gitlab.com/vocdoni/go-dvote/types"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/router"
+	"gitlab.com/vocdoni/manager/manager-backend/services/metrics"
 )
 
 // EndPoint handles the Websocket connection
 type EndPoint struct {
-	Router *router.Router
+	Router       *router.Router
+	MetricsAgent *metrics.Agent
 }
 
 // NewEndpoint creates a new websockets endpoint
 func NewEndpoint(cfg *config.Manager, signer *ethereum.SignKeys) (*EndPoint, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("cannot create endpoint, configuration is nil")
+	}
 	log.Infof("creating API service")
 	pxy, err := proxy(cfg.API.ListenHost, cfg.API.ListenPort, cfg.API.Ssl.Domain, cfg.API.Ssl.DirCert)
 	if err != nil {
@@ -27,7 +35,11 @@ func NewEndpoint(cfg *config.Manager, signer *ethereum.SignKeys) (*EndPoint, err
 	listenerOutput := make(chan types.Message)
 	go ws.Listen(listenerOutput)
 	r := router.InitRouter(listenerOutput, ws, signer)
-	return &EndPoint{Router: r}, nil
+	var ma *metrics.Agent
+	if cfg.Metrics != nil && cfg.Metrics.Enabled {
+		ma = metrics.NewAgent("/metrics", time.Second*time.Duration(cfg.Metrics.RefreshInterval), pxy)
+	}
+	return &EndPoint{Router: r, MetricsAgent: ma}, nil
 }
 
 // proxy creates a new service for routing HTTP connections using go-chi server

@@ -60,6 +60,11 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.DB.Dbname = *flag.String("dbName", "database", "DB database name")
 	cfg.DB.Sslmode = *flag.String("dbSslmode", "prefer", "DB postgres sslmode")
 	cfg.Migrate.Action = *flag.String("migrateAction", "", "Migration action (up,down,status)")
+
+	// metrics
+	cfg.Metrics.Enabled = *flag.Bool("metricsEnabled", true, "enable prometheus metrics")
+	cfg.Metrics.RefreshInterval = *flag.Int("metricsRefreshInterval", 10, "metrics refresh interval in seconds")
+
 	// parse flags
 	flag.Parse()
 
@@ -92,6 +97,10 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("db.dbName", flag.Lookup("dbName"))
 	viper.BindPFlag("db.sslMode", flag.Lookup("dbSslmode"))
 	viper.BindPFlag("migrate.action", flag.Lookup("migrateAction"))
+
+	// metrics
+	viper.BindPFlag("metrics.enabled", flag.Lookup("metricsEnabled"))
+	viper.BindPFlag("metrics.refreshInterval", flag.Lookup("metricsRefreshInterval"))
 
 	// check if config file exists
 	_, err = os.Stat(cfg.DataDir + "/dvotemanager.yml")
@@ -267,7 +276,7 @@ func main() {
 	// User registry
 	if cfg.Mode == "registry" || cfg.Mode == "all" {
 		log.Infof("enabling Registry API methods")
-		reg := registry.NewRegistry(ep.Router, db)
+		reg := registry.NewRegistry(ep.Router, db, ep.MetricsAgent)
 		if err := reg.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}
