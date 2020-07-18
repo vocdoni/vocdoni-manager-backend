@@ -249,7 +249,7 @@ func TestStatus(t *testing.T) {
 
 	// check user is registered calling status
 	var req2 types.MetaRequest
-	req2.Method = "status"
+	req2.Method = "registrationStatus"
 	req2.EntityID = "12345123451234"
 	resp2 := wsc.Request(req2, &s)
 	if !resp2.Ok {
@@ -264,7 +264,7 @@ func TestStatus(t *testing.T) {
 
 	// should fail if invalid entityID
 	var req3 types.MetaRequest
-	req3.Method = "status"
+	req3.Method = "registrationStatus"
 	req3.EntityID = "0xZ"
 	resp3 := wsc.Request(req3, &s)
 	if resp3.Ok {
@@ -273,7 +273,7 @@ func TestStatus(t *testing.T) {
 
 	// should fail if entity does not exist
 	var req4 types.MetaRequest
-	req4.Method = "status"
+	req4.Method = "registrationStatus"
 	req4.EntityID = "f6da3e4864d566faf82163a407e84a9001592678"
 	resp4 := wsc.Request(req4, &s)
 	if resp4.Ok {
@@ -284,7 +284,7 @@ func TestStatus(t *testing.T) {
 	var req5 types.MetaRequest
 	constSigner := new(ethereum.SignKeys)
 	constSigner.AddHexKey(testdb.Signers[0].Priv)
-	req5.Method = "status"
+	req5.Method = "registrationStatus"
 	req5.EntityID = "12345123451234"
 	resp5 := wsc.Request(req5, constSigner)
 	if resp5.Ok {
@@ -295,7 +295,7 @@ func TestStatus(t *testing.T) {
 	var req6 types.MetaRequest
 	constSigner2 := new(ethereum.SignKeys)
 	constSigner2.AddHexKey(testdb.Signers[3].Priv)
-	req6.Method = "status"
+	req6.Method = "registrationStatus"
 	req6.EntityID = "12345123451234"
 	resp6 := wsc.Request(req6, constSigner2)
 	if resp6.Ok {

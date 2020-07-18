@@ -211,7 +211,7 @@ func TestValidateToken(t *testing.T) {
 	// 3. cannot validate same token twice
 	resp = wsc.Request(req, membersSigners[0])
 	// check register failed
-	if resp.Ok {
+	if resp.Ok || resp.Message != "duplicate user" {
 		t.Fatal("validated same token twice")
 	}
 
@@ -345,7 +345,7 @@ func TestStatus(t *testing.T) {
 	}
 	// check status added and linked member
 	var req types.MetaRequest
-	req.Method = "status"
+	req.Method = "registrationStatus"
 	req.EntityID = hex.EncodeToString(entities[0].ID)
 	resp := wsc.Request(req, membersSigners[0])
 	if !resp.Ok {
@@ -360,7 +360,7 @@ func TestStatus(t *testing.T) {
 	}
 	// check user not registered
 	var req2 types.MetaRequest
-	req2.Method = "status"
+	req2.Method = "registrationStatus"
 	req2.EntityID = hex.EncodeToString(entities[0].ID)
 	resp2 := wsc.Request(req2, membersSigners[1])
 	if !resp2.Ok {

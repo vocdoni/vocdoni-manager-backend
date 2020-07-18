@@ -41,7 +41,7 @@ func (r *Registry) RegisterMethods(path string) error {
 	if err := r.Router.AddHandler("validateToken", path+"/registry", r.validateToken, false); err != nil {
 		return err
 	}
-	if err := r.Router.AddHandler("status", path+"/registry", r.status, false); err != nil {
+	if err := r.Router.AddHandler("registrationStatus", path+"/registry", r.registrationStatus, false); err != nil {
 		return err
 	}
 	if err := r.Router.AddHandler("subscribe", path+"/registry", r.subscribe, false); err != nil {
@@ -159,7 +159,11 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	}
 	if err = r.db.RegisterMember(entityID, user.PubKey, uid); err != nil {
 		log.Warnf("cannot register member for entity %s: (%v)", request.EntityID, err)
-		r.Router.SendError(request, "cannot register member")
+		msg := "cannot register member"
+		if err.Error() == "duplicate user" {
+			msg = "duplicate user"
+		}
+		r.Router.SendError(request, msg)
 		return
 	}
 
@@ -192,7 +196,7 @@ func callback(callbackURL, secret, event string, uid uuid.UUID) error {
 	return err
 }
 
-func (r *Registry) status(request router.RouterRequest) {
+func (r *Registry) registrationStatus(request router.RouterRequest) {
 	var member *types.Member
 	var response types.MetaResponse
 
