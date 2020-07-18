@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -779,42 +778,57 @@ func (d *Database) CountMembers(entityID []byte) (int, error) {
 }
 
 func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error) {
-	var order, offset, limit string
-	orderQuery := ""
-	offsetQuery := ""
 	// TODO: Replace limit offset with better strategy, can slow down DB
 	// would nee to now last value from previous query
 	selectQuery := `SELECT
 	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
-					FROM members WHERE entity_id =$1`
-	query := selectQuery
+					FROM members WHERE entity_id =$1
+					ORDER BY $2 %s LIMIT $3 OFFSET $4`
+	// Define default values for arguments
 	t := reflect.TypeOf(types.MemberInfo{})
+	field, found := t.FieldByName(strings.Title("lastName"))
+	if !found {
+		return nil, fmt.Errorf("lastName field not found in DB. Something is very wrong")
+	}
+	orderField := field.Tag.Get("db")
+	order := "asc"
+	var limit, offset sql.NullInt32
+	// default limit should be nil (Postgres BIGINT NULL)
+	err := limit.Scan(nil)
+	if err != nil {
+		return nil, err
+	}
+	err = offset.Scan(0)
+	if err != nil {
+		return nil, err
+	}
+	// offset := 0
 	if filter != nil {
 		if len(filter.SortBy) > 0 {
 			field, found := t.FieldByName(strings.Title(filter.SortBy))
 			if found {
-				if filter.Order == "asc" || filter.Order == "desc" {
+				if filter.Order == "desc" {
 					order = filter.Order
 				}
-				orderQuery = fmt.Sprintf("ORDER BY %s %s", field.Tag.Get("db"), order)
+				orderField = field.Tag.Get("db")
 			}
 		}
 		if filter.Skip > 0 {
-			offset = strconv.Itoa(filter.Skip)
-		} else {
-			offset = "0"
+			err = offset.Scan(filter.Skip)
+			if err != nil {
+				return nil, err
+			}
 		}
 		if filter.Count > 0 {
-			limit = strconv.Itoa(filter.Count)
-		} else {
-			limit = "NULL"
+			err = limit.Scan(filter.Skip)
+			if err != nil {
+				return nil, err
+			}
 		}
-		offsetQuery = fmt.Sprintf("LIMIT %s OFFSET %s", limit, offset)
-		query = fmt.Sprintf("%s %s %s", selectQuery, orderQuery, offsetQuery)
 	}
+	query := fmt.Sprintf(selectQuery, order)
 	var pgMembers []PGMember
-	// query = fmt.Sprintf("%s %s %s", selectQuery, orderQuery, offsetQuery)
-	err := d.db.Select(&pgMembers, query, entityID)
+	err = d.db.Select(&pgMembers, query, entityID, orderField, limit, offset)
 	if err != nil {
 		return nil, err
 	}
