@@ -45,7 +45,7 @@ func (d *Database) Close() error {
 }
 
 func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "f6da3e4864d566faf82163a407e84a9001592678" {
 		return nil, fmt.Errorf("cannot fetch entity with ID: %s", failEid)
 	}
@@ -65,7 +65,7 @@ func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	entity.Name = "test entity"
 	entity.Email = "entity@entity.org"
 
-	failEidID := util.TrimHex(hex.EncodeToString(entityID))
+	failEidID := hex.EncodeToString(entityID)
 	if failEidID == "ca526af2aaa0f3e9bb68ab80de4392590f7b153a" {
 		entity.ID = []byte{1}
 	}
@@ -82,15 +82,22 @@ func (d *Database) EntityOrigins(entityID []byte) ([]types.Origin, error) {
 }
 
 func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
 		return fmt.Errorf("error adding entity with id: %s", failEid)
 	}
 	return nil
 }
+func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
+	failEid := hex.EncodeToString(entityID)
+	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+		return fmt.Errorf("error updating entity with id: %s", failEid)
+	}
+	return nil
+}
 
 func (d *Database) Member(entityID []byte, memberID uuid.UUID) (*types.Member, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return nil, sql.ErrNoRows
 	}
@@ -115,7 +122,7 @@ func (d *Database) Member(entityID []byte, memberID uuid.UUID) (*types.Member, e
 }
 
 func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) {
-	failPub := util.TrimHex(hex.EncodeToString(pubKey))
+	failPub := hex.EncodeToString(pubKey)
 	if failPub == Signers[3].Pub {
 		return nil, sql.ErrNoRows
 	}
@@ -133,7 +140,7 @@ func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) 
 }
 
 func (d *Database) CountMembers(entityID []byte) (int, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
 		return 0, fmt.Errorf("error counting members of entity: %s", failEid)
 	}
@@ -141,7 +148,7 @@ func (d *Database) CountMembers(entityID []byte) (int, error) {
 }
 
 func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return nil, sql.ErrNoRows
 	}
@@ -152,7 +159,7 @@ func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]ty
 }
 
 func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return nil, fmt.Errorf("error getting census of entity: %s", failEid)
 	}
@@ -162,7 +169,7 @@ func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
 }
 
 func (d *Database) CountCensus(entityID []byte) (int, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return 0, fmt.Errorf("error counting census of entity: %s", failEid)
 	}
@@ -170,7 +177,7 @@ func (d *Database) CountCensus(entityID []byte) (int, error) {
 }
 
 func (d *Database) ListCensus(entityID []byte) ([]types.Census, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return nil, sql.ErrNoRows
 	}
@@ -181,7 +188,7 @@ func (d *Database) ListCensus(entityID []byte) ([]types.Census, error) {
 }
 
 func (d *Database) AddCensus(entityID, censusID []byte, targetID uuid.UUID, info *types.CensusInfo) error {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "91d078ba8ee8d10c3ee85b712bfdcb8dfa257599ae4fa74cabc365e25b001b14" {
 		return fmt.Errorf("cannot add census to entity: %s", failEid)
 	}
@@ -189,7 +196,7 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID uuid.UUID, info
 }
 
 func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID uuid.UUID, info *types.CensusInfo) (int64, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "91d078ba8ee8d10c3ee85b712bfdcb8dfa257599ae4fa74cabc365e25b001b14" {
 		return 0, fmt.Errorf("cannot add census members to entity: %s", failEid)
 	}
@@ -201,11 +208,22 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	if info.Email == "fail@fail.fail" {
 		return uuid.Nil, errors.New("cannot add member, invalid mock email")
 	}
+	failEid := hex.EncodeToString(entityID)
+	if failEid == "f6da3e4864d566faf82163a407e84a9001592678" {
+		return uuid.Nil, fmt.Errorf("cannot fetch entity with ID: %s", failEid)
+	}
+	failPub := hex.EncodeToString(pubKey)
+	if failPub == Signers[1].Pub {
+		return uuid.Nil, fmt.Errorf("error adding user with pubKey: %s", failPub)
+	}
+	if failPub == Signers[2].Pub {
+		return uuid.Nil, fmt.Errorf("cannot query for user")
+	}
 	return uuid.Nil, nil
 }
 
 func (d *Database) DeleteMember(entityID []byte, memberID uuid.UUID) error {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
 		return fmt.Errorf("error deleting member of entity: %s", failEid)
 	}
@@ -213,7 +231,7 @@ func (d *Database) DeleteMember(entityID []byte, memberID uuid.UUID) error {
 }
 
 func (d *Database) TempImportMembers(entityID []byte, info []types.MemberInfo) error {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return fmt.Errorf("error importing members of entity: %s", failEid)
 	}
@@ -221,7 +239,7 @@ func (d *Database) TempImportMembers(entityID []byte, info []types.MemberInfo) e
 }
 
 func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return fmt.Errorf("error importing members of entity: %s", failEid)
 	}
@@ -233,7 +251,7 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 }
 
 func (d *Database) UpdateMember(entityID []byte, memberID uuid.UUID, info *types.MemberInfo) error {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
 		return fmt.Errorf("error updating member of entity: %s", failEid)
 	}
@@ -241,7 +259,23 @@ func (d *Database) UpdateMember(entityID []byte, memberID uuid.UUID, info *types
 }
 
 func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
+	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+		return fmt.Errorf("cannot create members")
+	}
+	return nil
+}
+
+func (d *Database) CreateNMembers(entityID []byte, n int) ([]uuid.UUID, error) {
+	failEid := hex.EncodeToString(entityID)
+	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+		return nil, fmt.Errorf("cannot create members")
+	}
+	return nil, nil
+}
+
+func (d *Database) RegisterMember(entityID, pubKey []byte, token uuid.UUID) error {
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return fmt.Errorf("cannot create members")
 	}
@@ -249,7 +283,7 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 }
 
 func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return nil, sql.ErrNoRows
 	}
@@ -263,14 +297,14 @@ func (d *Database) DumpClaims(entityID []byte) ([][]byte, error) {
 }
 
 func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return uuid.Nil, fmt.Errorf("cannot add target: %+v", target)
 	}
 	return uuid.Nil, nil
 }
 func (d *Database) Target(entityID []byte, targetID uuid.UUID) (*types.Target, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
 		return nil, fmt.Errorf("error getting target from entity: %s", failEid)
 	}
@@ -281,7 +315,7 @@ func (d *Database) Target(entityID []byte, targetID uuid.UUID) (*types.Target, e
 	return nil, nil
 }
 func (d *Database) ListTargets(entityID []byte) ([]types.Target, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "91d078ba8ee8d10c3ee85b712bfdcb8dfa257599ae4fa74cabc365e25b001b14" {
 		return nil, sql.ErrNoRows
 	}
@@ -293,14 +327,14 @@ func (d *Database) ListTargets(entityID []byte) ([]types.Target, error) {
 	return nil, nil
 }
 func (d *Database) CountTargets(entityID []byte) (int, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
 		return 0, fmt.Errorf("error counting targets of entity: %s", failEid)
 	}
 	return 0, nil
 }
 func (d *Database) TargetMembers(entityID []byte, targetID uuid.UUID) ([]types.Member, error) {
-	failEid := util.TrimHex(hex.EncodeToString(entityID))
+	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return nil, fmt.Errorf("error targeting members of entity: %s", failEid)
 	}
@@ -308,7 +342,7 @@ func (d *Database) TargetMembers(entityID []byte, targetID uuid.UUID) ([]types.M
 }
 
 func (d *Database) AddUser(user *types.User) error {
-	failPub := util.TrimHex(hex.EncodeToString(user.PubKey))
+	failPub := hex.EncodeToString(user.PubKey)
 	if failPub == Signers[1].Pub {
 		return fmt.Errorf("error adding user with pubKey: %s", failPub)
 	}
@@ -316,7 +350,7 @@ func (d *Database) AddUser(user *types.User) error {
 }
 
 func (d *Database) User(pubKey []byte) (*types.User, error) {
-	failPub := util.TrimHex(hex.EncodeToString(pubKey))
+	failPub := hex.EncodeToString(pubKey)
 	if failPub == Signers[0].Pub ||
 		failPub == Signers[1].Pub {
 		return nil, sql.ErrNoRows

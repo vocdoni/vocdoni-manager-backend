@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/net"
 	gtypes "gitlab.com/vocdoni/go-dvote/types"
@@ -86,16 +85,12 @@ func TestRegister(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// without token
-
 	// create register request
 	req.Method = "register"
 	req.EntityID = "12345123451234"
-	req.PubKey, _ = s.HexString()
-	mInfo := types.MemberInfo{
+	req.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
-	req.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo}
 	// make request
 	resp := wsc.Request(req, &s)
 	// check register went successful
@@ -103,20 +98,15 @@ func TestRegister(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// with token
-
 	var s2 ethereum.SignKeys
 	// generate signing keys
 	s2.Generate()
 	var req2 types.MetaRequest
-	req2.Token = "fa6d35202c264434abe666a4f4cd6c9f"
 	req2.Method = "register"
 	req2.EntityID = "12345123451234"
-	req2.PubKey, _ = s2.HexString()
-	mInfo2 := types.MemberInfo{
+	req2.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
-	req2.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo2}
 	// make request
 	resp2 := wsc.Request(req2, &s2)
 	// check register went successful
@@ -124,69 +114,12 @@ func TestRegister(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// invalid pubkey should fail
-	req.Method = "register"
-	req.EntityID = "12345123451234"
-	req.PubKey = "0x0"
-	mInfo = types.MemberInfo{
-		Email: "info@vocdoni.io",
-	}
-	req.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo}
-	// make request
-	resp = wsc.Request(req, &s)
-	// check register went successful
-	if resp.Ok {
-		t.Fatal("invalid pubkey should fail")
-	}
-
-	// valid pubkey lenght but invalid content and cannot decode
-	req.PubKey, _ = s2.HexString()
-	req.PubKey = req.PubKey[:len(req.PubKey)-1] + "Z"
-	// make request
-	resp = wsc.Request(req, &s)
-	// check register went successful
-	if resp.Ok {
-		t.Fatal("invalid pubkey content should fail")
-	}
-
-	// should fail if pubkey != extacted signature pubkey
-	req.Method = "register"
-	req.EntityID = "12345123451234"
-	req.PubKey, _ = s2.HexString()
-	mInfo = types.MemberInfo{
-		Email: "info@vocdoni.io",
-	}
-	req.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo}
-	// make request
-	resp = wsc.Request(req, &s)
-	// check register went successful
-	if resp.Ok {
-		t.Fatal("should fail if pubkey != extacted signature pubkey")
-	}
-
-	// should fail if no pubkey present and signature pubkey cannot be decoded
-	req.Method = "register"
-	req.EntityID = "12345123451234"
-	req.PubKey = ""
-	mInfo = types.MemberInfo{
-		Email: "info@vocdoni.io",
-	}
-	req.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo}
-	// make request
-	resp = wsc.Request(req, &s)
-	// check register went successful
-	if !resp.Ok {
-		t.Fatal("should fail if no pubkey present and signature pubkey cannot be decoded")
-	}
-
 	// should fail if invalid entityID
 	req.Method = "register"
 	req.EntityID = "0xZ"
-	req.PubKey, _ = s.HexString()
-	mInfo = types.MemberInfo{
+	req.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
-	req.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo}
 	// make request
 	resp = wsc.Request(req, &s)
 	// check register went successful
@@ -194,30 +127,13 @@ func TestRegister(t *testing.T) {
 		t.Fatal("should fail if invalid entityID")
 	}
 
-	// should fail if no token provided and Member info invalid
-	var req3 types.MetaRequest
-	req3.Method = "register"
-	req3.EntityID = "12345123451234"
-	req3.Token = ""
-	req3.PubKey, _ = s.HexString()
-	mInfo = types.MemberInfo{}
-	req3.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo}
-	// make request
-	resp = wsc.Request(req3, &s)
-	// check register went successful
-	if resp.Ok {
-		t.Fatal("should fail if no token provided and Member info invalid")
-	}
-
 	// should fail if add member fails
 	var req4 types.MetaRequest
 	req4.Method = "register"
 	req4.EntityID = "12345123451234"
-	req4.PubKey, _ = s.HexString()
-	mInfo3 := types.MemberInfo{
+	req4.MemberInfo = &types.MemberInfo{
 		Email: "fail@fail.fail",
 	}
-	req4.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo3}
 	// make request
 	resp = wsc.Request(req4, &s)
 	// check register went successful
@@ -225,49 +141,13 @@ func TestRegister(t *testing.T) {
 		t.Fatal("should fail if add member fails")
 	}
 
-	// should fail if token is an invalid hex string
-	var req5 types.MetaRequest
-	req5.Method = "register"
-	req5.EntityID = "12345123451234"
-	req5.Token = "0xABCZ"
-	req5.PubKey, _ = s.HexString()
-	mInfo5 := types.MemberInfo{
-		Email: "info@vocdoni.io",
-	}
-	req5.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo5}
-	// make request
-	resp = wsc.Request(req5, &s)
-	// check register went successful
-	if resp.Ok {
-		t.Fatal("should fail if token is an invalid hex string")
-	}
-
-	// should fail if token cannot be decoded even if is a valid hex string
-	var req6 types.MetaRequest
-	req6.Method = "register"
-	req6.EntityID = "12345123451234"
-	req6.Token = "0x"
-	req6.PubKey, _ = s.HexString()
-	mInfo6 := types.MemberInfo{
-		Email: "info@vocdoni.io",
-	}
-	req6.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo6}
-	// make request
-	resp = wsc.Request(req6, &s)
-	// check register went successful
-	if resp.Ok {
-		t.Fatal("should fail if token cannot be decoded even if is a valid hex string")
-	}
-
 	// should fail if entity does not exist
 	var req7 types.MetaRequest
 	req7.Method = "register"
 	req7.EntityID = "f6da3e4864d566faf82163a407e84a9001592678"
-	req7.PubKey, _ = s.HexString()
-	mInfo7 := types.MemberInfo{
+	req7.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
-	req7.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo7}
 	// make request
 	resp = wsc.Request(req7, &s)
 	// check register went successful
@@ -275,21 +155,19 @@ func TestRegister(t *testing.T) {
 		t.Fatal("should fail if entity does not exist")
 	}
 
+	// TODO: Enable if separate select query for Entity
 	// should fail if req.entityID != fetched entity.ID
-	var req8 types.MetaRequest
-	req8.Method = "register"
-	req8.EntityID = "ca526af2aaa0f3e9bb68ab80de4392590f7b153a"
-	req8.PubKey, _ = s.HexString()
-	mInfo8 := types.MemberInfo{
-		Email: "info@vocdoni.io",
-	}
-	req8.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo8}
-	// make request
-	resp = wsc.Request(req8, &s)
-	// check register went successful
-	if resp.Ok {
-		t.Fatal("should fail if req.entityID != fetched entity.ID")
-	}
+	// var req8 types.MetaRequest
+	// req8.Method = "register"
+	// req8.EntityID = "ca526af2aaa0f3e9bb68ab80de4392590f7b153a"
+	// req8.MemberInfo = &types.MemberInfo{
+	// 	Email: "info@vocdoni.io",
+	// }
+	// resp = wsc.Request(req8, &s)
+	// // check register went successful
+	// if resp.Ok {
+	// 	t.Fatal("should fail if req.entityID != fetched entity.ID")
+	// }
 
 	// if user does not exist create
 	var req9 types.MetaRequest
@@ -297,11 +175,9 @@ func TestRegister(t *testing.T) {
 	constSigner.AddHexKey(testdb.Signers[0].Priv)
 	req9.Method = "register"
 	req9.EntityID = "12345123451234"
-	req9.PubKey, _ = constSigner.HexString()
-	mInfo9 := types.MemberInfo{
+	req9.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
-	req9.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo9}
 	// make request
 	resp = wsc.Request(req9, constSigner)
 	// check register went successful
@@ -317,11 +193,9 @@ func TestRegister(t *testing.T) {
 	//t.Fatalf("%s : %s", p1, p2)
 	req10.Method = "register"
 	req10.EntityID = "12345123451234"
-	req10.PubKey, _ = constSigner2.HexString()
-	mInfo10 := types.MemberInfo{
+	req10.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
-	req10.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo10}
 	// make request
 	resp = wsc.Request(req10, constSigner2)
 	// check register went successful
@@ -337,11 +211,9 @@ func TestRegister(t *testing.T) {
 	//t.Fatalf("%s : %s", p1, p2)
 	req11.Method = "register"
 	req11.EntityID = "12345123451234"
-	req11.PubKey, _ = constSigner3.HexString()
-	mInfo11 := types.MemberInfo{
+	req11.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
-	req11.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo11}
 	// make request
 	resp = wsc.Request(req11, constSigner3)
 	// check register went successful
@@ -367,10 +239,9 @@ func TestStatus(t *testing.T) {
 	req.Method = "register"
 	req.EntityID = "12345123451234"
 	req.PubKey, _ = s.HexString()
-	mInfo := types.MemberInfo{
+	req.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
-	req.Member = &types.Member{ID: uuid.New(), MemberInfo: mInfo}
 	resp := wsc.Request(req, &s)
 	if !resp.Ok {
 		t.Fatal(err)

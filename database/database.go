@@ -11,6 +11,7 @@ type Database interface {
 	Close() error
 	AddEntity(entityID []byte, info *types.EntityInfo) error
 	Entity(entityID []byte) (*types.Entity, error)
+	UpdateEntity(entityID []byte, info *types.EntityInfo) error
 	EntityOrigins(entityID []byte) ([]types.Origin, error)
 	EntityHas(entityID []byte, memberID uuid.UUID) bool
 	AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (uuid.UUID, error)
@@ -24,6 +25,8 @@ type Database interface {
 	ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error)
 	UpdateMember(entityID []byte, memberID uuid.UUID, info *types.MemberInfo) error
 	CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error
+	CreateNMembers(entityID []byte, n int) ([]uuid.UUID, error)
+	RegisterMember(entityID, pubKey []byte, token uuid.UUID) error
 	MembersTokensEmails(entityID []byte) ([]types.Member, error)
 	AddTarget(entityID []byte, target *types.Target) (uuid.UUID, error)
 	Target(entityID []byte, targetID uuid.UUID) (*types.Target, error)

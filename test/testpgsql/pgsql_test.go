@@ -55,6 +55,9 @@ func TestEntity(t *testing.T) {
 	}
 
 	entityID := ethereum.HashRaw(eid)
+	entityIDStr := hex.EncodeToString(entityID)
+	t.Log(entityIDStr)
+
 	info := &types.EntityInfo{
 		Address: eid,
 		// Email:                   "entity@entity.org",
@@ -81,7 +84,35 @@ func TestEntity(t *testing.T) {
 		t.Fatalf("cannot marshal provided Entity info: %s", err)
 	}
 	if string(marshalledEntityInfo) != string(marshalledInfo) {
-		t.Fatalf("expected %s info, but got %s", string(marshalledEntityInfo), string(marshalledInfo))
+		t.Fatalf("expected %s info, but got %s", string(marshalledInfo), string(marshalledEntityInfo))
+	}
+
+	updateInfo := &types.EntityInfo{
+		Address:                 eid,                         //same
+		CensusManagersAddresses: [][]byte{{1, 2, 3}},         //same
+		Origins:                 []types.Origin{types.Token}, //same
+		Name:                    "test1 entity",
+		CallbackURL:             "http://127.0.0.1/extapi",
+		CallbackSecret:          "asdafgewgrf",
+	}
+	err = api.DB.UpdateEntity(entityID, updateInfo)
+	if err != nil {
+		t.Fatalf("cannot update entity Entity info: (%s)", err)
+	}
+	updatedEntity, err := api.DB.Entity(entityID)
+	if err != nil {
+		t.Fatalf("cannot fetch entity from the Postgres DB (pgsql.go:Entity): %s", err)
+	}
+	marshalledUpdatedEntityInfo, err := json.Marshal(updatedEntity.EntityInfo)
+	if err != nil {
+		t.Fatalf("cannot marshal retrieved Entity info: %s", err)
+	}
+	marshalleUpdatedInfo, err := json.Marshal(updateInfo)
+	if err != nil {
+		t.Fatalf("cannot marshal provided Entity info: %s", err)
+	}
+	if string(marshalleUpdatedInfo) != string(marshalledUpdatedEntityInfo) {
+		t.Fatalf("expected \n%s info, but got \n%s", string(marshalleUpdatedInfo), string(marshalledUpdatedEntityInfo))
 	}
 }
 
@@ -106,7 +137,7 @@ func TestMember(t *testing.T) {
 	db := api.DB
 	// Create or retrieve existing entity
 	// create entity
-	_, entities, err := testcommon.CreateEntities(1)
+	_, entities, err := testcommon.CreateEntities(2)
 	if err != nil {
 		t.Fatalf("cannot create entities: %s", err)
 	}
@@ -271,6 +302,58 @@ func TestMember(t *testing.T) {
 	if err := api.DB.DeleteMember(entities[0].ID, uuid.UUID{}); err == nil {
 		t.Fatalf("managed to delete random member %+v", err)
 	}
+
+	// Test Register Flow
+	if err := api.DB.AddEntity(entities[1].ID, &entities[1].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+	_, registerMembers, err := testcommon.CreateMembers(entities[1].ID, 1)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
+	n := 5
+	tokens, err := api.DB.CreateNMembers(entities[1].ID, n)
+	if err != nil {
+		t.Fatalf("unable to create members using CreateNMembers:  (%+v)", err)
+	}
+	// 0. Checking that the user did not exist already
+	_, err = api.DB.User(registerMembers[0].PubKey)
+	if err != sql.ErrNoRows {
+		t.Fatalf("unable to retrieve registered member:  (%+v)", err)
+	}
+	// 1. Registering member
+	if err := api.DB.RegisterMember(entities[1].ID, registerMembers[0].PubKey, tokens[0]); err != nil {
+		t.Fatalf("unable to register member using existing token:  (%+v)", err)
+	}
+	// 2. Checking that the member was created with right values
+	registeredMember, err := api.DB.Member(entities[1].ID, tokens[0])
+	if err != nil {
+		t.Fatalf("unable to retrieve registered member:  (%+v)", err)
+	}
+	if hex.EncodeToString(registeredMember.PubKey) != hex.EncodeToString(registerMembers[0].PubKey) {
+		t.Fatalf("unable to set registered members pubkey. Expected: %q got  %s", hex.EncodeToString(registerMembers[0].PubKey), hex.EncodeToString(registeredMember.PubKey))
+	}
+	// 3. Checking that the corresponding User was also created
+	registeredUser, err := api.DB.User(registerMembers[0].PubKey)
+	if err != nil {
+		t.Fatalf("unable to retrieve registered user:  (%+v)", err)
+	}
+	if hex.EncodeToString(registeredUser.PubKey) != hex.EncodeToString(registerMembers[0].PubKey) {
+		t.Fatalf("unable to set registered users pubke %s", hex.EncodeToString(member.PubKey))
+	}
+	entityID := hex.EncodeToString(entities[1].ID)
+	t.Logf("entityID %s", entityID)
+	randToken := tokens[1].String()
+	t.Logf("token: %s", randToken)
+	// 4. Not allowing register of random token
+	if err := api.DB.RegisterMember(entities[1].ID, registerMembers[0].PubKey, uuid.New()); err == nil {
+		t.Fatalf("able to register member using random token:  (%+v)", err)
+	}
+	// 5. Not allowing using existing token with different entity ID
+	if err := api.DB.RegisterMember(entities[0].ID, registerMembers[0].PubKey, tokens[1]); err == nil {
+		t.Fatalf("able to register member using existing token but to non-correspondig entity:  (%+v)", err)
+	}
+
 }
 
 func TestTarget(t *testing.T) {

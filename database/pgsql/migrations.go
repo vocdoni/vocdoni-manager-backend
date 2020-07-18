@@ -35,6 +35,8 @@ CREATE TABLE entities (
     address bytea NOT NULL,
     email text NOT NULL,
     name text NOT NULL,
+    callback_url text NOT NULL,
+    callback_secret text NOT NULL,
     census_managers_addresses bytea[] NOT NULL
 );
 

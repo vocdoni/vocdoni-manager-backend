@@ -23,6 +23,7 @@ type MetaRequest struct {
 	ListOptions *ListOptions `json:"listOptions,omitempty"`
 	MemberID    uuid.UUID    `json:"memberId,omitempty"`
 	Member      *Member      `json:"member,omitempty"`
+	MemberInfo  *MemberInfo  `json:"memberInfo,omitempty"`
 	MembersInfo []MemberInfo `json:"membersInfo,omitempty"`
 	Method      string       `json:"method"`
 	PubKey      string       `json:"publicKey,omitempty"`

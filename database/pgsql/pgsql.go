@@ -98,8 +98,8 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	}
 	// TODO: Calculate EntityID (consult go-dvote)
 	insert := `INSERT INTO entities
-			(id, address, email, name, census_managers_addresses)
-			VALUES (:id, :address, :email, :name, :pg_census_managers_addresses)`
+			(id, address, email, name, callback_url, callback_secret, census_managers_addresses)
+			VALUES (:id, :address, :email, :name, :callback_url, :callback_secret, :pg_census_managers_addresses)`
 	_, err = tx.NamedExec(insert, pgEntity)
 	if err != nil {
 		return fmt.Errorf("cannot add insert query in the transaction: %v", err)
@@ -124,7 +124,8 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 
 func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	var pgEntity PGEntity
-	selectEntity := `SELECT id, address, email, name, census_managers_addresses as "pg_census_managers_addresses"  FROM entities WHERE id=$1`
+	selectEntity := `SELECT id, address, email, name, callback_url, callback_secret, census_managers_addresses as "pg_census_managers_addresses"  
+						FROM entities WHERE id=$1`
 	row := d.db.QueryRowx(selectEntity, entityID)
 	err := row.StructScan(&pgEntity)
 	if err != nil {
@@ -144,6 +145,38 @@ func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	}
 	entity.Origins = origins
 	return entity, nil
+}
+
+func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
+	entity := &types.Entity{ID: entityID, EntityInfo: *info}
+	pgentity, err := ToPGEntity(entity)
+	if err != nil {
+		return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
+	}
+	// TODO: Implement Update CensusManagerAddresses (table)
+	update := `UPDATE entities SET
+				address = COALESCE(NULLIF(:address, decode('','hex')), address),
+				name = COALESCE(NULLIF(:name, ''), name),
+				callback_url = COALESCE(NULLIF(:callback_url, ''), callback_url),
+				callback_secret = COALESCE(NULLIF(:callback_secret, ''), callback_secret),
+				email = COALESCE(NULLIF(:email, ''), email)
+				WHERE (id = :id )
+				AND  (:address IS DISTINCT FROM address OR
+				:name IS DISTINCT FROM name OR
+				:callback_url IS DISTINCT FROM callback_url OR
+				:callback_secret IS DISTINCT FROM callback_secret OR
+				:email IS DISTINCT FROM email)`
+	result, err := d.db.NamedExec(update, pgentity)
+	if err != nil {
+		return fmt.Errorf("error updating entity: %v", err)
+	}
+	var rows int64
+	if rows, err = result.RowsAffected(); err != nil {
+		return fmt.Errorf("cannot get affected rows: %v", err)
+	} else if rows != 1 { /* Nothing to update? */
+		return fmt.Errorf("nothing to update: %v", err)
+	}
+	return nil
 }
 
 func (d *Database) EntityOrigins(entityID []byte) ([]types.Origin, error) {
@@ -247,6 +280,15 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 	}
 	return nil
 
+}
+
+// Store N  new Members associated to the Entity and return  their Tokens
+func (d *Database) CreateNMembers(entityID []byte, n int) ([]uuid.UUID, error) {
+	var tokens []uuid.UUID
+	for i := 0; i < n; i++ {
+		tokens = append(tokens, uuid.New())
+	}
+	return tokens, d.CreateMembersWithTokens(entityID, tokens)
 }
 
 // TODO: Implement import members
@@ -580,6 +622,76 @@ func (d *Database) UpdateMember(entityID []byte, memberID uuid.UUID, info *types
 		return fmt.Errorf("cannot get affected rows: %v", err)
 	} else if rows != 1 { /* Nothing to update? */
 		return fmt.Errorf("nothing to update: %v", err)
+	}
+	return nil
+}
+
+// Register member to existing ID and generates corresponding user
+func (d *Database) RegisterMember(entityID, pubKey []byte, token uuid.UUID) error {
+	var tx *sqlx.Tx
+	var err error
+	member := &types.Member{ID: token, EntityID: entityID, PubKey: pubKey}
+	tx, err = d.db.Beginx()
+	if err != nil {
+		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
+	}
+	if len(pubKey) != ethereum.PubKeyLength/2 {
+		return fmt.Errorf("invalid public key size")
+	}
+	user, err := d.User(pubKey)
+	if err == sql.ErrNoRows {
+		// This is the expected behaviour
+		user := &types.User{PubKey: pubKey, DigestedPubKey: snarks.Poseidon.Hash(pubKey)}
+		insert := `INSERT INTO users
+					(public_key, digested_public_key)
+					VALUES (:public_key, :digested_public_key)`
+		result, err := tx.NamedExec(insert, user)
+		if err != nil {
+			if rollErr := tx.Rollback(); err != nil {
+				return fmt.Errorf("error rolling back user creation for member: %v\nafter error: %v", rollErr, err)
+			}
+			return fmt.Errorf("error creating user for member: %v", err)
+		}
+		if rows, err := result.RowsAffected(); err != nil || rows != 1 {
+			return fmt.Errorf("error creating user for member: %v", err)
+		}
+	} else if err == nil && hex.EncodeToString(user.PubKey) == hex.EncodeToString(pubKey) {
+		// err is nil and user exists while it shouldnt
+		return fmt.Errorf("duplicate user")
+	} else {
+		return fmt.Errorf("error retrieving members corresponding user: %v", err)
+	}
+
+	pgmember, err := ToPGMember(member)
+	if err != nil {
+		return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
+	}
+	update := `UPDATE members SET
+				public_key = :public_key
+				WHERE (id = :id AND entity_id = :entity_id)`
+	var result sql.Result
+	if result, err = tx.NamedExec(update, pgmember); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			return fmt.Errorf("error rolling back member and user creation: %v\nafter error: %v", rollErr, err)
+		}
+		return fmt.Errorf("error adding member to the DB: %v", err)
+	}
+	if rows, err := result.RowsAffected(); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			return fmt.Errorf("error rolling back member and user creation: %v\nafter not being able to get affected rows: %v", rollErr, err)
+		}
+		return fmt.Errorf("cannot get affected rows: %v", err)
+	} else if rows != 1 { /* Nothing to update? */
+		if rollErr := tx.Rollback(); err != nil {
+			return fmt.Errorf("error rolling back member and user creation: %v\nafter expecting 1 row update but found %d: %v", rollErr, rows, err)
+		}
+		return fmt.Errorf("expected 1 row affected after adding member, but found %d, posible violation of db constraints", rows)
+	}
+	if err = tx.Commit(); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			return fmt.Errorf("error rolling back member and user creation: %v\nafter final commit to DB: %v", rollErr, err)
+		}
+		return fmt.Errorf("error commiting add member transactions to the DB: %v", err)
 	}
 	return nil
 }

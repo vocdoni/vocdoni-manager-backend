@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/test/testcommon"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
@@ -65,9 +67,7 @@ func TestRegister(t *testing.T) {
 	// create register request
 	req.Method = "register"
 	req.EntityID = hex.EncodeToString(entities[0].ID)
-	req.Member = &types.Member{
-		MemberInfo: members[0].MemberInfo,
-	}
+	req.MemberInfo = &members[0].MemberInfo
 	// make request
 	resp := wsc.Request(req, membersSigners[0])
 	// check register went successful
@@ -156,6 +156,162 @@ func TestRegister(t *testing.T) {
 
 				// cannot reuse the same token
 	*/
+}
+
+func TestValidateToken(t *testing.T) {
+	// create entity
+	_, entities, err := testcommon.CreateEntities(2)
+	if err != nil {
+		t.Fatalf("cannot create entities: %s", err)
+	}
+	// add entity
+	err = api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo)
+	if err != nil {
+		t.Fatalf("cannot add entity into database: %s", err)
+	}
+	// create token
+	tokens, err := api.DB.CreateNMembers(entities[0].ID, 3)
+	if err != nil {
+		t.Fatalf("unable to create member using CreateNMembers:  (%+v)", err)
+	}
+	// create signing key
+	membersSigners, _, err := testcommon.CreateMembers(entities[1].ID, 3)
+	if err != nil {
+		t.Fatalf("cannot create member signer: %s", err)
+	}
+
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// register member without token
+	var req types.MetaRequest
+	// create register request
+	req.Method = "validateToken"
+	req.EntityID = hex.EncodeToString(entities[0].ID)
+	req.Token = tokens[0].String()
+	// make request
+	resp := wsc.Request(req, membersSigners[0])
+	// check register went successful
+	if !resp.Ok {
+		t.Fatal(err)
+	}
+	// 1. check member created
+	member, err := api.DB.Member(entities[0].ID, tokens[0])
+	if err != nil {
+		t.Fatalf("cannot fetch validated member from the database: %s", err)
+	}
+	// 2. check user added and member is linked with pubkey
+	_, err = api.DB.User(member.PubKey)
+	if err != nil {
+		t.Fatalf("cannot fetch corresponding validated user from the Postgres DB (pgsql.go:User): %s", err)
+	}
+	// 3. cannot validate same token twice
+	resp = wsc.Request(req, membersSigners[0])
+	// check register failed
+	if resp.Ok {
+		t.Fatal("validated same token twice")
+	}
+
+	// 4. check cannot validate random token (with new signer)
+	req.Token = uuid.New().String()
+	resp = wsc.Request(req, membersSigners[1])
+	// check register failed
+	if resp.Ok {
+		t.Fatal("validated random token")
+	}
+
+	// 5. check cannot validate correct token in non-existing entity (with new signer)
+	req.Token = tokens[1].String()
+	req.EntityID = hex.EncodeToString(entities[1].ID)
+	resp = wsc.Request(req, membersSigners[1])
+	// check register failed
+	if resp.Ok {
+		t.Fatal(" validated correct token in non-existing entity")
+	}
+
+	// 6. check cannot validate correct token in existing non-corresponding entity (with new signer)
+	// add entity
+	err = api.DB.AddEntity(entities[1].ID, &entities[1].EntityInfo)
+	if err != nil {
+		t.Fatalf("cannot add entity into database: %s", err)
+	}
+	req.Token = tokens[1].String()
+	req.EntityID = hex.EncodeToString(entities[1].ID)
+	resp = wsc.Request(req, membersSigners[1])
+	// check register failed
+	if resp.Ok {
+		t.Fatal("validated correct token in existing non-corresponding entity")
+	}
+
+	// 7. check cannot reuse the same pubKey to validate a new token
+	req.EntityID = hex.EncodeToString(entities[0].ID)
+	resp = wsc.Request(req, membersSigners[0])
+	// check register failed
+	if resp.Ok {
+		t.Fatal("reused the same pubKey to validate a new token")
+	}
+
+	// 8. Test callback fails with wrong event type
+	port := "12000"
+	secret := "awsedrft"
+	ts := "1000"
+	event := "register"
+	urlParameters := "?auth={AUTH}&event={EVENT}&id={ID}&ts={TIMESTAMP}"
+	h := ethereum.HashRaw([]byte(secret + event + tokens[2].String() + ts))
+
+	updatedInfo := &types.EntityInfo{
+		CallbackURL:    "http://127.0.0.1:" + port + urlParameters,
+		CallbackSecret: secret,
+	}
+
+	err = api.DB.UpdateEntity(entities[0].ID, updatedInfo)
+	if err != nil {
+		t.Fatalf("cannot fetch validated member from the database: %s", err)
+	}
+
+	params := map[string]string{
+		"auth":  fmt.Sprintf("%x", h),
+		"event": event,
+		"id":    tokens[2].String(),
+		"ts":    ts,
+	}
+
+	req.Token = tokens[2].String()
+	req.EntityID = hex.EncodeToString(entities[0].ID)
+	s := testcommon.TestCallbackServer(t, port, params)
+	resp = wsc.Request(req, membersSigners[2])
+	s.Close()
+	if !resp.Ok {
+		t.Fatal("cannot validate member using also callback")
+	}
+
+	// check member created
+	member, err = api.DB.Member(entities[0].ID, tokens[2])
+	if err != nil {
+		t.Fatalf("cannot fetch validated member from the database: %s", err)
+	}
+	// 2. check user added and member is linked with pubkey
+	_, err = api.DB.User(member.PubKey)
+	if err != nil {
+		t.Fatalf("cannot fetch corresponding validated user from the Postgres DB (pgsql.go:User): %s", err)
+	}
+
+	// Example of Running and expecting to fail for the callback
+	// without making the test fail
+	//
+	// params["event"] = "random"
+	// result := t.Run("fail", func(t *testing.T) {
+	// 	s := testcommon.TestCallbackServer(t, port, params)
+	// 	resp = wsc.Request(req, membersSigners[2])
+	// 	s.Close()
+	// })
+	// if result != fail {
+	// 	t.Fatalf("Callback  accetps illegal event (\"random\"")
+	// }
+
 }
 
 func TestStatus(t *testing.T) {

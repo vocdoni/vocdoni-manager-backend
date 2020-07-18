@@ -22,10 +22,12 @@ type Entity struct {
 
 type EntityInfo struct {
 	Address                 []byte   `json:"address" db:"address"`
+	CallbackURL             string   `json:"callbackUrl" db:"callback_url"`
+	CallbackSecret          string   `json:"callbackSecret" db:"callback_secret"`
 	Email                   string   `json:"email,omitempty" db:"email"`
 	Name                    string   `json:"name" db:"name"`
 	CensusManagersAddresses [][]byte `json:"censusManagersAddresses,omitempty" db:"census_managers_addresses"`
-	Origins                 []Origin `json:"origin" db:"origin"`
+	Origins                 []Origin `json:"origins" db:"origins"`
 }
 
 //go:generate stringer -type=Origin

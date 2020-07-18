@@ -4,6 +4,10 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
 
 	"github.com/badoux/checkmail"
 	"github.com/google/uuid"
@@ -31,6 +35,9 @@ func (r *Registry) RegisterMethods(path string) error {
 	if err := r.Router.AddHandler("register", path+"/registry", r.register, false); err != nil {
 		return err
 	}
+	if err := r.Router.AddHandler("validateToken", path+"/registry", r.validateToken, false); err != nil {
+		return err
+	}
 	if err := r.Router.AddHandler("status", path+"/registry", r.status, false); err != nil {
 		return err
 	}
@@ -51,38 +58,16 @@ func (r *Registry) send(req router.RouterRequest, resp types.MetaResponse) {
 }
 
 func (r *Registry) register(request router.RouterRequest) {
-	var entity *types.Entity
 	var err error
 	var member *types.Member
 	var user types.User
 	var uid uuid.UUID
 	var response types.MetaResponse
 
-	if request.PubKey != "" {
-		// check public key length
-		if len(request.PubKey) != ethereum.PubKeyLength {
-			r.Router.SendError(request, "invalid public key")
-			return
-		}
-		// decode public key
-		if user.PubKey, err = hex.DecodeString(util.TrimHex(request.PubKey)); err != nil {
-			log.Warn(err)
-			r.Router.SendError(request, "cannot decode public key")
-			return
-		}
-
-		// check public key against message signature extracted public key
-		if request.PubKey != request.SignaturePublicKey {
-			log.Warnf("%s != %s", request.PubKey, request.SignaturePublicKey)
-			r.Router.SendError(request, "public key does not match")
-			return
-		}
-	} else {
-		if user.PubKey, err = hex.DecodeString(request.SignaturePublicKey); err != nil {
-			log.Warn(err)
-			r.Router.SendError(request, "cannot decode public key")
-			return
-		}
+	if user.PubKey, err = hex.DecodeString(request.SignaturePublicKey); err != nil {
+		log.Warn(err)
+		r.Router.SendError(request, "cannot decode public key")
+		return
 	}
 
 	// check entityId exists
@@ -92,75 +77,110 @@ func (r *Registry) register(request router.RouterRequest) {
 		r.Router.SendError(request, "invalid entityId")
 		return
 	}
-	// get entity
-	if entity, err = r.db.Entity(entityID); err != nil {
-		log.Warn(err)
-		r.Router.SendError(request, "entity does not exist")
+
+	// either token or valid member info should be valid
+	if !checkMemberInfo(request.MemberInfo) {
+		r.Router.SendError(request, "invalid member info")
 		return
 	}
-	// compare request.EntityID vs entityID fetched from db
-	if string(entityID) != string(entity.ID) {
-		r.Router.SendError(request, "invalid entity")
+	if uid, err = r.db.AddMember(entityID, user.PubKey, request.MemberInfo); err != nil {
+		log.Warn(err)
+		r.Router.SendError(request, fmt.Sprintf("cannot create member: (%s)", err))
+		return
+	}
+	member = &types.Member{ID: uid, PubKey: user.PubKey, EntityID: entityID, MemberInfo: *request.MemberInfo}
+
+	log.Infof("new member added %+v for entity %s", member, request.EntityID)
+	r.send(request, response)
+}
+
+func (r *Registry) validateToken(request router.RouterRequest) {
+	var err error
+	var user types.User
+	var uid uuid.UUID
+	var response types.MetaResponse
+
+	if user.PubKey, err = hex.DecodeString(request.SignaturePublicKey); err != nil {
+		log.Errorf("cannot decode user public key: (%v)", err)
+		r.Router.SendError(request, "cannot decode user public key")
 		return
 	}
 
-	// if user does not exist create
-	// check user exists
-	if _, err = r.db.User(user.PubKey); err != nil {
-		// user does not exist, create new
-		if err == sql.ErrNoRows {
-			if err = r.db.AddUser(&user); err != nil {
-				log.Warn(err)
-				r.Router.SendError(request, "unkown error on AddUser")
-				return
-			}
-		} else {
-			log.Error(err)
-			r.Router.SendError(request, "cannot query for user")
-			return
-		}
+	// check entityId exists
+	entityID, err := hex.DecodeString(util.TrimHex(request.EntityID))
+	if err != nil {
+		log.Warnf("invalid entityId %s : (%v)", request.EntityID, err)
+		r.Router.SendError(request, "invalid entityId")
+		return
 	}
 
 	// either token or valid member info should be valid
 	if len(request.Token) == 0 {
-		if !checkMemberInfo(request.Member) {
-			r.Router.SendError(request, "invalid member info")
+		log.Warnf("empty token validation for entity %s", request.EntityID)
+		r.Router.SendError(request, "invalid token")
+		return
+	}
+	if uid, err = uuid.Parse(request.Token); err != nil {
+		log.Warnf("invalid token id format %s for entity %s: (%v)", request.Token, request.EntityID, err)
+		r.Router.SendError(request, "invalid token format")
+		return
+	}
+	entity, err := r.db.Entity(entityID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Warnf("trying to validate token  %s for non-existing combination entity %s", uid, request.EntityID)
+			r.Router.SendError(request, "invalid entity id")
 			return
+
 		}
-		if _, err = r.db.AddMember(entityID, user.PubKey, &request.Member.MemberInfo); err != nil {
-			log.Warn(err)
-			r.Router.SendError(request, fmt.Sprintf("cannot create member: (%s)", err))
-			return
-		}
-		member = request.Member
-	} else {
-		var token []byte
-		if token, err = hex.DecodeString(util.TrimHex(request.Token)); err != nil {
-			log.Warn(err)
-			r.Router.SendError(request, "invalid token hexstring")
-			return
-		}
-		if uid, err = uuid.FromBytes(token); err != nil {
-			log.Warn(err)
-			r.Router.SendError(request, "invalid token")
-			return
-		}
-		member, err = r.db.Member(entityID, uid)
-		if err != nil {
-			log.Warn(err)
+		log.Warnf("error retrieving entity (%q) to validate token (%q): (%q)", request.EntityID, uid, err)
+		r.Router.SendError(request, "error retrieving entity")
+		return
+	}
+	_, err = r.db.Member(entityID, uid)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Warnf("using non-existing combination of token  %s and entity %s: (%v)", uid, request.EntityID, err)
 			r.Router.SendError(request, "invalid token id")
 			return
 		}
-		if err = r.db.UpdateMember(entityID, uid, &request.Member.MemberInfo); err != nil {
-			log.Warn(err)
-			r.Router.SendError(request, fmt.Sprintf("cannot set member info: (%s)", err))
-			return
-		}
+		log.Warnf("error retrieving member (%q) for entity (%q): (%q)", uid, request.EntityID, err)
+		r.Router.SendError(request, "error retrieving token")
+		return
 	}
-	member.EntityID = entityID
-	member.PubKey = user.PubKey
-	log.Infof("member added %+v", member)
+	if err = r.db.RegisterMember(entityID, user.PubKey, uid); err != nil {
+		log.Warnf("cannot register member for entity %s: (%v)", request.EntityID, err)
+		r.Router.SendError(request, "cannot register member")
+		return
+	}
+
+	_, err = url.ParseRequestURI(entity.CallbackURL)
+	if err == nil {
+		go callback(entity.CallbackURL, entity.CallbackSecret, "register", uid)
+	} else {
+		log.Debugf("no callback URL defined for (%s)", entityID)
+	}
+
+	log.Infof("token %q validated for Entity %s", user.PubKey, request.EntityID)
 	r.send(request, response)
+}
+
+// callback example: /callback?id=63c93e6f-5326-407b-960a-f796036eca5f?ts=1594912052?auth=c4a998ec01f45b8d3939090eb155e1a4038a59996e40fb5c03e58ff0cabb7528
+// TBD: do not allow localhost or private networks, that would open a possible attack vector
+func callback(callbackURL, secret, event string, uid uuid.UUID) error {
+	client := &http.Client{Timeout: time.Second * 5} // 5 seconds should be enough
+	ts := fmt.Sprintf("%d", time.Now().Unix())
+	h := ethereum.HashRaw([]byte(secret + event + uid.String() + ts))
+	callbackURL = strings.ReplaceAll(callbackURL, "{ID}", uid.String())
+	callbackURL = strings.ReplaceAll(callbackURL, "{TIMESTAMP}", ts)
+	callbackURL = strings.ReplaceAll(callbackURL, "{AUTH}", fmt.Sprintf("%x", h))
+	callbackURL = strings.ReplaceAll(callbackURL, "{EVENT}", event)
+	result, err := client.Get(callbackURL)
+	if err != nil {
+		log.Warnf("Callback GET (%q) error: (%q)", callbackURL, err)
+	}
+	log.Debugf("Callback Get Result: (%v)", result)
+	return err
 }
 
 func (r *Registry) status(request router.RouterRequest) {
@@ -370,7 +390,7 @@ func (r *Registry) listSubscriptions(request router.RouterRequest) {
 
 // ===== helpers =======
 
-func checkMemberInfo(m *types.Member) bool {
+func checkMemberInfo(m *types.MemberInfo) bool {
 	// TBD: check valid dateOfBirth
 	if m == nil {
 		return false
