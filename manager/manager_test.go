@@ -325,7 +325,8 @@ func TestDeleteMember(t *testing.T) {
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "deleteMember"
-	req.MemberID = uuid.New()
+	req.MemberID = new(uuid.UUID)
+	*req.MemberID = uuid.New()
 	// make request
 	resp := wsc.Request(req, &s)
 	// check register went successful
@@ -338,7 +339,8 @@ func TestDeleteMember(t *testing.T) {
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "deleteMember"
-	req2.MemberID = uuid.New()
+	req2.MemberID = new(uuid.UUID)
+	*req2.MemberID = uuid.New()
 	// make request
 	resp2 := wsc.Request(req2, &s2)
 	// check register went successful

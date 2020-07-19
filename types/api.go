@@ -21,7 +21,7 @@ type MetaRequest struct {
 	EntityID    string       `json:"entityId,omitempty"`
 	Filter      *Target      `json:"filter,omitempty"`
 	ListOptions *ListOptions `json:"listOptions,omitempty"`
-	MemberID    uuid.UUID    `json:"memberId,omitempty"`
+	MemberID    *uuid.UUID   `json:"memberId,omitempty"`
 	Member      *Member      `json:"member,omitempty"`
 	MemberInfo  *MemberInfo  `json:"memberInfo,omitempty"`
 	MembersInfo []MemberInfo `json:"membersInfo,omitempty"`
@@ -30,7 +30,7 @@ type MetaRequest struct {
 	Signature   string       `json:"signature,omitempty"`
 	Scope       string       `json:"scope,omitempty"`
 	Status      *Status      `json:"status,omitempty"`
-	TargetID    uuid.UUID    `json:"targetId,omitempty"`
+	TargetID    *uuid.UUID   `json:"targetId,omitempty"`
 	Timestamp   int32        `json:"timestamp"`
 	Token       string       `json:"token,omitempty"`
 }
