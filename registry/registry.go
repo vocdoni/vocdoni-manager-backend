@@ -96,7 +96,7 @@ func (r *Registry) register(request router.RouterRequest) {
 	}
 	member = &types.Member{ID: uid, PubKey: user.PubKey, EntityID: entityID, MemberInfo: *request.MemberInfo}
 
-	log.Infof("new member added %+v for entity %s", member, request.EntityID)
+	log.Infof("new member added %+v for entity %s", *member, request.EntityID)
 	r.send(request, response)
 
 	// increase stats counter
@@ -171,10 +171,10 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	if err == nil {
 		go callback(entity.CallbackURL, entity.CallbackSecret, "register", uid)
 	} else {
-		log.Debugf("no callback URL defined for (%s)", entityID)
+		log.Debugf("no callback URL defined for (%x)", entityID)
 	}
 
-	log.Infof("token %q validated for Entity %s", user.PubKey, request.EntityID)
+	log.Infof("token %s validated for Entity %x", request.Token, entityID)
 	r.send(request, response)
 }
 
@@ -190,9 +190,9 @@ func callback(callbackURL, secret, event string, uid uuid.UUID) error {
 	callbackURL = strings.ReplaceAll(callbackURL, "{EVENT}", event)
 	result, err := client.Get(callbackURL)
 	if err != nil {
-		log.Warnf("Callback GET (%q) error: (%q)", callbackURL, err)
+		log.Warnf("callback GET (%s) error: (%s)", callbackURL, err)
 	}
-	log.Debugf("Callback Get Result: (%v)", result)
+	log.Debugf("gallback Get Result: (%v)", result)
 	return err
 }
 
