@@ -218,6 +218,8 @@ func TestGetMember(t *testing.T) {
 	s.AddHexKey(testdb.Signers[1].Priv)
 	var req types.MetaRequest
 	req.Method = "getMember"
+	u := uuid.New()
+	req.MemberID = &u
 	// make request
 	resp := wsc.Request(req, &s)
 	// check register went successful
@@ -230,6 +232,8 @@ func TestGetMember(t *testing.T) {
 	s2.AddHexKey(testdb.Signers[0].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "getMember"
+	u = uuid.New()
+	req2.MemberID = &u
 	// make request
 	resp2 := wsc.Request(req2, &s2)
 	// check register went successful
@@ -244,6 +248,8 @@ func TestGetMember(t *testing.T) {
 	//t.Fatalf("%s", hex.EncodeToString(eid))
 	var req3 types.MetaRequest
 	req3.Method = "getMember"
+	u = uuid.New()
+	req3.MemberID = &u
 	// make request
 	resp3 := wsc.Request(req3, &s2)
 	// check register went successful
@@ -258,6 +264,8 @@ func TestGetMember(t *testing.T) {
 	//t.Fatalf("%s", hex.EncodeToString(eid))
 	var req4 types.MetaRequest
 	req4.Method = "getMember"
+	u = uuid.New()
+	req4.MemberID = &u
 	// make request
 	resp4 := wsc.Request(req4, &s4)
 	// check register went successful
@@ -270,11 +278,13 @@ func TestGetMember(t *testing.T) {
 	s5.Generate()
 	var req5 types.MetaRequest
 	req5.Method = "getMember"
+	u = uuid.New()
+	req5.MemberID = &u
 	// make request
 	resp5 := wsc.Request(req5, &s5)
 	// check register went successful
 	if !resp5.Ok {
-		t.Fatal("should list succesful")
+		t.Fatalf("should list succesful: %s", resp5.Message)
 	}
 }
 
@@ -624,7 +634,8 @@ func TestGetTarget(t *testing.T) {
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "getTarget"
-	req.TargetID = uuid.New()
+	req.TargetID = new(uuid.UUID)
+	*req.TargetID = uuid.New()
 	// make request
 	resp := wsc.Request(req, &s)
 	// check register went successful
@@ -637,7 +648,8 @@ func TestGetTarget(t *testing.T) {
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "getTarget"
-	req2.TargetID = uuid.New()
+	req2.TargetID = new(uuid.UUID)
+	*req2.TargetID = uuid.New()
 	// make request
 	resp2 := wsc.Request(req2, &s2)
 	// check register went successful
@@ -650,7 +662,8 @@ func TestGetTarget(t *testing.T) {
 	s3.AddHexKey(testdb.Signers[2].Priv)
 	var req3 types.MetaRequest
 	req3.Method = "getTarget"
-	req3.TargetID = uuid.New()
+	req3.TargetID = new(uuid.UUID)
+	*req3.TargetID = uuid.New()
 	// make request
 	resp3 := wsc.Request(req3, &s3)
 	// check register went successful
@@ -671,7 +684,8 @@ func TestDumpTarget(t *testing.T) {
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "dumpTarget"
-	req.TargetID = uuid.New()
+	req.TargetID = new(uuid.UUID)
+	*req.TargetID = uuid.New()
 	// make request
 	resp := wsc.Request(req, &s)
 	// check register went successful
@@ -722,7 +736,8 @@ func TestAddCensus(t *testing.T) {
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "addCensus"
-	req.TargetID = uuid.Nil
+	req.TargetID = new(uuid.UUID)
+	*req.TargetID = uuid.Nil
 	// make request
 	resp := wsc.Request(req, &s)
 	// check register went successful
@@ -733,7 +748,8 @@ func TestAddCensus(t *testing.T) {
 	// should fail if len(censusID) == 0
 	var req2 types.MetaRequest
 	req2.Method = "addCensus"
-	req2.TargetID = uuid.New()
+	req2.TargetID = new(uuid.UUID)
+	*req2.TargetID = uuid.New()
 	req2.CensusID = ""
 	// make request
 	resp2 := wsc.Request(req2, &s)
@@ -745,7 +761,8 @@ func TestAddCensus(t *testing.T) {
 	// should fail if cannot decode censusID
 	var req3 types.MetaRequest
 	req3.Method = "addCensus"
-	req3.TargetID = uuid.New()
+	req3.TargetID = new(uuid.UUID)
+	*req3.TargetID = uuid.New()
 	req3.CensusID = ""
 	// make request
 	resp3 := wsc.Request(req3, &s)
@@ -774,7 +791,8 @@ func TestAddCensus(t *testing.T) {
 	s3 := ethereum.SignKeys{}
 	s3.AddHexKey(testdb.Signers[2].Priv)
 	req5.Method = "addCensus"
-	req5.TargetID = uuid.New()
+	req5.TargetID = new(uuid.UUID)
+	*req5.TargetID = uuid.New()
 	req5.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
 	// make request
 	resp5 := wsc.Request(req5, &s3)
@@ -786,7 +804,8 @@ func TestAddCensus(t *testing.T) {
 	// otherwise should success
 	var req6 types.MetaRequest
 	req6.Method = "addCensus"
-	req6.TargetID = uuid.New()
+	req6.TargetID = new(uuid.UUID)
+	*req6.TargetID = uuid.New()
 	req6.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
 	// make request
 	resp6 := wsc.Request(req6, &s)
@@ -818,7 +837,8 @@ func TestGetCensus(t *testing.T) {
 	// should fail if cannot decode census id
 	var req2 types.MetaRequest
 	req2.Method = "getCensus"
-	req2.TargetID = uuid.New()
+	req2.TargetID = new(uuid.UUID)
+	*req2.TargetID = uuid.New()
 	req2.CensusID = "0xA"
 	// make request
 	resp2 := wsc.Request(req2, &s)

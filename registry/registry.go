@@ -146,7 +146,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		r.Router.SendError(request, "error retrieving entity")
 		return
 	}
-	_, err = r.db.Member(entityID, uid)
+	_, err = r.db.Member(entityID, &uid)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Warnf("using non-existing combination of token  %s and entity %s: (%v)", uid, request.EntityID, err)
@@ -157,7 +157,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		r.Router.SendError(request, "error retrieving token")
 		return
 	}
-	if err = r.db.RegisterMember(entityID, user.PubKey, uid); err != nil {
+	if err = r.db.RegisterMember(entityID, user.PubKey, &uid); err != nil {
 		log.Warnf("cannot register member for entity %s: (%v)", request.EntityID, err)
 		msg := "cannot register member"
 		if err.Error() == "duplicate user" {

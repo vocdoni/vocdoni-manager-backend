@@ -193,7 +193,7 @@ func (d *Database) EntityOrigins(entityID []byte) ([]types.Origin, error) {
 	return origins, nil
 }
 
-func (d *Database) EntityHas(entityID []byte, memberID uuid.UUID) bool {
+func (d *Database) EntityHas(entityID []byte, memberID *uuid.UUID) bool {
 	return true
 }
 
@@ -595,8 +595,11 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 	return nil
 }
 
-func (d *Database) UpdateMember(entityID []byte, memberID uuid.UUID, info *types.MemberInfo) error {
-	member := &types.Member{ID: memberID, EntityID: entityID, MemberInfo: *info}
+func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *types.MemberInfo) error {
+	if memberID == nil {
+		return fmt.Errorf("memberID is nil")
+	}
+	member := &types.Member{ID: *memberID, EntityID: entityID, MemberInfo: *info}
 	pgmember, err := ToPGMember(member)
 	if err != nil {
 		return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
@@ -627,10 +630,13 @@ func (d *Database) UpdateMember(entityID []byte, memberID uuid.UUID, info *types
 }
 
 // Register member to existing ID and generates corresponding user
-func (d *Database) RegisterMember(entityID, pubKey []byte, token uuid.UUID) error {
+func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) error {
+	if token == nil {
+		return fmt.Errorf("token is nil")
+	}
 	var tx *sqlx.Tx
 	var err error
-	member := &types.Member{ID: token, EntityID: entityID, PubKey: pubKey}
+	member := &types.Member{ID: *token, EntityID: entityID, PubKey: pubKey}
 	tx, err = d.db.Beginx()
 	if err != nil {
 		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
@@ -696,7 +702,10 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token uuid.UUID) erro
 	return nil
 }
 
-func (d *Database) Member(entityID []byte, memberID uuid.UUID) (*types.Member, error) {
+func (d *Database) Member(entityID []byte, memberID *uuid.UUID) (*types.Member, error) {
+	if memberID == nil {
+		return nil, fmt.Errorf("memberID is nil")
+	}
 	var pgMember PGMember
 	selectQuery := `SELECT
 	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented
@@ -709,11 +718,14 @@ func (d *Database) Member(entityID []byte, memberID uuid.UUID) (*types.Member, e
 	return member, nil
 }
 
-func (d *Database) DeleteMember(entityID []byte, memberID uuid.UUID) error {
+func (d *Database) DeleteMember(entityID []byte, memberID *uuid.UUID) error {
+	if memberID == nil {
+		return fmt.Errorf("memberID is nil")
+	}
 	var result sql.Result
 	var err error
 	deleteQuery := `DELETE FROM members WHERE id = $1 and entity_id =$2`
-	if result, err = d.db.Exec(deleteQuery, memberID, entityID); err == nil {
+	if result, err = d.db.Exec(deleteQuery, *memberID, entityID); err == nil {
 		var rows int64
 		if rows, err = result.RowsAffected(); rows != 1 {
 			return fmt.Errorf("nothing to delete")
@@ -862,8 +874,8 @@ func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, 
 	return id, nil
 }
 
-func (d *Database) Target(entityID []byte, targetID uuid.UUID) (*types.Target, error) {
-	if len(entityID) == 0 || targetID == uuid.Nil {
+func (d *Database) Target(entityID []byte, targetID *uuid.UUID) (*types.Target, error) {
+	if len(entityID) == 0 || targetID == nil || *targetID == uuid.Nil {
 		return nil, fmt.Errorf("error retrieving target")
 	}
 	selectQuery := `SELECT id, entity_id, name, filters 
@@ -902,8 +914,11 @@ func (d *Database) ListTargets(entityID []byte) ([]types.Target, error) {
 	return targets, nil
 }
 
-func (d *Database) TargetMembers(entityID []byte, targetID uuid.UUID) ([]types.Member, error) {
+func (d *Database) TargetMembers(entityID []byte, targetID *uuid.UUID) ([]types.Member, error) {
 	// TODO: Implement filters
+	if targetID == nil {
+		return nil, fmt.Errorf("targetID is nil")
+	}
 	return d.ListMembers(entityID, &types.ListOptions{})
 }
 
@@ -922,15 +937,15 @@ func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
 	return &census, nil
 }
 
-func (d *Database) AddCensus(entityID, censusID []byte, targetID uuid.UUID, info *types.CensusInfo) error {
+func (d *Database) AddCensus(entityID, censusID []byte, targetID *uuid.UUID, info *types.CensusInfo) error {
 	var err error
 	var rows int64
-	if len(entityID) == 0 || len(censusID) == 0 || targetID == uuid.Nil {
+	if len(entityID) == 0 || len(censusID) == 0 || targetID == nil || *targetID == uuid.Nil {
 		return fmt.Errorf("invalid arguments")
 	}
 	// TODO check valid target selecting
 
-	census := types.Census{ID: censusID, EntityID: entityID, TargetID: targetID, CensusInfo: *info}
+	census := types.Census{ID: censusID, EntityID: entityID, TargetID: *targetID, CensusInfo: *info}
 	insert := `INSERT  
 				INTO censuses
 	 			(id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri)
@@ -948,9 +963,9 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID uuid.UUID, info
 	return nil
 }
 
-func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID uuid.UUID, info *types.CensusInfo) (int64, error) {
+func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uuid.UUID, info *types.CensusInfo) (int64, error) {
 	var err error
-	if len(entityID) == 0 || len(censusID) == 0 || targetID == uuid.Nil {
+	if len(entityID) == 0 || len(censusID) == 0 || targetID == nil || *targetID == uuid.Nil {
 		return 0, fmt.Errorf("invalid arguments")
 	}
 	// TODO check valid target selecting
@@ -972,7 +987,7 @@ func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID uuid
 		return 0, fmt.Errorf("target contains 0 members")
 	}
 
-	census := types.Census{ID: censusID, EntityID: entityID, TargetID: targetID, CensusInfo: *info}
+	census := types.Census{ID: censusID, EntityID: entityID, TargetID: *targetID, CensusInfo: *info}
 	tx, err := d.db.Beginx()
 	if err != nil {
 		return 0, fmt.Errorf("cannot initialize postgres transaction: %v", err)

@@ -155,7 +155,7 @@ func TestGetMember(t *testing.T) {
 	// create and make request
 	var req types.MetaRequest
 	req.Method = "getMember"
-	req.MemberID = memberID
+	req.MemberID = &memberID
 	resp := wsc.Request(req, entitySigners[0])
 	t.Log(resp)
 	if !resp.Ok || hex.EncodeToString(resp.Member.PubKey) != hex.EncodeToString(members[0].PubKey) {
@@ -215,7 +215,7 @@ func TestUpdateMember(t *testing.T) {
 	}
 
 	var member *types.Member
-	if member, err = api.DB.Member(entities[0].ID, members[0].ID); err != nil {
+	if member, err = api.DB.Member(entities[0].ID, &members[0].ID); err != nil {
 		t.Fatalf("cannot retrieve udpated member from database: %s", err)
 	}
 	if member.Email != "upd" || member.FirstName != "upd" || member.LastName != "upd" {
@@ -259,14 +259,14 @@ func TestDeleteMember(t *testing.T) {
 	// create and make request
 	var req types.MetaRequest
 	req.Method = "deleteMember"
-	req.MemberID = members[0].ID
+	req.MemberID = &members[0].ID
 	resp := wsc.Request(req, entitySigners[0])
 	t.Log(resp)
 	if !resp.Ok {
 		t.Fatalf("request failed: %+v", req)
 	}
 
-	if _, err := api.DB.Member(entities[0].ID, members[0].ID); err != sql.ErrNoRows {
+	if _, err := api.DB.Member(entities[0].ID, &members[0].ID); err != sql.ErrNoRows {
 		t.Fatalf("could retrieve deleted member from database: %s", err)
 	}
 
@@ -374,7 +374,7 @@ func TestGetTarget(t *testing.T) {
 	// create and make request
 	var req types.MetaRequest
 	req.Method = "getTarget"
-	req.TargetID = targetID
+	req.TargetID = &targetID
 	resp := wsc.Request(req, entitySigners[0])
 	t.Log(resp)
 	if !resp.Ok || resp.Target.Name != "all" {
@@ -459,7 +459,7 @@ func TestDumpTarget(t *testing.T) {
 	// create and make request
 	var req types.MetaRequest
 	req.Method = "dumpTarget"
-	req.TargetID = targetID
+	req.TargetID = &targetID
 	resp := wsc.Request(req, entitySigners[0])
 	t.Log(resp)
 	if !resp.Ok || len(resp.Claims) != n {
@@ -577,7 +577,7 @@ func TestAddCensus(t *testing.T) {
 	req.Method = "addCensus"
 	req.CensusID = id
 	req.Census = censusInfo
-	req.TargetID = targetID
+	req.TargetID = &targetID
 
 	resp := wsc.Request(req, entitySigners[0])
 	if !resp.Ok {
@@ -644,7 +644,7 @@ func TestGetCensus(t *testing.T) {
 		MerkleTreeURI: fmt.Sprintf("ipfs://%s", util.TrimHex(id)),
 	}
 
-	err = api.DB.AddCensus(entities[0].ID, idBytes, targetID, censusInfo)
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, censusInfo)
 	if err != nil {
 		t.Fatal("error adding census to the db")
 	}
@@ -731,7 +731,7 @@ func TestListCensus(t *testing.T) {
 		MerkleTreeURI: fmt.Sprintf("ipfs://%s", util.TrimHex(id)),
 	}
 
-	err = api.DB.AddCensus(entities[0].ID, idBytes, targetID, censusInfo)
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, censusInfo)
 	if err != nil {
 		t.Fatal("error adding census to the db")
 	}
@@ -756,7 +756,7 @@ func TestListCensus(t *testing.T) {
 	}
 	censusInfo.Name = fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
 
-	err = api.DB.AddCensus(entities[0].ID, idBytes, targetID, censusInfo)
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, censusInfo)
 	if err != nil {
 		t.Fatal("unable to create second census (pgsql.go:AddCensus)")
 	}

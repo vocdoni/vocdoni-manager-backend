@@ -179,7 +179,7 @@ func TestMember(t *testing.T) {
 	}
 
 	// Query by ID
-	member, err := db.Member(entities[0].ID, id)
+	member, err := db.Member(entities[0].ID, &id)
 	if err != nil {
 		t.Errorf("Error retrieving member from the Postgres DB (pgsql.go:Member): %s", err)
 	}
@@ -218,7 +218,7 @@ func TestMember(t *testing.T) {
 	}
 
 	// Query by UUID
-	member, err = db.Member(entities[0].ID, member.ID)
+	member, err = db.Member(entities[0].ID, &member.ID)
 	if err != nil {
 		t.Fatalf("cannot fetch user from the Postgres DB (pgsql.go:Member): %s", err)
 	}
@@ -228,11 +228,11 @@ func TestMember(t *testing.T) {
 
 	// Test SetMemberInfo
 	newInfo := &types.MemberInfo{Email: "updated@mail.com", FirstName: ""}
-	err = api.DB.UpdateMember(entities[0].ID, member.ID, newInfo)
+	err = api.DB.UpdateMember(entities[0].ID, &member.ID, newInfo)
 	if err != nil {
 		t.Fatalf("cannot update user info to the Postgres DB (pgsql.go:updateMember): %s", err)
 	}
-	newMember, err := db.Member(entities[0].ID, member.ID)
+	newMember, err := db.Member(entities[0].ID, &member.ID)
 	if err != nil {
 		t.Fatalf("cannot fetch user from the Postgres DB (pgsql.go:Member): %s", err)
 	}
@@ -291,15 +291,15 @@ func TestMember(t *testing.T) {
 
 	// Test deleting member
 	// 1. Can delete existing member
-	if err := api.DB.DeleteMember(entities[0].ID, member.ID); err != nil {
+	if err := api.DB.DeleteMember(entities[0].ID, &member.ID); err != nil {
 		t.Fatalf("error deleting member %+v", err)
 	}
-	if _, err = db.Member(entities[0].ID, member.ID); err != sql.ErrNoRows {
+	if _, err = db.Member(entities[0].ID, &member.ID); err != sql.ErrNoRows {
 		t.Fatalf("error retrieving deleting member %+v", err)
 	}
 
 	// 2. Get error deleting inexisting member
-	if err := api.DB.DeleteMember(entities[0].ID, uuid.UUID{}); err == nil {
+	if err := api.DB.DeleteMember(entities[0].ID, &uuid.UUID{}); err == nil {
 		t.Fatalf("managed to delete random member %+v", err)
 	}
 
@@ -322,11 +322,11 @@ func TestMember(t *testing.T) {
 		t.Fatalf("unable to retrieve registered member:  (%+v)", err)
 	}
 	// 1. Registering member
-	if err := api.DB.RegisterMember(entities[1].ID, registerMembers[0].PubKey, tokens[0]); err != nil {
+	if err := api.DB.RegisterMember(entities[1].ID, registerMembers[0].PubKey, &tokens[0]); err != nil {
 		t.Fatalf("unable to register member using existing token:  (%+v)", err)
 	}
 	// 2. Checking that the member was created with right values
-	registeredMember, err := api.DB.Member(entities[1].ID, tokens[0])
+	registeredMember, err := api.DB.Member(entities[1].ID, &tokens[0])
 	if err != nil {
 		t.Fatalf("unable to retrieve registered member:  (%+v)", err)
 	}
@@ -346,11 +346,12 @@ func TestMember(t *testing.T) {
 	randToken := tokens[1].String()
 	t.Logf("token: %s", randToken)
 	// 4. Not allowing register of random token
-	if err := api.DB.RegisterMember(entities[1].ID, registerMembers[0].PubKey, uuid.New()); err == nil {
+	u := uuid.New()
+	if err := api.DB.RegisterMember(entities[1].ID, registerMembers[0].PubKey, &u); err == nil {
 		t.Fatalf("able to register member using random token:  (%+v)", err)
 	}
 	// 5. Not allowing using existing token with different entity ID
-	if err := api.DB.RegisterMember(entities[0].ID, registerMembers[0].PubKey, tokens[1]); err == nil {
+	if err := api.DB.RegisterMember(entities[0].ID, registerMembers[0].PubKey, &tokens[1]); err == nil {
 		t.Fatalf("able to register member using existing token but to non-correspondig entity:  (%+v)", err)
 	}
 
@@ -389,7 +390,7 @@ func TestTarget(t *testing.T) {
 	}
 
 	// retrieve added target
-	if outTarget, err = api.DB.Target(entities[0].ID, targetID); err != nil || outTarget.Name != inTarget.Name {
+	if outTarget, err = api.DB.Target(entities[0].ID, &targetID); err != nil || outTarget.Name != inTarget.Name {
 		t.Fatalf("error retrieving created target from database: %s", err)
 	}
 
@@ -453,7 +454,7 @@ func TestCensus(t *testing.T) {
 		t.Fatalf("cannot count censuses correctly: %+v", err)
 	}
 
-	if err := api.DB.AddCensus(entities[0].ID, idBytes, targetID, censusInfo); err != nil {
+	if err := api.DB.AddCensus(entities[0].ID, idBytes, &targetID, censusInfo); err != nil {
 		t.Fatalf("cannot add census into database: %s", err)
 	}
 
@@ -469,7 +470,7 @@ func TestCensus(t *testing.T) {
 	}
 
 	//Verify that cannot add duplicate census
-	if err := api.DB.AddCensus(entities[0].ID, idBytes, targetID, censusInfo); err == nil {
+	if err := api.DB.AddCensus(entities[0].ID, idBytes, &targetID, censusInfo); err == nil {
 		t.Fatal("able to create duplicate census into database")
 	}
 
@@ -478,7 +479,7 @@ func TestCensus(t *testing.T) {
 	if idBytes, err = hex.DecodeString(util.TrimHex(id)); err != nil {
 		t.Fatalf("cannot decode random id: %s", err)
 	}
-	if err := api.DB.AddCensus(entities[0].ID, idBytes, uuid.UUID{}, censusInfo); err == nil {
+	if err := api.DB.AddCensus(entities[0].ID, idBytes, &uuid.UUID{}, censusInfo); err == nil {
 		t.Fatal("able to create census for inexisting target (pgsql.go:AddCensus)")
 	}
 
@@ -496,7 +497,7 @@ func TestCensus(t *testing.T) {
 	}
 	censusInfo.Name = fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
 
-	err = api.DB.AddCensus(entities[0].ID, idBytes, targetID, censusInfo)
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, censusInfo)
 	if err != nil {
 		t.Fatal("unable to create second census (pgsql.go:AddCensus)")
 	}

@@ -183,6 +183,12 @@ func (m *Manager) getMember(request router.RouterRequest) {
 	var err error
 	var response types.MetaResponse
 
+	if request.MemberID == nil {
+		log.Warnf("memberID is nil on getMember")
+		m.Router.SendError(request, "invalid memberId")
+		return
+	}
+
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
@@ -249,7 +255,7 @@ func (m *Manager) updateMember(request router.RouterRequest) {
 	}
 
 	// If a string Member property is sent as "" then it is not updated
-	if err = m.db.UpdateMember(entityID, request.Member.ID, &request.Member.MemberInfo); err != nil {
+	if err = m.db.UpdateMember(entityID, &request.Member.ID, &request.Member.MemberInfo); err != nil {
 		log.Errorf("cannot update member %q for entity %q: (%v)", request.Member.ID.String(), request.SignaturePublicKey, err)
 		m.Router.SendError(request, "cannot update member")
 		return
@@ -264,7 +270,7 @@ func (m *Manager) deleteMember(request router.RouterRequest) {
 	var err error
 	var response types.MetaResponse
 
-	if request.MemberID == uuid.Nil {
+	if request.MemberID == nil || *request.MemberID == uuid.Nil {
 		m.Router.SendError(request, "invalid member ID")
 		return
 	}
@@ -695,7 +701,7 @@ func (m *Manager) getCensus(request router.RouterRequest) {
 		return
 	}
 
-	response.Target, err = m.db.Target(entityID, response.Census.TargetID)
+	response.Target, err = m.db.Target(entityID, &response.Census.TargetID)
 	if err != nil {
 		log.Warn("census target not found")
 		m.Router.SendError(request, "census target not found")

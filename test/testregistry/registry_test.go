@@ -199,7 +199,7 @@ func TestValidateToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	// 1. check member created
-	member, err := api.DB.Member(entities[0].ID, tokens[0])
+	member, err := api.DB.Member(entities[0].ID, &tokens[0])
 	if err != nil {
 		t.Fatalf("cannot fetch validated member from the database: %s", err)
 	}
@@ -289,7 +289,7 @@ func TestValidateToken(t *testing.T) {
 	}
 
 	// check member created
-	member, err = api.DB.Member(entities[0].ID, tokens[2])
+	member, err = api.DB.Member(entities[0].ID, &tokens[2])
 	if err != nil {
 		t.Fatalf("cannot fetch validated member from the database: %s", err)
 	}
