@@ -22,6 +22,7 @@ import (
 
 	"gitlab.com/vocdoni/manager/manager-backend/registry"
 	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
+	"gitlab.com/vocdoni/manager/manager-backend/tokenapi"
 )
 
 func newConfig() (*config.Manager, config.Error) {
@@ -282,11 +283,20 @@ func main() {
 		}
 	}
 
-	// Census Manager
+	// Manager
 	if cfg.Mode == "manager" || cfg.Mode == "all" {
 		log.Infof("enabling Manager API methods")
 		mgr := manager.NewManager(ep.Router, db)
 		if err := mgr.RegisterMethods(cfg.API.Route); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	// External token API
+	if cfg.Mode == "token" || cfg.Mode == "all" {
+		log.Infof("enabling Token API methods")
+		tok := tokenapi.NewTokenAPI(ep.Router, db, ep.MetricsAgent)
+		if err := tok.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}
 	}

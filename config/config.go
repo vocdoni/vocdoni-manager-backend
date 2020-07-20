@@ -3,6 +3,7 @@ package config
 var Modes = map[string]bool{
 	"registry": true,
 	"manager":  true,
+	"token":    true,
 	"all":      true,
 }
 
