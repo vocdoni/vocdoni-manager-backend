@@ -115,7 +115,7 @@ func (t *TokenAPI) revoke(request router.RouterRequest) {
 		return
 	}
 	if !checkAuth(
-		[]string{request.EntityID, fmt.Sprintf("%d", request.Timestamp), request.Token, secret},
+		[]string{request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), request.Token, secret},
 		request.Timestamp,
 		request.AuthHash) {
 		log.Warnf("invalid authentication: checkAuth error for entity (%q) to validate token (%q): (%v)", request.EntityID, request.Token, err)
@@ -175,7 +175,7 @@ func (t *TokenAPI) status(request router.RouterRequest) {
 		return
 	}
 	if !checkAuth(
-		[]string{request.EntityID, fmt.Sprintf("%d", request.Timestamp), request.Token, secret},
+		[]string{request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), request.Token, secret},
 		request.Timestamp,
 		request.AuthHash) {
 		log.Warnf("invalid authentication: checkAuth error for entity (%q) to validate token (%q): (%v)", request.EntityID, request.Token, err)
