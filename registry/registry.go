@@ -216,17 +216,6 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 		return
 	}
 
-	// check if user exists
-	if _, err := r.db.User(signaturePubKeyBytes); err != nil {
-		if err == sql.ErrNoRows {
-			r.Router.SendError(request, "user does not exist")
-			return
-		}
-		log.Warn(err)
-		r.Router.SendError(request, "cannot query for user")
-		return
-	}
-
 	// decode entityID
 	entityID, err := hex.DecodeString(util.TrimHex(request.EntityID))
 	if err != nil {
