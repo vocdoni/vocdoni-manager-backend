@@ -42,6 +42,24 @@ go-analyze:
     - merge_requests
     - branches
 
+compose-test:
+  image: docker/compose:1.25.5
+  stage: test
+  tags:
+    - hetzner
+  script:
+    # Avoid compose project collisions in parallel runs
+    - export COMPOSE_PROJECT_NAME=${RANDOM}${RANDOM}_manager_test
+    - export MANAGER_BUILD_TAG=${CI_COMMIT_SHA::10}
+    - export COMPOSE_HOST_PATH=${CI_PROJECT_DIR}/misc/compose-test
+    - export COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 # faster builds
+    - cd misc/compose-test
+    - docker-compose build
+    - sh start_test.sh
+  only:
+    - merge_requests
+    - master
+
 docker-release:
   image: docker:stable
   services:

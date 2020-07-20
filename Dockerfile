@@ -13,7 +13,7 @@ RUN go mod download
 # Build all the binaries at once, so that the final targets don't require having
 # Go installed to build each of them.
 COPY . .
-RUN go build -o=. -ldflags='-w -s' -mod=readonly ./cmd/dvotemanager 
+RUN go build -o=. -ldflags='-w -s' -mod=readonly ./cmd/dvotemanager ./cmd/managertest
 
 FROM debian:10.4-slim
 

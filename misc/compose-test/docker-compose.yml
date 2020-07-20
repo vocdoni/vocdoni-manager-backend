@@ -1,0 +1,43 @@
+version: "3.5"
+
+services:
+  dvotemanager:
+    build:
+      context: ../..
+    image: "vocdoni/manager-backend:${MANAGER_BUILD_TAG:-latest}"
+    env_file:
+      - .env
+    volumes:
+      - "run:/app/run"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "10"
+    depends_on:
+      - "postgres"
+
+  postgres:
+    container_name: postgres
+    image: postgres:12
+    environment:
+      POSTGRES_USER: ${DVOTE_DB_USER:-vocdoni}
+      POSTGRES_PASSWORD: ${DVOTE_DB_PASSWORD:-vocdoni}
+      POSTGRES_DB: ${DVOTE_DB_DBNAME:-vocdoni}
+      PGDATA: /data/postgres
+    volumes:
+      - postgres:/data/postgres
+    restart: unless-stopped
+
+  test:
+    image: "manager-backend-test:${MANAGER_BUILD_TAG:-latest}"
+    build:
+      context: ../..
+      target: builder
+    command: "true"
+    links:
+      - dvotemanager
+
+volumes:
+  postgres:
+  run:
