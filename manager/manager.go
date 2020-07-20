@@ -30,55 +30,55 @@ func NewManager(r *router.Router, d database.Database) *Manager {
 // RegisterMethods registers all registry methods behind the given path
 func (m *Manager) RegisterMethods(path string) error {
 	m.Router.Transport.AddNamespace(path + "/manager")
-	if err := m.Router.AddHandler("signUp", path+"/manager", m.signUp, false); err != nil {
+	if err := m.Router.AddHandler("signUp", path+"/manager", m.signUp, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("countMembers", path+"/manager", m.countMembers, false); err != nil {
+	if err := m.Router.AddHandler("countMembers", path+"/manager", m.countMembers, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("listMembers", path+"/manager", m.listMembers, false); err != nil {
+	if err := m.Router.AddHandler("listMembers", path+"/manager", m.listMembers, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("getMember", path+"/manager", m.getMember, false); err != nil {
+	if err := m.Router.AddHandler("getMember", path+"/manager", m.getMember, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("updateMember", path+"/manager", m.updateMember, false); err != nil {
+	if err := m.Router.AddHandler("updateMember", path+"/manager", m.updateMember, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("deleteMember", path+"/manager", m.deleteMember, false); err != nil {
+	if err := m.Router.AddHandler("deleteMember", path+"/manager", m.deleteMember, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("generateTokens", path+"/manager", m.generateTokens, false); err != nil {
+	if err := m.Router.AddHandler("generateTokens", path+"/manager", m.generateTokens, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("exportTokens", path+"/manager", m.exportTokens, false); err != nil {
+	if err := m.Router.AddHandler("exportTokens", path+"/manager", m.exportTokens, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("importMembers", path+"/manager", m.importMembers, false); err != nil {
+	if err := m.Router.AddHandler("importMembers", path+"/manager", m.importMembers, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("countTargets", path+"/manager", m.countTargets, false); err != nil {
+	if err := m.Router.AddHandler("countTargets", path+"/manager", m.countTargets, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("listTargets", path+"/manager", m.listTargets, false); err != nil {
+	if err := m.Router.AddHandler("listTargets", path+"/manager", m.listTargets, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("getTarget", path+"/manager", m.getTarget, false); err != nil {
+	if err := m.Router.AddHandler("getTarget", path+"/manager", m.getTarget, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("dumpTarget", path+"/manager", m.dumpTarget, false); err != nil {
+	if err := m.Router.AddHandler("dumpTarget", path+"/manager", m.dumpTarget, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("addCensus", path+"/manager", m.addCensus, false); err != nil {
+	if err := m.Router.AddHandler("addCensus", path+"/manager", m.addCensus, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("getCensus", path+"/manager", m.getCensus, false); err != nil {
+	if err := m.Router.AddHandler("getCensus", path+"/manager", m.getCensus, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("countCensus", path+"/manager", m.countCensus, false); err != nil {
+	if err := m.Router.AddHandler("countCensus", path+"/manager", m.countCensus, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("listCensus", path+"/manager", m.listCensus, false); err != nil {
+	if err := m.Router.AddHandler("listCensus", path+"/manager", m.listCensus, false, false); err != nil {
 		return err
 	}
 	return nil

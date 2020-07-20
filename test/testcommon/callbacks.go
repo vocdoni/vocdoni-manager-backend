@@ -21,7 +21,7 @@ func handler(t *testing.T, params map[string]string) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		for key, expectedValue := range params {
 			value := r.URL.Query().Get(key)
-			if value != expectedValue && (key != "ts" && key != "auth") {
+			if value != expectedValue && (key != "timestamp" && key != "authHash") {
 				io.WriteString(w, "false")
 				w.WriteHeader(http.StatusNotFound)
 				t.Fatalf("HTTP Callback error: parameter (%q) expected value (%q) value (%q) ", key, expectedValue, value)

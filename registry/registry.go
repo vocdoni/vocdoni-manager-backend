@@ -35,22 +35,22 @@ func NewRegistry(r *router.Router, d database.Database, ma *metrics.Agent) *Regi
 // RegisterMethods registers all registry methods behind the given path
 func (r *Registry) RegisterMethods(path string) error {
 	r.Router.Transport.AddNamespace(path + "/registry")
-	if err := r.Router.AddHandler("register", path+"/registry", r.register, false); err != nil {
+	if err := r.Router.AddHandler("register", path+"/registry", r.register, false, false); err != nil {
 		return err
 	}
-	if err := r.Router.AddHandler("validateToken", path+"/registry", r.validateToken, false); err != nil {
+	if err := r.Router.AddHandler("validateToken", path+"/registry", r.validateToken, false, false); err != nil {
 		return err
 	}
-	if err := r.Router.AddHandler("registrationStatus", path+"/registry", r.registrationStatus, false); err != nil {
+	if err := r.Router.AddHandler("registrationStatus", path+"/registry", r.registrationStatus, false, false); err != nil {
 		return err
 	}
-	if err := r.Router.AddHandler("subscribe", path+"/registry", r.subscribe, false); err != nil {
+	if err := r.Router.AddHandler("subscribe", path+"/registry", r.subscribe, false, false); err != nil {
 		return err
 	}
-	if err := r.Router.AddHandler("unsubscribe", path+"/registry", r.unsubscribe, false); err != nil {
+	if err := r.Router.AddHandler("unsubscribe", path+"/registry", r.unsubscribe, false, false); err != nil {
 		return err
 	}
-	if err := r.Router.AddHandler("listSubscriptions", path+"/registry", r.listSubscriptions, false); err != nil {
+	if err := r.Router.AddHandler("listSubscriptions", path+"/registry", r.listSubscriptions, false, false); err != nil {
 		return err
 	}
 	r.registerMetrics()
@@ -184,13 +184,13 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	RegistryRequests.With(prometheus.Labels{"method": "validateToken_sucess"}).Inc()
 }
 
-// callback example: /callback?id=63c93e6f-5326-407b-960a-f796036eca5f?ts=1594912052?auth=c4a998ec01f45b8d3939090eb155e1a4038a59996e40fb5c03e58ff0cabb7528
+// callback: /callback?authHash={AUTH}&event={EVENT}&ts={TIMESTAMP}&token={TOKEN}
 // TBD: do not allow localhost or private networks, that would open a possible attack vector
 func callback(callbackURL, secret, event string, uid uuid.UUID) error {
 	client := &http.Client{Timeout: time.Second * 5} // 5 seconds should be enough
 	ts := fmt.Sprintf("%d", time.Now().Unix())
-	h := ethereum.HashRaw([]byte(secret + event + uid.String() + ts))
-	callbackURL = strings.ReplaceAll(callbackURL, "{ID}", uid.String())
+	h := ethereum.HashRaw([]byte(event + ts + uid.String() + secret))
+	callbackURL = strings.ReplaceAll(callbackURL, "{TOKEN}", uid.String())
 	callbackURL = strings.ReplaceAll(callbackURL, "{TIMESTAMP}", ts)
 	callbackURL = strings.ReplaceAll(callbackURL, "{AUTH}", fmt.Sprintf("%x", h))
 	callbackURL = strings.ReplaceAll(callbackURL, "{EVENT}", event)

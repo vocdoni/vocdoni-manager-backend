@@ -16,7 +16,7 @@ import (
 	"gitlab.com/vocdoni/manager/manager-backend/types"
 )
 
-const authWindowSeconds = 3
+const AuthWindowSeconds = 3
 
 // TokenAPI is a handler for external token managmement
 type TokenAPI struct {
@@ -33,13 +33,13 @@ func NewTokenAPI(r *router.Router, d database.Database, ma *metrics.Agent) *Toke
 // RegisterMethods registers all tokenAPI methods behind the given path
 func (t *TokenAPI) RegisterMethods(path string) error {
 	t.Router.Transport.AddNamespace(path + "/token")
-	if err := t.Router.AddHandler("revoke", path+"/token", t.revoke, false); err != nil {
+	if err := t.Router.AddHandler("revoke", path+"/token", t.revoke, false, true); err != nil {
 		return err
 	}
-	if err := t.Router.AddHandler("status", path+"/token", t.status, false); err != nil {
+	if err := t.Router.AddHandler("status", path+"/token", t.status, false, true); err != nil {
 		return err
 	}
-	if err := t.Router.AddHandler("generate", path+"/token", t.generate, false); err != nil {
+	if err := t.Router.AddHandler("generate", path+"/token", t.generate, false, true); err != nil {
 		return err
 	}
 	return nil
@@ -49,12 +49,13 @@ func (t *TokenAPI) send(req router.RouterRequest, resp types.MetaResponse) {
 	t.Router.Transport.Send(t.Router.BuildReply(req, resp))
 }
 
-func (t *TokenAPI) checkAuth(fields []string, timestamp int32, auth string) bool {
+func checkAuth(fields []string, timestamp int32, auth string) bool {
 	if len(fields) == 0 {
 		return false
 	}
 	current := int32(time.Now().Unix())
-	if timestamp+authWindowSeconds > current || timestamp-authWindowSeconds < current {
+
+	if timestamp > current+AuthWindowSeconds || timestamp < current-AuthWindowSeconds {
 		log.Warnf("timestamp out of window")
 		return false
 	}
@@ -113,10 +114,10 @@ func (t *TokenAPI) revoke(request router.RouterRequest) {
 		t.Router.SendError(request, "invalid authentication")
 		return
 	}
-	if !t.checkAuth(
+	if !checkAuth(
 		[]string{request.EntityID, fmt.Sprintf("%d", request.Timestamp), request.Token, secret},
 		request.Timestamp,
-		request.HashAuth) {
+		request.AuthHash) {
 		log.Warnf("invalid authentication: checkAuth error for entity (%q) to validate token (%q): (%v)", request.EntityID, request.Token, err)
 		t.Router.SendError(request, "invalid authentication")
 		return
@@ -173,10 +174,10 @@ func (t *TokenAPI) status(request router.RouterRequest) {
 		t.Router.SendError(request, "invalid authentication")
 		return
 	}
-	if !t.checkAuth(
+	if !checkAuth(
 		[]string{request.EntityID, fmt.Sprintf("%d", request.Timestamp), request.Token, secret},
 		request.Timestamp,
-		request.HashAuth) {
+		request.AuthHash) {
 		log.Warnf("invalid authentication: checkAuth error for entity (%q) to validate token (%q): (%v)", request.EntityID, request.Token, err)
 		t.Router.SendError(request, "invalid authentication")
 		return
@@ -206,7 +207,7 @@ func (t *TokenAPI) generate(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	if len(request.EntityID) == 0 {
-		log.Warnf("trying to revoke token %q for null entity %s", request.Token, request.EntityID)
+		log.Warnf("trying to generate tokens for null entity %s", request.EntityID)
 		t.Router.SendError(request, "invalid entity id")
 		return
 
@@ -214,7 +215,7 @@ func (t *TokenAPI) generate(request router.RouterRequest) {
 	// check entityId exists
 	entityID, err := hex.DecodeString(util.TrimHex(request.EntityID))
 	if err != nil {
-		log.Warnf("trying to revoke token %q but cannot decode entityId %q : (%v)", request.Token, request.EntityID, err)
+		log.Warnf("trying to generate tokens but cannot decode entityId %q : (%v)", request.EntityID, err)
 		t.Router.SendError(request, "invalid entityId")
 		return
 	}
@@ -222,20 +223,20 @@ func (t *TokenAPI) generate(request router.RouterRequest) {
 	secret, err := t.getSecret(entityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Warnf("invalid authentication: trying to validate token  %q for non-existing combination with entity %s", request.Token, request.EntityID)
+			log.Warnf("invalid authentication: trying to generate tokens for non-existing combination with entity %s", request.EntityID)
 			t.Router.SendError(request, "invalid authentication")
 			return
 
 		}
-		log.Warnf("invalid authentication: error retrieving entity (%q) to validate token (%q): (%v)", request.EntityID, request.Token, err)
+		log.Warnf("invalid authentication: error retrieving entity (%q) to generate tokens: (%v)", request.EntityID, err)
 		t.Router.SendError(request, "invalid authentication")
 		return
 	}
-	if !t.checkAuth(
-		[]string{request.EntityID, fmt.Sprintf("%d", request.Timestamp), request.Token, secret},
+	if !checkAuth(
+		[]string{fmt.Sprintf("%d", request.Amount), request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), secret},
 		request.Timestamp,
-		request.HashAuth) {
-		log.Warnf("invalid authentication: checkAuth error for entity (%q) to validate token (%q): (%v)", request.EntityID, request.Token, err)
+		request.AuthHash) {
+		log.Warnf("invalid authentication: checkAuth error for entity (%q) to generate tokens: (%v)", request.EntityID, err)
 		t.Router.SendError(request, "invalid authentication")
 		return
 	}

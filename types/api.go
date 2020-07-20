@@ -16,11 +16,11 @@ type RequestMessage struct {
 
 type MetaRequest struct {
 	Amount      int          `json:"amount,omitempty"`
+	AuthHash    string       `json:"authHash,omitempty"`
 	Census      *CensusInfo  `json:"census,omitempty"`
 	CensusID    string       `json:"censusId,omitempty"`
 	EntityID    string       `json:"entityId,omitempty"`
 	Filter      *Target      `json:"filter,omitempty"`
-	HashAuth    string       `json:"hashAuth,omitempty"`
 	ListOptions *ListOptions `json:"listOptions,omitempty"`
 	MemberID    *uuid.UUID   `json:"memberId,omitempty"`
 	Member      *Member      `json:"member,omitempty"`

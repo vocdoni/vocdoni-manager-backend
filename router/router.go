@@ -15,8 +15,9 @@ import (
 )
 
 type registeredMethod struct {
-	public  bool
-	handler func(RouterRequest)
+	public        bool
+	skipSignature bool
+	handler       func(RouterRequest)
 }
 
 type RouterRequest struct {
@@ -55,11 +56,11 @@ func InitRouter(inbound <-chan dvote.Message, transport net.Transport, signer *e
 }
 
 // AddHandler adds a new function handler for serving a specific method identified by name
-func (r *Router) AddHandler(method, namespace string, handler func(RouterRequest), private bool) error {
+func (r *Router) AddHandler(method, namespace string, handler func(RouterRequest), private, skipSignature bool) error {
 	if private {
 		return r.registerPrivate(namespace, method, handler)
 	}
-	return r.registerPublic(namespace, method, handler)
+	return r.registerPublic(namespace, method, handler, skipSignature)
 }
 
 // Route routes requests through the Router object
@@ -75,11 +76,12 @@ func (r *Router) Route() {
 			go r.SendError(request, err.Error())
 			continue
 		}
-		if !request.Authenticated {
+
+		method := r.methods[msg.Namespace+request.method]
+		if !method.skipSignature && !request.Authenticated {
 			go r.SendError(request, "invalid authentication")
 			continue
 		}
-		method := r.methods[msg.Namespace+request.method]
 		log.Infof("api method %s/%s", msg.Namespace, request.method)
 		log.Debugf("received: %+v", request.MetaRequest)
 		go method.handler(request)
@@ -96,14 +98,6 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 	request.id = reqOuter.ID
 	request.Context = context
 
-	// TODO: verify the signature too?
-	if len(reqOuter.Signature) < 64 {
-		return request, fmt.Errorf("no signature provided")
-	}
-	if request.SignaturePublicKey, err = ethereum.PubKeyFromSignature(reqOuter.MetaRequest, reqOuter.Signature); err != nil {
-		return request, err
-	}
-
 	var reqInner types.MetaRequest
 	if err := json.Unmarshal(reqOuter.MetaRequest, &reqInner); err != nil {
 		return request, err
@@ -119,26 +113,35 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 		return request, fmt.Errorf("method not valid (%s)", request.method)
 	}
 
-	// TBD: remove when everything is compressed only
-	if request.SignaturePublicKey, err = ethereum.CompressPubKey(request.SignaturePublicKey); err != nil {
-		return request, err
-	}
-	if len(request.SignaturePublicKey) == 0 {
-		return request, fmt.Errorf("could not extract public key from signature")
-	}
-	if request.Address, err = ethereum.AddrFromPublicKey(request.SignaturePublicKey); err != nil {
-		return request, err
-	}
-	request.private = !method.public
+	if !method.skipSignature {
+		if len(reqOuter.Signature) < 64 {
+			return request, fmt.Errorf("no signature provided")
+		}
+		if request.SignaturePublicKey, err = ethereum.PubKeyFromSignature(reqOuter.MetaRequest, reqOuter.Signature); err != nil {
+			return request, err
+		}
 
-	// If private method, check authentication
-	if method.public {
-		request.Authenticated = true
-	} else {
-		for _, addr := range r.signer.Authorized {
-			if fmt.Sprintf("%x", addr) == request.Address {
-				request.Authenticated = true
-				break
+		// TBD: remove when everything is compressed only
+		if request.SignaturePublicKey, err = ethereum.CompressPubKey(request.SignaturePublicKey); err != nil {
+			return request, err
+		}
+		if len(request.SignaturePublicKey) == 0 {
+			return request, fmt.Errorf("could not extract public key from signature")
+		}
+		if request.Address, err = ethereum.AddrFromPublicKey(request.SignaturePublicKey); err != nil {
+			return request, err
+		}
+		request.private = !method.public
+
+		// If private method, check authentication
+		if method.public {
+			request.Authenticated = true
+		} else {
+			for _, addr := range r.signer.Authorized {
+				if fmt.Sprintf("%x", addr) == request.Address {
+					request.Authenticated = true
+					break
+				}
 			}
 		}
 	}
@@ -206,11 +209,11 @@ func (r *Router) registerPrivate(namespace, method string, handler func(RouterRe
 	return nil
 }
 
-func (r *Router) registerPublic(namespace, method string, handler func(RouterRequest)) error {
+func (r *Router) registerPublic(namespace, method string, handler func(RouterRequest), skipSignature bool) error {
 	if _, ok := r.methods[namespace+method]; ok {
 		return fmt.Errorf("duplicate method %s for namespace %s", method, namespace)
 	}
-	r.methods[namespace+method] = registeredMethod{public: true, handler: handler}
+	r.methods[namespace+method] = registeredMethod{public: true, handler: handler, skipSignature: skipSignature}
 	return nil
 }
 

@@ -259,8 +259,8 @@ func TestValidateToken(t *testing.T) {
 	secret := "awsedrft"
 	ts := "1000"
 	event := "register"
-	urlParameters := "?auth={AUTH}&event={EVENT}&id={ID}&ts={TIMESTAMP}"
-	h := ethereum.HashRaw([]byte(secret + event + tokens[2].String() + ts))
+	urlParameters := "?authHash={AUTH}&event={EVENT}&timestamp={TIMESTAMP}&token={TOKEN}"
+	h := ethereum.HashRaw([]byte(event + ts + tokens[2].String() + secret))
 
 	updatedInfo := &types.EntityInfo{
 		CallbackURL:    "http://127.0.0.1:" + port + urlParameters,
@@ -273,10 +273,10 @@ func TestValidateToken(t *testing.T) {
 	}
 
 	params := map[string]string{
-		"auth":  fmt.Sprintf("%x", h),
-		"event": event,
-		"id":    tokens[2].String(),
-		"ts":    ts,
+		"authHash":  fmt.Sprintf("%x", h),
+		"event":     event,
+		"token":     tokens[2].String(),
+		"timestamp": ts,
 	}
 
 	req.Token = tokens[2].String()

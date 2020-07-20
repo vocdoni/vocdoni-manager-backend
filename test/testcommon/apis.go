@@ -9,6 +9,7 @@ import (
 	"gitlab.com/vocdoni/manager/manager-backend/database/testdb"
 	"gitlab.com/vocdoni/manager/manager-backend/manager"
 	"gitlab.com/vocdoni/manager/manager-backend/registry"
+	"gitlab.com/vocdoni/manager/manager-backend/tokenapi"
 
 	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
 )
@@ -64,6 +65,10 @@ func (t *TestAPI) Start(dbc *config.DB, route string) error {
 		}
 		mgr := manager.NewManager(t.EP.Router, t.DB)
 		if err := mgr.RegisterMethods(route); err != nil {
+			log.Fatal(err)
+		}
+		token := tokenapi.NewTokenAPI(t.EP.Router, t.DB, nil)
+		if err := token.RegisterMethods(route); err != nil {
 			log.Fatal(err)
 		}
 		// Only start routing once we have registered all methods. Otherwise we
