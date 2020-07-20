@@ -336,6 +336,19 @@ func TestStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
+
+	// check status added and linked member
+	var req types.MetaRequest
+	req.Method = "registrationStatus"
+	req.EntityID = hex.EncodeToString(entities[0].ID)
+	resp := wsc.Request(req, membersSigners[0])
+	if !resp.Ok {
+		t.Fatal()
+	}
+	if resp.Status.Registered {
+		t.Fatal("member should not be registered")
+	}
+
 	// add user and member
 	if err := api.DB.AddUser(&types.User{PubKey: members[0].PubKey}); err != nil {
 		t.Fatalf("cannot add created user into database: %s", err)
@@ -344,10 +357,10 @@ func TestStatus(t *testing.T) {
 		t.Fatalf("cannot add created members into database: %s", err)
 	}
 	// check status added and linked member
-	var req types.MetaRequest
+	// var req types.MetaRequest
 	req.Method = "registrationStatus"
 	req.EntityID = hex.EncodeToString(entities[0].ID)
-	resp := wsc.Request(req, membersSigners[0])
+	resp = wsc.Request(req, membersSigners[0])
 	if !resp.Ok {
 		t.Fatal()
 	}

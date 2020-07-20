@@ -280,17 +280,6 @@ func TestStatus(t *testing.T) {
 		t.Fatal("should fail if entity not found")
 	}
 
-	// registered should be false if user not found
-	var req5 types.MetaRequest
-	constSigner := new(ethereum.SignKeys)
-	constSigner.AddHexKey(testdb.Signers[0].Priv)
-	req5.Method = "registrationStatus"
-	req5.EntityID = "12345123451234"
-	resp5 := wsc.Request(req5, constSigner)
-	if resp5.Ok {
-		t.Fatal("should fail if user not found")
-	}
-
 	// registered should be false if user is not a member
 	var req6 types.MetaRequest
 	constSigner2 := new(ethereum.SignKeys)
