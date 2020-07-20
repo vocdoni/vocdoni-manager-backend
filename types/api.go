@@ -64,6 +64,7 @@ type MetaResponse struct {
 	Targets       []Target     `json:"targets,omitempty"`
 	Timestamp     int32        `json:"timestamp"`
 	Tokens        []uuid.UUID  `json:"tokens,omitempty"`
+	TokenStatus   string       `json:"tokenStatus,omitempty"`
 }
 
 // SetError sets the MetaResponse's Ok field to false, and Message to a string
