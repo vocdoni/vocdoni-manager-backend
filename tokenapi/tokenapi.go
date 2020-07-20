@@ -191,12 +191,14 @@ func (t *TokenAPI) status(request router.RouterRequest) {
 		log.Warnf("database error: trying to get status for token (%q) for entity (%q): (%v)", request.Token, request.EntityID, err)
 		resp.TokenStatus = "invalid"
 		t.send(request, resp)
+		return
 	}
 
 	if len(hex.EncodeToString(member.PubKey)) != ethereum.PubKeyLength {
 		log.Debugf("status for member with token (%q) for entity (%s): ", request.Token, request.EntityID)
 		resp.TokenStatus = "available"
 		t.send(request, resp)
+		return
 	}
 
 	resp.TokenStatus = "registered"
@@ -242,7 +244,7 @@ func (t *TokenAPI) generate(request router.RouterRequest) {
 	}
 
 	if request.Amount < 1 {
-		log.Warnf("invalid token amount requested by %s", request.SignaturePublicKey)
+		log.Warnf("invalid token amount requested by %s", request.EntityID)
 		t.Router.SendError(request, "invalid token amount")
 		return
 	}
