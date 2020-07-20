@@ -109,6 +109,9 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	var uid uuid.UUID
 	var response types.MetaResponse
 
+	// increase stats counter
+	RegistryRequests.With(prometheus.Labels{"method": "validateToken"}).Inc()
+
 	if user.PubKey, err = hex.DecodeString(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot decode user public key: (%v)", err)
 		r.Router.SendError(request, "cannot decode user public key")
@@ -176,6 +179,9 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 
 	log.Infof("token %s validated for Entity %x", request.Token, entityID)
 	r.send(request, response)
+
+	// increase stats counter
+	RegistryRequests.With(prometheus.Labels{"method": "validateToken_sucess"}).Inc()
 }
 
 // callback example: /callback?id=63c93e6f-5326-407b-960a-f796036eca5f?ts=1594912052?auth=c4a998ec01f45b8d3939090eb155e1a4038a59996e40fb5c03e58ff0cabb7528
