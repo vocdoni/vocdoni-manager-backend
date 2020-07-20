@@ -20,6 +20,7 @@ type MetaRequest struct {
 	CensusID    string       `json:"censusId,omitempty"`
 	EntityID    string       `json:"entityId,omitempty"`
 	Filter      *Target      `json:"filter,omitempty"`
+	HashAuth    string       `json:"hashAuth,omitempty"`
 	ListOptions *ListOptions `json:"listOptions,omitempty"`
 	MemberID    *uuid.UUID   `json:"memberId,omitempty"`
 	Member      *Member      `json:"member,omitempty"`
