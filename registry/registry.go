@@ -104,15 +104,14 @@ func (r *Registry) register(request router.RouterRequest) {
 }
 
 func (r *Registry) validateToken(request router.RouterRequest) {
-	var err error
-	var user types.User
 	var uid uuid.UUID
 	var response types.MetaResponse
 
 	// increase stats counter
 	RegistryRequests.With(prometheus.Labels{"method": "validateToken"}).Inc()
 
-	if user.PubKey, err = hex.DecodeString(request.SignaturePublicKey); err != nil {
+	requestPubKey, err := hex.DecodeString(request.SignaturePublicKey)
+	if err != nil {
 		log.Errorf("cannot decode user public key: (%v)", err)
 		r.Router.SendError(request, "cannot decode user public key")
 		return
@@ -149,9 +148,9 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		r.Router.SendError(request, "error retrieving entity")
 		return
 	}
-	_, err = r.db.Member(entityID, &uid)
+	member, err := r.db.Member(entityID, &uid)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == sql.ErrNoRows { // token does not exist
 			log.Warnf("using non-existing combination of token  %s and entity %s: (%v)", uid, request.EntityID, err)
 			r.Router.SendError(request, "invalid token id")
 			return
@@ -160,7 +159,36 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		r.Router.SendError(request, "error retrieving token")
 		return
 	}
-	if err = r.db.RegisterMember(entityID, user.PubKey, &uid); err != nil {
+
+	if len(member.PubKey) != 0 {
+		if hex.EncodeToString(member.PubKey) == hex.EncodeToString(requestPubKey) {
+			log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", member.PubKey, uid, request.EntityID, err)
+			r.Router.SendError(request, "already registered")
+			return
+		}
+		if user, err := r.db.User(member.PubKey); err != nil {
+			if err == sql.ErrNoRows {
+				//
+			} else {
+				log.Warnf("error retrieving user with pubkey (%q) and token (%q) for entity (%q): (%q)", member.PubKey, uid, request.EntityID, err)
+				r.Router.SendError(request, "error retrieving token")
+				return
+			}
+
+		} else {
+			if hex.EncodeToString(user.PubKey) == hex.EncodeToString(member.PubKey) {
+				log.Warnf("error trying to reuse token  (%q)  from different pubkey (%q) and for entity (%q): (%q)", uid, member.PubKey, request.EntityID, err)
+				r.Router.SendError(request, "duplicate user")
+			} else {
+				log.Warnf("UNEXPECTED: error retrieving user with pubkey (%q) and token (%q) for entity (%q): (%q)", member.PubKey, uid, request.EntityID, err)
+				r.Router.SendError(request, "error retrieving token")
+
+			}
+			return
+		}
+	}
+
+	if err = r.db.RegisterMember(entityID, requestPubKey, &uid); err != nil {
 		log.Warnf("cannot register member for entity %s: (%v)", request.EntityID, err)
 		msg := "cannot register member"
 		if err.Error() == "duplicate user" {
