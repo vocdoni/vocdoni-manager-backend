@@ -216,7 +216,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 // TBD: do not allow localhost or private networks, that would open a possible attack vector
 func callback(callbackURL, secret, event string, uid uuid.UUID) error {
 	client := &http.Client{Timeout: time.Second * 5} // 5 seconds should be enough
-	ts := fmt.Sprintf("%d", time.Now().Unix())
+	ts := fmt.Sprintf("%d", int32(time.Now().Unix()))
 	h := ethereum.HashRaw([]byte(event + ts + uid.String() + secret))
 	callbackURL = strings.ReplaceAll(callbackURL, "{TOKEN}", uid.String())
 	callbackURL = strings.ReplaceAll(callbackURL, "{TIMESTAMP}", ts)
