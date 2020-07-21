@@ -140,30 +140,33 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	entity, err := r.db.Entity(entityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Warnf("trying to validate token  %s for non-existing combination entity %s", uid, request.EntityID)
+			RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_entity"}).Inc()
+			log.Warnf("trying to validate token  %s for non-existing combination entity %s", request.Token, request.EntityID)
 			r.Router.SendError(request, "invalid entity id")
 			return
 
 		}
-		log.Warnf("error retrieving entity (%q) to validate token (%q): (%q)", request.EntityID, uid, err)
+		log.Warnf("error retrieving entity (%q) to validate token (%q): (%q)", request.EntityID, request.Token, err)
 		r.Router.SendError(request, "error retrieving entity")
 		return
 	}
 	member, err := r.db.Member(entityID, &uid)
 	if err != nil {
 		if err == sql.ErrNoRows { // token does not exist
-			log.Warnf("using non-existing combination of token  %s and entity %s: (%v)", uid, request.EntityID, err)
+			RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_invalid_token"}).Inc()
+			log.Warnf("using non-existing combination of token  %s and entity %s: (%v)", request.Token, request.EntityID, err)
 			r.Router.SendError(request, "invalid token id")
 			return
 		}
-		log.Warnf("error retrieving member (%q) for entity (%q): (%q)", uid, request.EntityID, err)
+		log.Warnf("error retrieving member (%q) for entity (%q): (%q)", request.Token, request.EntityID, err)
 		r.Router.SendError(request, "error retrieving token")
 		return
 	}
 
 	if len(member.PubKey) != 0 {
 		if string(member.PubKey) == string(requestPubKey) {
-			log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", member.PubKey, uid, request.EntityID, err)
+			RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_registered"}).Inc()
+			log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
 			r.Router.SendError(request, "already registered")
 			return
 		}
@@ -171,17 +174,18 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 			if err == sql.ErrNoRows {
 				//
 			} else {
-				log.Warnf("error retrieving user with pubkey (%q) and token (%q) for entity (%q): (%q)", member.PubKey, uid, request.EntityID, err)
+				log.Warnf("error retrieving user with pubkey (%q) and token (%q) for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
 				r.Router.SendError(request, "error retrieving token")
 				return
 			}
 
 		} else {
 			if string(user.PubKey) == string(member.PubKey) {
-				log.Warnf("error trying to reuse token  (%q)  from different pubkey (%x) and for entity (%q): (%q)", uid, member.PubKey, request.EntityID, err)
+				log.Warnf("error trying to reuse token  (%q)  from different pubkey (%x) and for entity (%q): (%q)", uid, fmt.Sprintf("%x", member.PubKey), request.EntityID, err)
+				RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_token_duplicate"}).Inc()
 				r.Router.SendError(request, "duplicate user")
 			} else {
-				log.Warnf("UNEXPECTED: error retrieving user with pubkey (%q) and token (%q) for entity (%q): (%q)", member.PubKey, uid, request.EntityID, err)
+				log.Warnf("UNEXPECTED: error retrieving user with pubkey (%q) and token (%q) for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
 				r.Router.SendError(request, "error retrieving token")
 
 			}
@@ -253,12 +257,14 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 	if err != nil {
 		log.Warn(err)
 		r.Router.SendError(request, "invalid entityId")
+		RegistryRequests.With(prometheus.Labels{"method": "status_error_entity"}).Inc()
 		return
 	}
 	// check if entity exists
 	if _, err := r.db.Entity(entityID); err != nil {
 		log.Warn(err)
 		r.Router.SendError(request, "entity does not exist")
+		RegistryRequests.With(prometheus.Labels{"method": "status_error_entity"}).Inc()
 		return
 	}
 
@@ -270,6 +276,7 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 				Registered:  false,
 				NeedsUpdate: false,
 			}
+			RegistryRequests.With(prometheus.Labels{"method": "status_not_registered"}).Inc()
 			r.Router.Transport.Send(r.Router.BuildReply(request, response))
 			return
 		}
@@ -280,7 +287,7 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 	// user exists and is member
 	if member != nil {
 		// increase stats counter
-		RegistryRequests.With(prometheus.Labels{"method": "status_exists"}).Inc()
+		RegistryRequests.With(prometheus.Labels{"method": "status_registered"}).Inc()
 		response.Status = &types.Status{
 			Registered:  true,
 			NeedsUpdate: false,
