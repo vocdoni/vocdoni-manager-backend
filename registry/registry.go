@@ -116,6 +116,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		r.Router.SendError(request, "cannot decode user public key")
 		return
 	}
+	log.Debugf("got validateToken request with pubKey %x", requestPubKey)
 
 	// check entityId exists
 	entityID, err := hex.DecodeString(util.TrimHex(request.EntityID))
@@ -161,7 +162,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	}
 
 	if len(member.PubKey) != 0 {
-		if hex.EncodeToString(member.PubKey) == hex.EncodeToString(requestPubKey) {
+		if string(member.PubKey) == string(requestPubKey) {
 			log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", member.PubKey, uid, request.EntityID, err)
 			r.Router.SendError(request, "already registered")
 			return
@@ -176,8 +177,8 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 			}
 
 		} else {
-			if hex.EncodeToString(user.PubKey) == hex.EncodeToString(member.PubKey) {
-				log.Warnf("error trying to reuse token  (%q)  from different pubkey (%q) and for entity (%q): (%q)", uid, member.PubKey, request.EntityID, err)
+			if string(user.PubKey) == string(member.PubKey) {
+				log.Warnf("error trying to reuse token  (%q)  from different pubkey (%x) and for entity (%q): (%q)", uid, member.PubKey, request.EntityID, err)
 				r.Router.SendError(request, "duplicate user")
 			} else {
 				log.Warnf("UNEXPECTED: error retrieving user with pubkey (%q) and token (%q) for entity (%q): (%q)", member.PubKey, uid, request.EntityID, err)
@@ -197,6 +198,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		r.Router.SendError(request, msg)
 		return
 	}
+	log.Debugf("new user registered with pubKey: %x", requestPubKey)
 
 	_, err = url.ParseRequestURI(entity.CallbackURL)
 	if err == nil {
@@ -236,6 +238,8 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 
 	// increase stats counter
 	RegistryRequests.With(prometheus.Labels{"method": "status"}).Inc()
+
+	log.Debugf("got registrationStatus request with pubKey %s", request.SignaturePublicKey)
 
 	signaturePubKeyBytes, err := hex.DecodeString(request.SignaturePublicKey)
 	if err != nil {

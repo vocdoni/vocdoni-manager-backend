@@ -83,7 +83,7 @@ func (r *Router) Route() {
 			continue
 		}
 		log.Infof("api method %s/%s", msg.Namespace, request.method)
-		log.Debugf("received: %+v", request.MetaRequest)
+		log.Debugf("received: %s\n\t%+v", msg.Data, request)
 		go method.handler(request)
 	}
 }
