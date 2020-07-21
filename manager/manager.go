@@ -98,7 +98,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 
 	// check public key length
 	// dvoteUtil.IsHexEncodedStringWithLength
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
 		return
@@ -143,7 +143,7 @@ func (m *Manager) listMembers(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
 		return
@@ -190,7 +190,7 @@ func (m *Manager) getMember(request router.RouterRequest) {
 	}
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
 		return
@@ -242,7 +242,7 @@ func (m *Manager) updateMember(request router.RouterRequest) {
 	}
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		m.Router.SendError(request, "invalid public key")
 		return
 	}
@@ -276,7 +276,7 @@ func (m *Manager) deleteMember(request router.RouterRequest) {
 	}
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		m.Router.SendError(request, "invalid public key")
 		return
 	}
@@ -304,7 +304,7 @@ func (m *Manager) countMembers(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		m.Router.SendError(request, "invalid public key")
 		return
 	}
@@ -333,7 +333,7 @@ func (m *Manager) generateTokens(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
 		return
@@ -374,7 +374,7 @@ func (m *Manager) exportTokens(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
 		return
@@ -412,7 +412,7 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
 		return
@@ -452,7 +452,7 @@ func (m *Manager) countTargets(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		m.Router.SendError(request, "invalid public key")
 		return
 	}
@@ -481,7 +481,7 @@ func (m *Manager) listTargets(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
 		return
@@ -524,7 +524,7 @@ func (m *Manager) getTarget(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
 		return
@@ -566,7 +566,7 @@ func (m *Manager) dumpTarget(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
 		return
@@ -624,7 +624,7 @@ func (m *Manager) addCensus(request router.RouterRequest) {
 	}
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
 		return
@@ -668,7 +668,7 @@ func (m *Manager) getCensus(request router.RouterRequest) {
 	}
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
 		return
@@ -718,7 +718,7 @@ func (m *Manager) countCensus(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		m.Router.SendError(request, "invalid public key")
 		return
 	}
@@ -747,7 +747,7 @@ func (m *Manager) listCensus(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength {
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
 		return

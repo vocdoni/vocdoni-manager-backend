@@ -51,6 +51,7 @@ func CreateMembers(entityID []byte, size int) ([]*ethereum.SignKeys, []*types.Me
 	// if membersInfo not set generate random data
 	for i := 0; i < size; i++ {
 		pub, _ := signers[i].HexString()
+		pub, _ = ethereum.DecompressPubKey(pub)
 		pubBytes, err := hex.DecodeString(pub)
 		if err != nil {
 			return nil, nil, err

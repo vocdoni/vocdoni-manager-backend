@@ -149,12 +149,18 @@ func TestMember(t *testing.T) {
 	// Create pubkey and Add membmer to the db
 	memberSigner := new(ethereum.SignKeys)
 	memberSigner.Generate()
+	pub, _ := memberSigner.HexString()
+	pub, _ = ethereum.DecompressPubKey(pub)
+	pubBytes, err := hex.DecodeString(pub)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
 	memberInfo := &types.MemberInfo{}
 	memberInfo.FirstName = "Lak"
 	memberInfo.LastName = "Lik"
 	memberInfo.DateOfBirth.Round(time.Microsecond).UTC()
 	memberInfo.Verified.Round(time.Microsecond)
-	user := &types.User{PubKey: memberSigner.Public.X.Bytes()}
+	user := &types.User{PubKey: pubBytes}
 	err = api.DB.AddUser(user)
 	if err != nil {
 		t.Fatalf("cannot add user to the Postgres DB (pgsql.go:addUser) %s", err)
@@ -163,7 +169,7 @@ func TestMember(t *testing.T) {
 		t.Fatalf("cannot count members correctly: %+v", err)
 	}
 
-	id, err = api.DB.AddMember(entities[0].ID, memberSigner.Public.X.Bytes(), memberInfo)
+	id, err = api.DB.AddMember(entities[0].ID, pubBytes, memberInfo)
 	if err != nil {
 		t.Fatalf("cannot add member to the Postgres DB (pgsql.go:addMember): %s", err)
 	}
@@ -173,7 +179,7 @@ func TestMember(t *testing.T) {
 	}
 
 	// cannot add twice
-	id2, err := api.DB.AddMember(entities[0].ID, memberSigner.Public.X.Bytes(), memberInfo)
+	id2, err := api.DB.AddMember(entities[0].ID, pubBytes, memberInfo)
 	if id2 != uuid.Nil {
 		t.Fatalf("cannot add member twice to the Postgres DB (pgsql.go:addMember): %s", err)
 	}
@@ -185,7 +191,7 @@ func TestMember(t *testing.T) {
 	}
 
 	// Query by Public Key
-	memberPubKey, err := db.MemberPubKey(entities[0].ID, memberSigner.Public.X.Bytes())
+	memberPubKey, err := db.MemberPubKey(entities[0].ID, pubBytes)
 	if err != nil {
 		t.Fatalf("cannot fetch member from the Postgres DB (pgsql.go:MemberPubKey): %s", err)
 	}
@@ -222,8 +228,8 @@ func TestMember(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot fetch user from the Postgres DB (pgsql.go:Member): %s", err)
 	}
-	if !bytes.Equal(member.PubKey, memberSigner.Public.X.Bytes()) {
-		t.Fatalf("expected %s member pubkey, but got %s", member.PubKey, memberSigner.Public.X.Bytes())
+	if !bytes.Equal(member.PubKey, pubBytes) {
+		t.Fatalf("expected %s member pubkey, but got %s", member.PubKey, pubBytes)
 	}
 
 	// Test SetMemberInfo

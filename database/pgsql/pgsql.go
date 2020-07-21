@@ -640,7 +640,7 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 	if err != nil {
 		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
 	}
-	if len(pubKey) != ethereum.PubKeyLength/2 {
+	if len(pubKey) != ethereum.PubKeyLength/2 && len(pubKey) != ethereum.PubKeyLengthUncompressed/2 {
 		return fmt.Errorf("invalid public key size")
 	}
 	user, err := d.User(pubKey)
