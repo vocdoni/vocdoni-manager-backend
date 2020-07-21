@@ -993,9 +993,12 @@ func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uui
 	// 	return 0, fmt.Errorf("target contains 0 members")
 	// }
 	// TODO Disable upon implementing targets
-	members, err := d.ListMembers(entityID, &types.ListOptions{})
-	if err != nil {
-		return 0, fmt.Errorf("failed to recover target members: %v", err)
+	var members []types.Member
+	query := `SELECT m.id FROM members m
+			INNER JOIN users u ON m.public_key = u.public_key 
+			WHERE m.entity_id = $1`
+	if err := d.db.Select(&members, query, entityID); err != nil {
+		return 0, err
 	}
 	if len(members) == 0 {
 		return 0, fmt.Errorf("target contains 0 members")

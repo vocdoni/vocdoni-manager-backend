@@ -585,8 +585,12 @@ func TestAddCensus(t *testing.T) {
 	}
 
 	//Verify that census exists
-	if census, err := api.DB.Census(entities[0].ID, idBytes); err != nil || census.Name != name {
+	census, err := api.DB.Census(entities[0].ID, idBytes)
+	if err != nil {
 		t.Fatalf("unable to recover created census: %s", err)
+	}
+	if census.Name != name || census.Size != 3 {
+		t.Fatal("census stored incorrectly")
 	}
 
 	//Test that empty censusID fails
@@ -594,6 +598,41 @@ func TestAddCensus(t *testing.T) {
 	resp = wsc.Request(req, entitySigners[0])
 	if resp.Ok {
 		t.Fatalf("able to create a census without censusId: %s", resp.Message)
+	}
+
+	// Test that members without keys are not counted
+	if _, err = api.DB.CreateNMembers(entities[0].ID, 10); err != nil {
+		t.Fatalf("cannot generate random members (%v)", err)
+	}
+
+	// Genreate ID and root
+	id = util.RandomHex(len(entities[0].ID))
+	if _, err = hex.DecodeString(util.TrimHex(id)); err != nil {
+		t.Fatalf("cannot decode randpom id: %s", err)
+	}
+	if root, err = hex.DecodeString(util.RandomHex(len(entities[0].ID))); err != nil {
+		t.Fatalf("cannot generate root: %s", err)
+	}
+	name = fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
+	// create census info
+	censusInfo = &types.CensusInfo{
+		Name:          name,
+		MerkleRoot:    root,
+		MerkleTreeURI: fmt.Sprintf("ipfs://%s", util.TrimHex(id)),
+	}
+
+	req.Method = "addCensus"
+	req.CensusID = id
+	req.Census = censusInfo
+	req.TargetID = &targetID
+
+	resp = wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Fatalf("unable to create a random census: %s", resp.Message)
+	}
+
+	if census.Size != 3 {
+		t.Fatal("census size  incorrect")
 	}
 
 }
