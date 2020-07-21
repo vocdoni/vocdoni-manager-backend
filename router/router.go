@@ -120,11 +120,10 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 		if request.SignaturePublicKey, err = ethereum.PubKeyFromSignature(reqOuter.MetaRequest, reqOuter.Signature); err != nil {
 			return request, err
 		}
-
 		// TBD: remove when everything is compressed only
-		if request.SignaturePublicKey, err = ethereum.CompressPubKey(request.SignaturePublicKey); err != nil {
-			return request, err
-		}
+		//	if request.SignaturePublicKey, err = ethereum.CompressPubKey(request.SignaturePublicKey); err != nil {
+		//		return request, err
+		//	}
 		if len(request.SignaturePublicKey) == 0 {
 			return request, fmt.Errorf("could not extract public key from signature")
 		}
