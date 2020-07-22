@@ -16,7 +16,8 @@ import (
 	"gitlab.com/vocdoni/manager/manager-backend/types"
 )
 
-const AuthWindowSeconds = 3
+// AuthWindowSeconds is the time window (in seconds) that the tokenapi Auth tolerates
+const AuthWindowSeconds = 5
 
 // TokenAPI is a handler for external token managmement
 type TokenAPI struct {
@@ -64,7 +65,7 @@ func checkAuth(fields []string, timestamp int32, auth string) bool {
 		toHash += f
 	}
 	thisAuth := hex.EncodeToString(ethereum.HashRaw([]byte(toHash)))
-	return thisAuth == auth
+	return thisAuth == util.TrimHex(auth)
 }
 
 func (t *TokenAPI) getSecret(entityID []byte) (string, error) {
