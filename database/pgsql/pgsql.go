@@ -699,7 +699,8 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 		return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
 	}
 	update := `UPDATE members SET
-				public_key = :public_key
+				public_key = :public_key,
+				updated_at = now()
 				WHERE (id = :id AND entity_id = :entity_id)`
 	var result sql.Result
 	if result, err = tx.NamedExec(update, pgmember); err != nil {
