@@ -6,7 +6,7 @@ stages:
 variables:
   # DOCKER_HOST: tcp://docker:2375
   DOCKER_DRIVER: overlay2
-  MANAGER_BUILD_IMAGE: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
+  MANAGER_BUILD_IMAGE: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}
   MANAGER_RELEASE_IMAGE: ${CI_REGISTRY_IMAGE}:latest
 
   GOPATH: ${CI_PROJECT_DIR}/.cache/gopath # to cache Go module downloads
