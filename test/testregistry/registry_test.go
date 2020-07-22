@@ -211,14 +211,14 @@ func TestValidateToken(t *testing.T) {
 	// 3. cannot validate same token twice
 	resp = wsc.Request(req, membersSigners[0])
 	// check register failed
-	if resp.Ok || resp.Message != "already registered" {
+	if resp.Ok || resp.Message != "duplicate user already registered" {
 		t.Fatal("validated same token  with same pubKey")
 	}
 
 	// 4. cannot validate same token twice
 	resp = wsc.Request(req, membersSigners[1])
 	// check register failed
-	if resp.Ok || resp.Message != "duplicate user" {
+	if resp.Ok || resp.Message != "invalid token" {
 		t.Fatal("validated same token twice with different pubKeys ")
 	}
 

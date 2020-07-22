@@ -163,42 +163,55 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		return
 	}
 
-	if len(member.PubKey) != 0 {
-		if string(member.PubKey) == string(requestPubKey) {
-			RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_registered"}).Inc()
-			log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
-			r.Router.SendError(request, "already registered")
-			return
-		}
-		if user, err := r.db.User(member.PubKey); err != nil {
-			if err == sql.ErrNoRows {
-				//
-			} else {
-				log.Warnf("error retrieving user with pubkey (%q) and token (%q) for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
-				r.Router.SendError(request, "error retrieving token")
-				return
-			}
-
-		} else {
-			if string(user.PubKey) == string(member.PubKey) {
-				log.Warnf("error trying to reuse token  (%q)  from different pubkey (%x) and for entity (%q): (%q)", uid, fmt.Sprintf("%x", member.PubKey), request.EntityID, err)
-				RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_token_duplicate"}).Inc()
-				r.Router.SendError(request, "duplicate user")
-			} else {
-				log.Warnf("UNEXPECTED: error retrieving user with pubkey (%q) and token (%q) for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
-				r.Router.SendError(request, "error retrieving token")
-
-			}
-			return
-		}
+	// 1.
+	if string(member.PubKey) == string(requestPubKey) {
+		RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_already_registered"}).Inc()
+		log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
+		r.Router.SendError(request, "duplicate user already registered")
+		return
+	} else if len(member.PubKey) != 0 {
+		RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_reused_token"}).Inc()
+		log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
+		r.Router.SendError(request, "invalid token")
+		return
 	}
+
+	// if len(member.PubKey) != 0 {
+	// 	if string(member.PubKey) == string(requestPubKey) {
+	// 		RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_registered"}).Inc()
+	// 		log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
+	// 		r.Router.SendError(request, "already registered")
+	// 		return
+	// 	}
+	// 	if user, err := r.db.User(member.PubKey); err != nil {
+	// 		if err == sql.ErrNoRows {
+	// 			//
+	// 		} else {
+	// 			log.Warnf("error retrieving user with pubkey (%q) and token (%q) for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
+	// 			r.Router.SendError(request, "error retrieving token")
+	// 			return
+	// 		}
+
+	// 	} else {
+	// 		if string(user.PubKey) == string(member.PubKey) {
+	// 			log.Warnf("error trying to reuse token  (%q)  from different pubkey (%x) and for entity (%q): (%q)", uid, fmt.Sprintf("%x", member.PubKey), request.EntityID, err)
+	// 			RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_token_duplicate"}).Inc()
+	// 			r.Router.SendError(request, "duplicate user")
+	// 		} else {
+	// 			log.Warnf("UNEXPECTED: error retrieving user with pubkey (%q) and token (%q) for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
+	// 			r.Router.SendError(request, "error retrieving token")
+
+	// 		}
+	// 		return
+	// 	}
+	// }
 
 	if err = r.db.RegisterMember(entityID, requestPubKey, &uid); err != nil {
 		log.Warnf("cannot register member for entity %s: (%v)", request.EntityID, err)
-		msg := "cannot register member"
-		if err.Error() == "duplicate user" {
-			msg = "duplicate user"
-		}
+		msg := "invalidToken"
+		// if err.Error() == "duplicate user" {
+		// 	msg = "duplicate user"
+		// }
 		r.Router.SendError(request, msg)
 		return
 	}
