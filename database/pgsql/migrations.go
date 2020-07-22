@@ -10,6 +10,11 @@ var Migrations = migrate.MemoryMigrationSource{
 			Up:   []string{migration1up},
 			Down: []string{migration1down},
 		},
+		{
+			Id:   "2",
+			Up:   []string{migration2up},
+			Down: []string{migration2down},
+		},
 	},
 }
 
@@ -218,4 +223,12 @@ DROP TABLE entities_origins;
 DROP TYPE origins;
 DROP TABLE entities;
 DROP EXTENSION IF EXISTS pgcrypto;
+`
+
+const migration2up = `
+ALTER TABLE entities ADD COLUMN is_authorized boolean DEFAULT false NOT NULL;
+`
+
+const migration2down = `
+ALTER TABLE entities DROP COLUMN is_authorized;
 `

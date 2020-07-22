@@ -114,6 +114,29 @@ func TestEntity(t *testing.T) {
 	if string(marshalleUpdatedInfo) != string(marshalledUpdatedEntityInfo) {
 		t.Fatalf("expected \n%s info, but got \n%s", string(marshalleUpdatedInfo), string(marshalledUpdatedEntityInfo))
 	}
+
+	if updatedEntity.IsAuthorized {
+		t.Fatalf("error entity authorized not explicitly: (%v)", err)
+	}
+
+	if err = api.DB.AuthorizeEntity(entityID); err != nil {
+		t.Fatalf("error authorizing entity: (%v)", err)
+	}
+	updatedEntity, err = api.DB.Entity(entityID)
+	if err != nil {
+		t.Fatalf("cannot fetch entity from the Postgres DB (pgsql.go:Entity): %s", err)
+	}
+	if !updatedEntity.IsAuthorized {
+		t.Fatalf("error entity not authorized even though authorizedEntity was succesful: (%v)", err)
+	}
+
+	err = api.DB.AuthorizeEntity(entityID)
+	if err == nil {
+		t.Fatalf("managed to reauthorize entity: (%v)", err)
+	} else if err.Error() != "already authorized" {
+		t.Fatalf("error while trying to reauthorize entity: (%v)", err)
+	}
+
 }
 
 func TestUser(t *testing.T) {

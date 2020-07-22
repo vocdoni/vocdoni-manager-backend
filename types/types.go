@@ -16,7 +16,8 @@ type CreatedUpdated struct {
 
 type Entity struct {
 	CreatedUpdated
-	ID []byte `json:"id" db:"id"`
+	ID           []byte `json:"id" db:"id"`
+	IsAuthorized bool   `json:"isAuthorized" db:"is_authorized"`
 	EntityInfo
 }
 

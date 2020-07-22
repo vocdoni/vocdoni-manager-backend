@@ -97,8 +97,8 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	}
 	// TODO: Calculate EntityID (consult go-dvote)
 	insert := `INSERT INTO entities
-			(id, address, email, name, callback_url, callback_secret, census_managers_addresses)
-			VALUES (:id, :address, :email, :name, :callback_url, :callback_secret, :pg_census_managers_addresses)`
+			(id, is_authorized, address, email, name, callback_url, callback_secret, census_managers_addresses)
+			VALUES (:id, :is_authorized, :address, :email, :name, :callback_url, :callback_secret, :pg_census_managers_addresses)`
 	_, err = tx.NamedExec(insert, pgEntity)
 	if err != nil {
 		return fmt.Errorf("cannot add insert query in the transaction: %v", err)
@@ -123,7 +123,7 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 
 func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	var pgEntity PGEntity
-	selectEntity := `SELECT id, address, email, name, callback_url, callback_secret, census_managers_addresses as "pg_census_managers_addresses"  
+	selectEntity := `SELECT id, is_authorized, address, email, name, callback_url, callback_secret, census_managers_addresses as "pg_census_managers_addresses"  
 						FROM entities WHERE id=$1`
 	row := d.db.QueryRowx(selectEntity, entityID)
 	err := row.StructScan(&pgEntity)
@@ -144,6 +144,31 @@ func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	}
 	entity.Origins = origins
 	return entity, nil
+}
+
+func (d *Database) AuthorizeEntity(entityID []byte) error {
+	entity := &types.Entity{ID: entityID, IsAuthorized: true}
+	pgentity, err := ToPGEntity(entity)
+	if err != nil {
+		return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
+	}
+	update := `UPDATE entities SET
+				is_authorized = COALESCE(NULLIF(:is_authorized, false), is_authorized)
+				WHERE (id = :id )
+				AND  :is_authorized IS DISTINCT FROM is_authorized`
+	result, err := d.db.NamedExec(update, pgentity)
+	if err != nil {
+		return fmt.Errorf("error updating entity: %v", err)
+	}
+	var rows int64
+	if rows, err = result.RowsAffected(); err != nil {
+		return fmt.Errorf("cannot get affected rows: %v", err)
+	} else if rows == 0 { /* Nothing to update? */
+		return fmt.Errorf("already authorized")
+	} else if rows != 1 { /* Nothing to update? */
+		return fmt.Errorf("could not authorize")
+	}
+	return nil
 }
 
 func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
@@ -172,8 +197,10 @@ func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
 	var rows int64
 	if rows, err = result.RowsAffected(); err != nil {
 		return fmt.Errorf("cannot get affected rows: %v", err)
+	} else if rows == 0 { /* Nothing to update? */
+		return fmt.Errorf("nothing to update")
 	} else if rows != 1 { /* Nothing to update? */
-		return fmt.Errorf("nothing to update: %v", err)
+		return fmt.Errorf("could not update")
 	}
 	return nil
 }
