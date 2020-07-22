@@ -75,4 +75,4 @@ docker-release:
     - docker push ${MANAGER_RELEASE_IMAGE}
   only:
     - master
-    - /^release-*$/
+    - /^release-.*$/
