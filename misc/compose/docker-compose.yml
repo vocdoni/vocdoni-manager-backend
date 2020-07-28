@@ -1,0 +1,95 @@
+version: "3.5"
+
+x-log-config: &log-config
+  logging:
+    driver: json-file
+    options:
+      max-size: "20m"
+      max-file: "10"
+
+services:
+  traefik:
+    image: traefik:1.7
+    ports:
+      - 8081:8081
+    volumes:
+      - traefik:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - "--debug=true"
+      - "--logLevel=DEBUG"
+      - "--defaultentrypoints=http"
+      - "--entryPoints=Name:http Address::8081"
+      - "--retry"
+      - "--docker.endpoint=unix:///var/run/docker.sock"
+      - "--docker.watch=true"
+      - "--docker.exposedbydefault=false"
+    restart: always
+    <<: *log-config
+
+  manager-backend:
+    image: vocdoni/manager-backend:latest
+    build:
+      context: ../../
+    env_file:
+      - env
+    volumes:
+      - "backend-run:/app/run"
+    depends_on:
+      - db
+    labels:
+      traefik.enable: true
+      traefik.frontend.rule: "PathPrefix:/api;Host:localhost"
+      traefik.default.port: 8000
+      traefik.default.protocol: http
+    <<: *log-config
+
+  nginx:
+    image: nginx
+    volumes:
+      - manager-frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - manager-backend
+    labels:
+      traefik.enable: true
+      traefik.frontend.rule: "PathPrefix:/;Host:localhost"
+      traefik.default.port: 80
+      traefik.default.protocol: http
+    <<: *log-config
+
+  nginx-gw:
+    image: nginx
+    volumes:
+      - ./gateways.json:/usr/share/nginx/html/gateways.json:ro
+    labels:
+      traefik.enable: true
+      traefik.frontend.rule: "PathPrefix:/gateways.json;Host:localhost"
+      traefik.default.port: 80
+      traefik.default.protocol: http
+    <<: *log-config
+
+  manager-frontend:
+    image: vocdoni/manager-frontend:latest
+    env_file:
+      - env
+    restart: "no"
+    volumes:
+      - manager-frontend:/app/build
+      - ./gateways.json:/usr/share/nginx/html
+
+  db:
+    image: postgres:12
+    env_file:
+      - env
+    volumes:
+      - db:/data/postgres
+    restart: unless-stopped
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
+    <<: *log-config
+
+volumes:
+  manager-frontend:
+  traefik:
+  db:
+  backend-run:
