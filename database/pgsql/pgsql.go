@@ -697,7 +697,8 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 	}
 	update := `UPDATE members SET
 				public_key = :public_key,
-				updated_at = now()
+				updated_at = now(),
+				verified = now()
 				WHERE (id = :id AND entity_id = :entity_id)`
 	var result sql.Result
 	if result, err = tx.NamedExec(update, pgmember); err != nil {
