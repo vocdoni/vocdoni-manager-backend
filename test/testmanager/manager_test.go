@@ -108,7 +108,7 @@ func TestListMembers(t *testing.T) {
 	req.Method = "listMembers"
 	req.ListOptions = &types.ListOptions{
 		Count:  10,
-		Order:  "asc",
+		Order:  "ascend",
 		Skip:   2,
 		SortBy: "lastName",
 	}

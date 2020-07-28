@@ -159,7 +159,7 @@ func TestListMembers(t *testing.T) {
 	req2.Method = "listMembers"
 	req2.ListOptions = &types.ListOptions{
 		Count:  10,
-		Order:  "asc",
+		Order:  "ascend",
 		Skip:   2,
 		SortBy: "lastName",
 	}
@@ -175,7 +175,7 @@ func TestListMembers(t *testing.T) {
 	req3.Method = "listMembers"
 	req3.ListOptions = &types.ListOptions{
 		Count:  10,
-		Order:  "asc",
+		Order:  "ascend",
 		Skip:   2,
 		SortBy: "lastName",
 	}
@@ -193,7 +193,7 @@ func TestListMembers(t *testing.T) {
 	req4.Method = "listMembers"
 	req4.ListOptions = &types.ListOptions{
 		Count:  10,
-		Order:  "asc",
+		Order:  "ascend",
 		Skip:   2,
 		SortBy: "lastName",
 	}
@@ -592,7 +592,7 @@ func TestListTargets(t *testing.T) {
 	req2.Method = "listTargets"
 	req2.ListOptions = &types.ListOptions{
 		Count:  10,
-		Order:  "asc",
+		Order:  "ascend",
 		Skip:   2,
 		SortBy: "lastName",
 	}
@@ -609,7 +609,7 @@ func TestListTargets(t *testing.T) {
 	req3.Method = "listTargets"
 	req3.ListOptions = &types.ListOptions{
 		Count:  10,
-		Order:  "asc",
+		Order:  "ascend",
 		Skip:   2,
 		SortBy: "lastName",
 	}
@@ -934,7 +934,7 @@ func TestListCensus(t *testing.T) {
 	req2.Method = "listCensus"
 	req2.ListOptions = &types.ListOptions{
 		Count:  10,
-		Order:  "asc",
+		Order:  "ascend",
 		Skip:   2,
 		SortBy: "lastName",
 	}
@@ -951,7 +951,7 @@ func TestListCensus(t *testing.T) {
 	req3.Method = "listCensus"
 	req3.ListOptions = &types.ListOptions{
 		Count:  10,
-		Order:  "asc",
+		Order:  "ascend",
 		Skip:   2,
 		SortBy: "lastName",
 	}
@@ -969,7 +969,7 @@ func TestListCensus(t *testing.T) {
 	req4.Method = "listCensus"
 	req4.ListOptions = &types.ListOptions{
 		Count:  10,
-		Order:  "asc",
+		Order:  "ascend",
 		Skip:   2,
 		SortBy: "lastName",
 	}

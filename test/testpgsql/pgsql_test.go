@@ -299,7 +299,7 @@ func TestMember(t *testing.T) {
 		Skip:   2,
 		Count:  limit,
 		SortBy: "lastName",
-		Order:  "desc",
+		Order:  "descend",
 	}
 	members, err := api.DB.ListMembers(entities[0].ID, filter)
 	if err != nil {
