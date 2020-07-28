@@ -670,7 +670,7 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 	if len(pubKey) != ethereum.PubKeyLength/2 && len(pubKey) != ethereum.PubKeyLengthUncompressed/2 {
 		return fmt.Errorf("invalid public key size")
 	}
-	user, err := d.User(pubKey)
+	_, err = d.User(pubKey)
 	if err == sql.ErrNoRows {
 		// This is the expected behaviour
 		user := &types.User{PubKey: pubKey, DigestedPubKey: snarks.Poseidon.Hash(pubKey)}
@@ -687,10 +687,7 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 		if rows, err := result.RowsAffected(); err != nil || rows != 1 {
 			return fmt.Errorf("error creating user for member: %v", err)
 		}
-	} else if err == nil && hex.EncodeToString(user.PubKey) == hex.EncodeToString(pubKey) {
-		// err is nil and user exists while it shouldnt
-		return fmt.Errorf("duplicate user")
-	} else {
+	} else if err != nil {
 		return fmt.Errorf("error retrieving members corresponding user: %v", err)
 	}
 

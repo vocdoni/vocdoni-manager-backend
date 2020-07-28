@@ -164,17 +164,26 @@ func TestValidateToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create entities: %s", err)
 	}
-	// add entity
+	// add entities
 	err = api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo)
 	if err != nil {
 		t.Fatalf("cannot add entity into database: %s", err)
 	}
-	// create token
-	tokens, err := api.DB.CreateNMembers(entities[0].ID, 3)
+	err = api.DB.AddEntity(entities[1].ID, &entities[1].EntityInfo)
+	if err != nil {
+		t.Fatalf("cannot add entity into database: %s", err)
+	}
+	// create tokens for 1st entity
+	tokens, err := api.DB.CreateNMembers(entities[0].ID, 4)
 	if err != nil {
 		t.Fatalf("unable to create member using CreateNMembers:  (%+v)", err)
 	}
-	// create signing key
+	// create tokens for 2nd entity
+	tokens2, err := api.DB.CreateNMembers(entities[1].ID, 1)
+	if err != nil {
+		t.Fatalf("unable to create member using CreateNMembers:  (%+v)", err)
+	}
+	// create signing keys
 	membersSigners, _, err := testcommon.CreateMembers(entities[1].ID, 3)
 	if err != nil {
 		t.Fatalf("cannot create member signer: %s", err)
@@ -241,10 +250,6 @@ func TestValidateToken(t *testing.T) {
 
 	// 6. check cannot validate correct token in existing non-corresponding entity (with new signer)
 	// add entity
-	err = api.DB.AddEntity(entities[1].ID, &entities[1].EntityInfo)
-	if err != nil {
-		t.Fatalf("cannot add entity into database: %s", err)
-	}
 	req.Token = tokens[1].String()
 	req.EntityID = hex.EncodeToString(entities[1].ID)
 	resp = wsc.Request(req, membersSigners[1])
@@ -255,6 +260,7 @@ func TestValidateToken(t *testing.T) {
 
 	// 7. check cannot reuse the same pubKey to validate a new token
 	req.EntityID = hex.EncodeToString(entities[0].ID)
+	req.Token = tokens[3].String()
 	resp = wsc.Request(req, membersSigners[0])
 	// check register failed
 	if resp.Ok {
@@ -300,7 +306,7 @@ func TestValidateToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot fetch validated member from the database: %s", err)
 	}
-	// 2. check user added and member is linked with pubkey
+	// check user added and member is linked with pubkey
 	_, err = api.DB.User(member.PubKey)
 	if err != nil {
 		t.Fatalf("cannot fetch corresponding validated user from the Postgres DB (pgsql.go:User): %s", err)
@@ -318,6 +324,15 @@ func TestValidateToken(t *testing.T) {
 	// if result != fail {
 	// 	t.Fatalf("Callback  accetps illegal event (\"random\"")
 	// }
+
+	// 11. check can reuse the same pubKey to validate a new token for another entity
+	req.EntityID = hex.EncodeToString(entities[1].ID)
+	req.Token = tokens2[0].String()
+	resp = wsc.Request(req, membersSigners[0])
+	// check register failed
+	if !resp.Ok {
+		t.Fatal("cannot reuse the same pubKey to validate a new token for a new entity")
+	}
 
 }
 
