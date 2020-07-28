@@ -846,7 +846,7 @@ func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]ty
 			}
 		}
 		if filter.Count > 0 {
-			err = limit.Scan(filter.Skip)
+			err = limit.Scan(filter.Count)
 			if err != nil {
 				return nil, err
 			}
