@@ -817,7 +817,7 @@ func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]ty
 		return nil, fmt.Errorf("lastName field not found in DB. Something is very wrong")
 	}
 	orderField := field.Tag.Get("db")
-	order := "asc"
+	order := "ASC"
 	var limit, offset sql.NullInt32
 	// default limit should be nil (Postgres BIGINT NULL)
 	err := limit.Scan(nil)
@@ -833,8 +833,8 @@ func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]ty
 		if len(filter.SortBy) > 0 {
 			field, found := t.FieldByName(strings.Title(filter.SortBy))
 			if found {
-				if filter.Order == "desc" {
-					order = filter.Order
+				if filter.Order == "descend" {
+					order = "DESC"
 				}
 				orderField = field.Tag.Get("db")
 			}

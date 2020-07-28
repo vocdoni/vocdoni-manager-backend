@@ -801,7 +801,7 @@ func checkOptions(filter *types.ListOptions) error {
 			return fmt.Errorf("invalid filter field")
 		}
 		// Check order
-		if len(filter.Order) > 0 && !(filter.Order == "asc" || filter.Order == "desc") {
+		if len(filter.Order) > 0 && !(filter.Order == "ascend" || filter.Order == "descend") {
 			return fmt.Errorf("invalid filter order")
 		}
 
