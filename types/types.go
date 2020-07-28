@@ -71,7 +71,7 @@ type MemberInfo struct {
 	Consented     bool            `json:"consented" db:"consented"`
 	Verified      time.Time       `json:"verified,omitempty" db:"verified"`
 	Origin        Origin          `json:"origin,omitempty" db:"origin"`
-	CustomFields  json.RawMessage `json:"customFields" db:"custom_fields"`
+	CustomFields  json.RawMessage `json:"customFields,omitempty" db:"custom_fields"`
 }
 
 // In case COPY FROM is adopted
