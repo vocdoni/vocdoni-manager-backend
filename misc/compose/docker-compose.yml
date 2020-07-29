@@ -39,7 +39,7 @@ services:
       - db
     labels:
       traefik.enable: true
-      traefik.frontend.rule: "PathPrefix:/api;Host:localhost"
+      traefik.frontend.rule: "PathPrefix:/api"
       traefik.default.port: 8000
       traefik.default.protocol: http
     <<: *log-config
@@ -52,7 +52,7 @@ services:
       - manager-backend
     labels:
       traefik.enable: true
-      traefik.frontend.rule: "PathPrefix:/;Host:localhost"
+      traefik.frontend.rule: "PathPrefix:/"
       traefik.default.port: 80
       traefik.default.protocol: http
     <<: *log-config
@@ -61,9 +61,10 @@ services:
     image: nginx
     volumes:
       - ./gateways.json:/usr/share/nginx/html/gateways.json:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
     labels:
       traefik.enable: true
-      traefik.frontend.rule: "PathPrefix:/gateways.json;Host:localhost"
+      traefik.frontend.rule: "PathPrefix:/gateways.json"
       traefik.default.port: 80
       traefik.default.protocol: http
     <<: *log-config

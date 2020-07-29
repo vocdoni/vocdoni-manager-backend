@@ -8,12 +8,12 @@
     ],
     "dvote": [
       {
-        "uri": "ws://host.local/dvote",
+        "uri": "ws://spectre.local:9090/dvote",
         "apis": ["file", "vote", "census", "results"],
-        "pubKey": "03610cba4e6200d27cd814b4c28b593386b9b941f016a8e767bce15ffb480898e2"
+        "pubKey": "02a37491755d0f9f1c594edf663932f9a1c048772cb617702ff97a36d0a31894c5"
       },
       {
-        "uri": "ws://host.local:9090/dvote",
+        "uri": "ws://spectre.local:9090/dvote",
         "apis": ["file", "vote", "census", "results"],
         "pubKey": "02a37491755d0f9f1c594edf663932f9a1c048772cb617702ff97a36d0a31894c5"
       }
@@ -28,12 +28,12 @@
     ],
     "dvote": [
       {
-        "uri": "ws://host.local:9090/dvote",
+        "uri": "ws://spectre.local:9090/dvote",
         "apis": ["file", "vote", "census", "results"],
         "pubKey": "02a37491755d0f9f1c594edf663932f9a1c048772cb617702ff97a36d0a31894c5"
       },
       {
-        "uri": "ws://host.local:9090/dvote",
+        "uri": "ws://spectre.local:9090/dvote",
         "apis": ["file", "vote", "census", "results"],
         "pubKey": "02a37491755d0f9f1c594edf663932f9a1c048772cb617702ff97a36d0a31894c5"
       }

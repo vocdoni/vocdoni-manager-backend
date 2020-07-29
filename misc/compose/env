@@ -26,9 +26,10 @@ POSTGRES_DB=vocdonimgr
 PGDATA=/data/postgres
 
 # Frontend
-MANAGER_BACKEND_URI=ws://localhost:8081/api/manager
-REGISTER_URL=ws://localhost:8081/api/actions/register
-ACTION_VISIBILITY_URL=http://localhost:8081/api/actions/status
-BOOTNODES_URL_READ_ONLY=http://localhost:8081/gateways.json
-BOOTNODES_URL_RW=http://localhost:8081/gateways.json
+ETH_NETWORK_ID=xdai
+MANAGER_BACKEND_URI=ws://host.local:8081/api/manager
+REGISTER_URL=ws://host.local:8081/api/actions/register
+ACTION_VISIBILITY_URL=http://host.local:8081/api/actions/status
+BOOTNODES_URL_READ_ONLY=http://host.local:8081/gateways.json
+BOOTNODES_URL_RW=http://host.local:8081/gateways.json
 MANAGER_BACKEND_PUB_KEY=
