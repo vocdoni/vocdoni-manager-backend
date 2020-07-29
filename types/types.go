@@ -57,7 +57,7 @@ type Member struct {
 	CreatedUpdated
 	ID       uuid.UUID `json:"id" db:"id"`
 	EntityID []byte    `json:"entityId" db:"entity_id"`
-	PubKey   []byte    `json:"publicKey" db:"public_key"`
+	PubKey   []byte    `json:"publicKey,omitempty" db:"public_key"`
 	MemberInfo
 }
 
