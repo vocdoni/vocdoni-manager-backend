@@ -35,7 +35,7 @@ func TestNewRegistry(t *testing.T) {
 
 func TestRegisterMethods(t *testing.T) {
 	// create signer
-	signer := new(ethereum.SignKeys)
+	signer := ethereum.NewSignKeys()
 	if err := signer.Generate(); err != nil {
 		t.Fatalf("cannot generate signer: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestSend(t *testing.T) {
 func TestRegister(t *testing.T) {
 	var req types.MetaRequest
 	// generate signing keys
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.Generate()
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
@@ -92,13 +92,13 @@ func TestRegister(t *testing.T) {
 		Email: "info@vocdoni.io",
 	}
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if !resp.Ok {
 		t.Fatal(err)
 	}
 
-	var s2 ethereum.SignKeys
+	s2 := ethereum.NewSignKeys()
 	// generate signing keys
 	s2.Generate()
 	var req2 types.MetaRequest
@@ -108,7 +108,7 @@ func TestRegister(t *testing.T) {
 		Email: "info@vocdoni.io",
 	}
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if !resp2.Ok {
 		t.Fatal(err)
@@ -121,7 +121,7 @@ func TestRegister(t *testing.T) {
 		Email: "info@vocdoni.io",
 	}
 	// make request
-	resp = wsc.Request(req, &s)
+	resp = wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if invalid entityID")
@@ -135,7 +135,7 @@ func TestRegister(t *testing.T) {
 		Email: "fail@fail.fail",
 	}
 	// make request
-	resp = wsc.Request(req4, &s)
+	resp = wsc.Request(req4, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if add member fails")
@@ -149,7 +149,7 @@ func TestRegister(t *testing.T) {
 		Email: "info@vocdoni.io",
 	}
 	// make request
-	resp = wsc.Request(req7, &s)
+	resp = wsc.Request(req7, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if entity does not exist")
@@ -163,7 +163,7 @@ func TestRegister(t *testing.T) {
 	// req8.MemberInfo = &types.MemberInfo{
 	// 	Email: "info@vocdoni.io",
 	// }
-	// resp = wsc.Request(req8, &s)
+	// resp = wsc.Request(req8, s)
 	// // check register went successful
 	// if resp.Ok {
 	// 	t.Fatal("should fail if req.entityID != fetched entity.ID")
@@ -171,7 +171,7 @@ func TestRegister(t *testing.T) {
 
 	// if user does not exist create
 	var req9 types.MetaRequest
-	constSigner := new(ethereum.SignKeys)
+	constSigner := ethereum.NewSignKeys()
 	constSigner.AddHexKey(testdb.Signers[0].Priv)
 	req9.Method = "register"
 	req9.EntityID = "12345123451234"
@@ -188,7 +188,7 @@ func TestRegister(t *testing.T) {
 	// should fail if user does not exist and fails on create
 	// TODO: Update for uncompressed pubkey
 	// var req10 types.MetaRequest
-	// constSigner2 := new(ethereum.SignKeys)
+	// constSigner2 := ethereum.NewSignKeys()
 	// constSigner2.AddHexKey(testdb.Signers[1].Priv)
 	// req10.Method = "register"
 	// req10.EntityID = "12345123451234"
@@ -205,7 +205,7 @@ func TestRegister(t *testing.T) {
 	// should fail cannot query for user
 	// TODO: Update for uncompressed pubkey
 	// var req11 types.MetaRequest
-	// constSigner3 := new(ethereum.SignKeys)
+	// constSigner3 := ethereum.NewSignKeys()
 	// constSigner3.AddHexKey(testdb.Signers[2].Priv)
 	// //p1, p2 := constSigner3.HexString()
 	// //t.Fatalf("%s : %s", p1, p2)
@@ -224,7 +224,7 @@ func TestRegister(t *testing.T) {
 
 func TestStatus(t *testing.T) {
 	var req types.MetaRequest
-	var s ethereum.SignKeys
+	s := ethereum.NewSignKeys()
 
 	// generate signing keys
 	s.Generate()
@@ -242,7 +242,7 @@ func TestStatus(t *testing.T) {
 	req.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	if !resp.Ok {
 		t.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func TestStatus(t *testing.T) {
 	var req2 types.MetaRequest
 	req2.Method = "registrationStatus"
 	req2.EntityID = "12345123451234"
-	resp2 := wsc.Request(req2, &s)
+	resp2 := wsc.Request(req2, s)
 	if !resp2.Ok {
 		t.Fatal(err)
 	}
@@ -266,7 +266,7 @@ func TestStatus(t *testing.T) {
 	var req3 types.MetaRequest
 	req3.Method = "registrationStatus"
 	req3.EntityID = "0xZ"
-	resp3 := wsc.Request(req3, &s)
+	resp3 := wsc.Request(req3, s)
 	if resp3.Ok {
 		t.Fatal(err)
 	}
@@ -275,7 +275,7 @@ func TestStatus(t *testing.T) {
 	var req4 types.MetaRequest
 	req4.Method = "registrationStatus"
 	req4.EntityID = "f6da3e4864d566faf82163a407e84a9001592678"
-	resp4 := wsc.Request(req4, &s)
+	resp4 := wsc.Request(req4, s)
 	if resp4.Ok {
 		t.Fatal("should fail if entity not found")
 	}
@@ -283,7 +283,7 @@ func TestStatus(t *testing.T) {
 	// registered should be false if user is not a member
 	// TODO: Update for uncompressed pubkey
 	// var req6 types.MetaRequest
-	// constSigner2 := new(ethereum.SignKeys)
+	// constSigner2 := ethereum.NewSignKeys()
 	// constSigner2.AddHexKey(testdb.Signers[3].Priv)
 	// req6.Method = "registrationStatus"
 	// req6.EntityID = "12345123451234"
@@ -297,7 +297,7 @@ func TestStatus(t *testing.T) {
 
 func TestSubscribe(t *testing.T) {
 	var req types.MetaRequest
-	var s ethereum.SignKeys
+	s := ethereum.NewSignKeys()
 	// generate signing keys
 	s.Generate()
 	// connect to endpoint
@@ -307,14 +307,14 @@ func TestSubscribe(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Method = "subscribe"
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	if !resp.Ok {
 		t.Fatal(err)
 	}
 }
 func TestUnsubscribe(t *testing.T) {
 	var req types.MetaRequest
-	var s ethereum.SignKeys
+	s := ethereum.NewSignKeys()
 	// generate signing keys
 	s.Generate()
 	// connect to endpoint
@@ -324,7 +324,7 @@ func TestUnsubscribe(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Method = "unsubscribe"
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	if !resp.Ok {
 		t.Fatal(err)
 	}

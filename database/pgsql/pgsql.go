@@ -435,7 +435,7 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 func createEthRandomKeysBatch(n int) []*ethereum.SignKeys {
 	s := make([]*ethereum.SignKeys, n)
 	for i := 0; i < n; i++ {
-		s[i] = new(ethereum.SignKeys)
+		s[i] = ethereum.NewSignKeys()
 		if err := s[i].Generate(); err != nil {
 			return nil
 		}

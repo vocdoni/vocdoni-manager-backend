@@ -29,7 +29,7 @@ func (t *TestAPI) Start(dbc *config.DB, route string) error {
 	var err error
 	if route != "" {
 		// Signer
-		t.Signer = new(ethereum.SignKeys)
+		t.Signer = ethereum.NewSignKeys()
 		t.Signer.Generate()
 
 		cfg := &config.Manager{

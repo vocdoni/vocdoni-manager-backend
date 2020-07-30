@@ -150,7 +150,7 @@ func main() {
 			log.Fatal("invalid users number")
 		}
 		if len(*entityKey) == 0 {
-			signer := new(ethereum.SignKeys)
+			signer := ethereum.NewSignKeys()
 			signer.Generate()
 			pub, priv := signer.HexString()
 			if entityID, err := util.PubKeyToEntityID(pub); err != nil {
@@ -166,7 +166,7 @@ func main() {
 	case "registrationStatus":
 		if *usersNumber > 0 {
 			if len(*entityKey) == 0 {
-				signer := new(ethereum.SignKeys)
+				signer := ethereum.NewSignKeys()
 				signer.Generate()
 				pub, priv := signer.HexString()
 				if entityID, err := util.PubKeyToEntityID(pub); err != nil {
@@ -247,7 +247,7 @@ func splitFile(filepath string) ([]string, error) {
 }
 
 func generateEntity(entityKey *string, eid *string) {
-	signer := new(ethereum.SignKeys)
+	signer := ethereum.NewSignKeys()
 	signer.Generate()
 	pub, priv := signer.HexString()
 	if entityID, err := util.PubKeyToEntityID(pub); err != nil {
@@ -260,7 +260,7 @@ func generateEntity(entityKey *string, eid *string) {
 }
 
 func generateKeys(n int, dir string) []string {
-	signer := new(ethereum.SignKeys)
+	signer := ethereum.NewSignKeys()
 	var keys []string
 	for i := 0; i < n; i++ {
 		signer.Generate()
@@ -289,7 +289,7 @@ func generateTokens(n int, entityKey, host, dir string) []string {
 	managerHost := strings.Join(split, "/")
 	c := NewAPIConnection(managerHost)
 	defer c.Conn.Close(websocket.StatusNormalClosure, "")
-	signer := new(ethereum.SignKeys)
+	signer := ethereum.NewSignKeys()
 	if entityKey != "" {
 		if err := signer.AddHexKey(entityKey); err != nil {
 			panic(err)
@@ -335,10 +335,10 @@ func registrationStatus(eid string, privKeyList []string, c *APIConnection) erro
 	var req types.MetaRequest
 	req.Method = "registrationStatus"
 	req.EntityID = eid
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	for _, key := range privKeyList {
 		s.AddHexKey(key)
-		resp := c.Request(req, &s)
+		resp := c.Request(req, s)
 		if !resp.Ok {
 			log.Warnf("recieved error (%s)", resp.Message)
 		}
@@ -350,12 +350,12 @@ func validateToken(eid string, tokenList, privKeyList []string, c *APIConnection
 	var req types.MetaRequest
 	req.Method = "validateToken"
 	req.EntityID = eid
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	if len(privKeyList) > 0 {
 		for idx, t := range tokenList {
 			s.AddHexKey(privKeyList[idx])
 			req.Token = t
-			resp := c.Request(req, &s)
+			resp := c.Request(req, s)
 			if !resp.Ok {
 				log.Warnf("recieved error (%s)", resp.Message)
 			}
@@ -364,7 +364,7 @@ func validateToken(eid string, tokenList, privKeyList []string, c *APIConnection
 		for _, t := range tokenList {
 			s.Generate()
 			req.Token = t
-			resp := c.Request(req, &s)
+			resp := c.Request(req, s)
 			if !resp.Ok {
 				log.Warnf("recieved error (%s)", resp.Message)
 			}
@@ -377,7 +377,7 @@ func validateToken(eid string, tokenList, privKeyList []string, c *APIConnection
 func registerFlow(eid string, tokenList, privKeyList []string, c *APIConnection) error {
 	var req types.MetaRequest
 	req.EntityID = eid
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	for idx, t := range tokenList {
 		if len(privKeyList) > 0 {
 			s.AddHexKey(privKeyList[idx])
@@ -385,19 +385,19 @@ func registerFlow(eid string, tokenList, privKeyList []string, c *APIConnection)
 			s.Generate()
 		}
 		req.Method = "registrationStatus"
-		resp := c.Request(req, &s)
+		resp := c.Request(req, s)
 		if resp.Ok && resp.Status != nil && resp.Status.Registered {
 			log.Errorf("privKey %s already registered", privKeyList[idx])
 		}
 		req.Method = "validateToken"
 		req.Token = t
-		resp = c.Request(req, &s)
+		resp = c.Request(req, s)
 		if !resp.Ok {
 			log.Errorf("could not retrieve validate token (%q) for privKey (%q)", t, privKeyList[idx])
 		}
 		req.Method = "registrationStatus"
 		req.Token = ""
-		resp = c.Request(req, &s)
+		resp = c.Request(req, s)
 		if !resp.Ok {
 			log.Errorf("could not retrieve status for privKey (%s)", privKeyList[idx])
 		}

@@ -46,14 +46,10 @@ func TestMain(m *testing.M) {
 }
 
 func TestEntity(t *testing.T) {
-	entitySigner := new(ethereum.SignKeys)
+	entitySigner := ethereum.NewSignKeys()
 	entitySigner.Generate()
-	entityAddress := entitySigner.EthAddrString()
-	eid, err := hex.DecodeString(util.TrimHex(entityAddress))
-	if err != nil {
-		t.Fatalf("cannot decode entity address: %s", err)
-	}
 
+	eid := entitySigner.Address().Bytes()
 	entityID := ethereum.HashRaw(eid)
 	entityIDStr := hex.EncodeToString(entityID)
 	t.Log(entityIDStr)
@@ -66,7 +62,7 @@ func TestEntity(t *testing.T) {
 		Origins:                 []types.Origin{types.Token},
 	}
 
-	err = api.DB.AddEntity(entityID, info)
+	err := api.DB.AddEntity(entityID, info)
 	if err != nil {
 		t.Fatalf("cannot add entity to the Postgres DB (pgsql.go:addEntity): %s", err)
 	}
@@ -141,7 +137,7 @@ func TestEntity(t *testing.T) {
 
 func TestUser(t *testing.T) {
 	var err error
-	userSigner := new(ethereum.SignKeys)
+	userSigner := ethereum.NewSignKeys()
 	userSigner.Generate()
 	user := &types.User{PubKey: userSigner.Public.X.Bytes()}
 	err = api.DB.AddUser(user)
@@ -160,17 +156,14 @@ func TestMember(t *testing.T) {
 	db := api.DB
 	// Create or retrieve existing entity
 	// create entity
-	_, entities, err := testcommon.CreateEntities(2)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	_, entities := testcommon.CreateEntities(2)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
 	}
 
 	// Create pubkey and Add membmer to the db
-	memberSigner := new(ethereum.SignKeys)
+	memberSigner := ethereum.NewSignKeys()
 	memberSigner.Generate()
 	pub, _ := memberSigner.HexString()
 	pub, _ = ethereum.DecompressPubKey(pub)
@@ -390,24 +383,23 @@ func TestTarget(t *testing.T) {
 	var inTarget, outTarget *types.Target
 	var targets []types.Target
 	var targetID uuid.UUID
+	var err error
+	var count int
 
 	// create entity
-	_, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	_, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
 	}
 
 	// Check able to list 0 targets
-	if targets, err = api.DB.ListTargets(entities[0].ID); err != nil || len(targets) != 0 {
+	if targets, err := api.DB.ListTargets(entities[0].ID); err != nil || len(targets) != 0 {
 		t.Fatalf("errors retrieving all targets: %s", err)
 	}
 
 	//Verify that 0 targets are counted
-	if count, err := api.DB.CountTargets(entities[0].ID); err != nil || count != 0 {
+	if count, err = api.DB.CountTargets(entities[0].ID); err != nil || count != 0 {
 		t.Fatalf("expected %d counted: %d\ncannot count targets correctly: %+v", 0, count, err)
 	}
 
@@ -442,11 +434,9 @@ func TestTarget(t *testing.T) {
 
 func TestCensus(t *testing.T) {
 	var root, idBytes []byte
+	var err error
 	// create entity
-	_, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	_, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)

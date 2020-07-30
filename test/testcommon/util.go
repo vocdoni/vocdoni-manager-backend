@@ -9,25 +9,23 @@ import (
 	randomdata "github.com/Pallinder/go-randomdata"
 
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
-	// dvote "gitlab.com/vocdoni/go-dvote/util"
+	util "gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
-	"gitlab.com/vocdoni/manager/manager-backend/util"
 )
 
 // CreateEntities a given number of random entities
-func CreateEntities(size int) ([]*ethereum.SignKeys, []*types.Entity, error) {
+func CreateEntities(size int) ([]*ethereum.SignKeys, []*types.Entity) {
 	var entityID, entityAddress []byte
 	var err error
 	signers := CreateEthRandomKeysBatch(size)
 	mp := make([]*types.Entity, size)
 	for i := 0; i < size; i++ {
 		// retrieve entity ID
-		if entityAddress, err = util.SignerEntityAddress(*signers[i]); err != nil {
-			return nil, nil, err
+		entityAddress, err = hex.DecodeString(util.TrimHex(signers[i].Address().String()))
+		if err != nil {
+			return nil, nil
 		}
-		if entityID, err = util.SignerEntityID(*signers[i]); err != nil {
-			return nil, nil, err
-		}
+		entityID = ethereum.HashRaw(entityAddress)
 		mp[i] = &types.Entity{
 			ID: entityID,
 			EntityInfo: types.EntityInfo{
@@ -41,7 +39,7 @@ func CreateEntities(size int) ([]*ethereum.SignKeys, []*types.Entity, error) {
 			},
 		}
 	}
-	return signers, mp, nil
+	return signers, mp
 }
 
 // CreateMembers a given number of members with its entityID set to entityID
@@ -80,7 +78,7 @@ func CreateMembers(entityID []byte, size int) ([]*ethereum.SignKeys, []*types.Me
 func CreateEthRandomKeysBatch(n int) []*ethereum.SignKeys {
 	s := make([]*ethereum.SignKeys, n)
 	for i := 0; i < n; i++ {
-		s[i] = new(ethereum.SignKeys)
+		s[i] = ethereum.NewSignKeys()
 		if err := s[i].Generate(); err != nil {
 			return nil
 		}

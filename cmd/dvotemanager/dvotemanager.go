@@ -141,8 +141,8 @@ func newConfig() (*config.Manager, config.Error) {
 	// Generate and save signing key if nos specified
 	if len(cfg.SigningKey) < 32 {
 		fmt.Println("no signing key, generating one...")
-		var signer ethereum.SignKeys
-		err = signer.Generate()
+		signer := ethereum.NewSignKeys()
+		signer.Generate()
 		if err != nil {
 			cfgError = config.Error{
 				Message: fmt.Sprintf("cannot generate signing key: %s", err),
@@ -238,7 +238,7 @@ func main() {
 	}
 
 	// Signer
-	signer := new(ethereum.SignKeys)
+	signer := ethereum.NewSignKeys()
 	if err := signer.AddHexKey(cfg.SigningKey); err != nil {
 		log.Fatal(err)
 	}

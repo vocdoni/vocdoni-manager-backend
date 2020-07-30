@@ -47,10 +47,7 @@ func TestGenerateTokens(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	_, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	_, entities := testcommon.CreateEntities(1)
 	entities[0].CallbackSecret = "test"
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {

@@ -41,11 +41,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestRegister(t *testing.T) {
+	var err error
 	// create entity
-	_, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	_, entities := testcommon.CreateEntities(1)
 	// add entity
 	err = api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo)
 	if err != nil {
@@ -160,10 +158,8 @@ func TestRegister(t *testing.T) {
 
 func TestValidateToken(t *testing.T) {
 	// create entity
-	_, entities, err := testcommon.CreateEntities(2)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	var err error
+	_, entities := testcommon.CreateEntities(2)
 	// add entities
 	err = api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo)
 	if err != nil {
@@ -337,11 +333,9 @@ func TestValidateToken(t *testing.T) {
 }
 
 func TestStatus(t *testing.T) {
+	var err error
 	// create entity
-	_, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	_, entities := testcommon.CreateEntities(1)
 	// add entity
 	err = api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo)
 	if err != nil {

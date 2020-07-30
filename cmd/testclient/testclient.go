@@ -124,7 +124,7 @@ func main() {
 	log.Init(*logLevel, "stdout")
 	rand.Seed(time.Now().UnixNano())
 
-	signer := new(ethereum.SignKeys)
+	signer := ethereum.NewSignKeys()
 	if *privKey != "" {
 		if err := signer.AddHexKey(*privKey); err != nil {
 			panic(err)

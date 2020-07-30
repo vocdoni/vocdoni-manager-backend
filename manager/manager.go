@@ -2,15 +2,19 @@ package manager
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 
 	"fmt"
 	"reflect"
 	"strings"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
+
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
+	dvoteUtil "gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/manager/manager-backend/database"
 	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
 	"gitlab.com/vocdoni/manager/manager-backend/router"
@@ -95,7 +99,7 @@ func (m *Manager) send(req router.RouterRequest, resp types.MetaResponse) {
 func (m *Manager) signUp(request router.RouterRequest) {
 	var entityID []byte
 	var entityInfo *types.EntityInfo
-	var entityAddress []byte
+	var entityAddress ethcommon.Address
 	var target *types.Target
 	var err error
 	var response types.MetaResponse
@@ -122,7 +126,12 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		return
 	}
 	// TODO: Receive from API census Managers addresses during signUp
-	entityInfo = &types.EntityInfo{Address: entityAddress, CensusManagersAddresses: [][]byte{entityAddress}, Origins: []types.Origin{types.Token}}
+	entityAddressBytes, err := hex.DecodeString(dvoteUtil.TrimHex(entityAddress.String()))
+	if err != nil {
+		log.Errorf("cannot decode entity address: %s", err)
+		m.Router.SendError(request, "cannot add entity to the DB")
+	}
+	entityInfo = &types.EntityInfo{Address: entityAddressBytes, CensusManagersAddresses: [][]byte{entityAddressBytes}, Origins: []types.Origin{types.Token}}
 	// Add Entity
 	if err = m.db.AddEntity(entityID, entityInfo); err != nil {
 		log.Errorf("cannot add entity %q to the DB: (%v)", request.SignaturePublicKey, err)
@@ -688,7 +697,7 @@ func (m *Manager) getCensus(request router.RouterRequest) {
 
 	var censusID []byte
 	if censusID, err = util.DecodeCensusID(request.CensusID, request.SignaturePublicKey); err != nil {
-		log.Errorf("cannot decode census id %q for %s", request.CensusID, request.SignaturePublicKey)
+		log.Errorf("cannot decode census id %s for %s", request.CensusID, request.SignaturePublicKey)
 		m.Router.SendError(request, "cannot decode census id")
 		return
 	}

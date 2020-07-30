@@ -33,7 +33,7 @@ func TestNewManager(t *testing.T) {
 
 func TestRegisterMethods(t *testing.T) {
 	// create signer
-	signer := new(ethereum.SignKeys)
+	signer := ethereum.NewSignKeys()
 	if err := signer.Generate(); err != nil {
 		t.Fatalf("cannot generate signer: %v", err)
 	}
@@ -82,13 +82,13 @@ func TestSignUp(t *testing.T) {
 	// should fail if addEntity fails
 	var req types.MetaRequest
 	// generate signing keys
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	//eid, err := util.PubKeyToEntityID(testdb.Signers[0].Pub)
 	//t.Fatalf("%s", hex.EncodeToString(eid))
 	req.Method = "signUp"
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if cannot addEntity")
@@ -97,13 +97,13 @@ func TestSignUp(t *testing.T) {
 	// should fail if AddTarget fails
 	var req2 types.MetaRequest
 	// generate signing keys
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	//eid, err := util.PubKeyToEntityID(testdb.Signers[1].Pub)
 	//t.Fatalf("%s", hex.EncodeToString(eid))
 	req2.Method = "signUp"
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if resp2.Ok {
 		t.Fatal("should fail if cannot addEntity")
@@ -113,13 +113,13 @@ func TestSignUp(t *testing.T) {
 	// should fail if AddTarget fails
 	var req3 types.MetaRequest
 	// generate signing keys
-	s3 := ethereum.SignKeys{}
+	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
 	//eid, err := util.PubKeyToEntityID(testdb.Signers[1].Pub)
 	//t.Fatalf("%s", hex.EncodeToString(eid))
 	req3.Method = "signUp"
 	// make request
-	resp3 := wsc.Request(req3, &s3)
+	resp3 := wsc.Request(req3, s3)
 	// check register went successful
 	if !resp3.Ok {
 		t.Fatal("should signUp successful")
@@ -135,7 +135,7 @@ func TestListMembers(t *testing.T) {
 	}
 
 	// should fail if checkOptions returns an error when order invalid
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "listMembers"
@@ -146,14 +146,14 @@ func TestListMembers(t *testing.T) {
 		SortBy: "lastName",
 	}
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if invalid ListOptions order")
 	}
 
 	// should fail db list members does not return any row
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "listMembers"
@@ -164,7 +164,7 @@ func TestListMembers(t *testing.T) {
 		SortBy: "lastName",
 	}
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if resp2.Ok {
 		t.Fatal("should fail if not members found")
@@ -180,14 +180,14 @@ func TestListMembers(t *testing.T) {
 		SortBy: "lastName",
 	}
 	// make request
-	resp3 := wsc.Request(req3, &s)
+	resp3 := wsc.Request(req3, s)
 	// check register went successful
 	if resp3.Ok {
 		t.Fatal("should fail if db listMembers fail")
 	}
 
 	// should success if all correct
-	s3 := ethereum.SignKeys{}
+	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[3].Priv)
 	var req4 types.MetaRequest
 	req4.Method = "listMembers"
@@ -198,7 +198,7 @@ func TestListMembers(t *testing.T) {
 		SortBy: "lastName",
 	}
 	// make request
-	resp4 := wsc.Request(req4, &s3)
+	resp4 := wsc.Request(req4, s3)
 	// check register went successful
 	if !resp4.Ok {
 		t.Fatal("should success if all correct")
@@ -214,35 +214,35 @@ func TestGetMember(t *testing.T) {
 	}
 
 	// should fail if no member found
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[1].Priv)
 	var req types.MetaRequest
 	req.Method = "getMember"
 	u := uuid.New()
 	req.MemberID = &u
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if db Member() returns no rows")
 	}
 
 	// should fail if cannot get member from db
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[0].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "getMember"
 	u = uuid.New()
 	req2.MemberID = &u
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if resp2.Ok {
 		t.Fatal("should fail if cannot get member from db")
 	}
 
 	// should fail if listTargets returns no rows
-	s3 := ethereum.SignKeys{}
+	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
 	//eid, err := util.PubKeyToEntityID(testdb.Signers[2].Pub)
 	//t.Fatalf("%s", hex.EncodeToString(eid))
@@ -251,14 +251,14 @@ func TestGetMember(t *testing.T) {
 	u = uuid.New()
 	req3.MemberID = &u
 	// make request
-	resp3 := wsc.Request(req3, &s2)
+	resp3 := wsc.Request(req3, s2)
 	// check register went successful
 	if resp3.Ok {
 		t.Fatal("should fail listTargets returns no rows")
 	}
 
 	// should fail if listTargets fail
-	s4 := ethereum.SignKeys{}
+	s4 := ethereum.NewSignKeys()
 	s4.AddHexKey(testdb.Signers[3].Priv)
 	//eid, err := util.PubKeyToEntityID(testdb.Signers[3].Pub)
 	//t.Fatalf("%s", hex.EncodeToString(eid))
@@ -267,21 +267,21 @@ func TestGetMember(t *testing.T) {
 	u = uuid.New()
 	req4.MemberID = &u
 	// make request
-	resp4 := wsc.Request(req4, &s4)
+	resp4 := wsc.Request(req4, s4)
 	// check register went successful
 	if resp4.Ok {
 		t.Fatal("should fail if db list target fails")
 	}
 
 	// should success if previous succesful
-	s5 := ethereum.SignKeys{}
+	s5 := ethereum.NewSignKeys()
 	s5.Generate()
 	var req5 types.MetaRequest
 	req5.Method = "getMember"
 	u = uuid.New()
 	req5.MemberID = &u
 	// make request
-	resp5 := wsc.Request(req5, &s5)
+	resp5 := wsc.Request(req5, s5)
 	// check register went successful
 	if !resp5.Ok {
 		t.Fatalf("should list succesful: %s", resp5.Message)
@@ -297,26 +297,26 @@ func TestUpdateMember(t *testing.T) {
 	}
 
 	// should fail if no member found
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "updateMember"
 	req.Member = &types.Member{}
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if update fails on db")
 	}
 
 	// should update member
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "updateMember"
 	req2.Member = &types.Member{}
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if !resp2.Ok {
 		t.Fatal("should update member")
@@ -331,28 +331,28 @@ func TestDeleteMember(t *testing.T) {
 	}
 
 	// should fail if db delete member fails
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "deleteMember"
 	req.MemberID = new(uuid.UUID)
 	*req.MemberID = uuid.New()
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if update fails on db")
 	}
 
 	// otherwise should success
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "deleteMember"
 	req2.MemberID = new(uuid.UUID)
 	*req2.MemberID = uuid.New()
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if !resp2.Ok {
 		t.Fatal("should success")
@@ -367,24 +367,24 @@ func TestCountMembers(t *testing.T) {
 	}
 
 	// should fail if db count members fails
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "countMembers"
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if update fails on db")
 	}
 
 	// otherwise should success
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "countMembers"
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if !resp2.Ok {
 		t.Fatal("should success")
@@ -399,39 +399,39 @@ func TestGenerateTokens(t *testing.T) {
 	}
 
 	// should fail if amount is less or equal to 0
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "generateTokens"
 	req.Amount = 0
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if invalid amount")
 	}
 
 	// should fail if cannot generate members with tokens
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "generateTokens"
 	req2.Amount = 2
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if resp2.Ok {
 		t.Fatal("should fail if cannot generate members")
 	}
 
 	// otherwise should success
-	s3 := ethereum.SignKeys{}
+	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
 	var req3 types.MetaRequest
 	req3.Method = "generateTokens"
 	req3.Amount = 2
 	// make request
-	resp3 := wsc.Request(req3, &s3)
+	resp3 := wsc.Request(req3, s3)
 	// check register went successful
 	if !resp3.Ok {
 		t.Fatal("should success")
@@ -446,24 +446,24 @@ func TestExportTokens(t *testing.T) {
 	}
 
 	// should fail if db MembersTokensEmails fails
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "exportTokens"
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if db members tokens emails fails")
 	}
 
 	// should fail if no rows returned from db MembersTokensEmails
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "exportTokens"
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if resp2.Ok {
 		t.Fatal("should fail if db members tokens emails returns no rows")
@@ -471,12 +471,12 @@ func TestExportTokens(t *testing.T) {
 
 	// otherwise should sucesss
 	// should fail if db MembersTokensEmails fails
-	s3 := ethereum.SignKeys{}
+	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
 	var req3 types.MetaRequest
 	req3.Method = "exportTokens"
 	// make request
-	resp3 := wsc.Request(req3, &s3)
+	resp3 := wsc.Request(req3, s3)
 	// check register went successful
 	if !resp3.Ok {
 		t.Fatal("should success")
@@ -491,26 +491,26 @@ func TestImportMembers(t *testing.T) {
 	}
 
 	// should fail if members info < 1
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "importMembers"
 	req.MembersInfo = []types.MemberInfo{}
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if members info < 1")
 	}
 
 	// should fail if db import members fails
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "importMembers"
 	req2.MembersInfo = make([]types.MemberInfo, 2)
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if resp2.Ok {
 		t.Fatal("should fail if db import members fails")
@@ -521,7 +521,7 @@ func TestImportMembers(t *testing.T) {
 	req3.Method = "importMembers"
 	req3.MembersInfo = make([]types.MemberInfo, 2)
 	// make request
-	resp3 := wsc.Request(req3, &s)
+	resp3 := wsc.Request(req3, s)
 	// check register went successful
 	if !resp3.Ok {
 		t.Fatal("should success")
@@ -536,24 +536,24 @@ func TestCountTargets(t *testing.T) {
 	}
 
 	// should fail if db countTargets fails
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "countTargets"
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if db count targets fails")
 	}
 
 	// otherwise should success
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "countTargets"
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if !resp2.Ok {
 		t.Fatal("should success")
@@ -568,7 +568,7 @@ func TestListTargets(t *testing.T) {
 	}
 
 	// should fail if invalid list options
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "listTargets"
@@ -579,14 +579,14 @@ func TestListTargets(t *testing.T) {
 		SortBy: "lastName",
 	}
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if invalid list options")
 	}
 
 	// should fail if listTargets returns no rows
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "listTargets"
@@ -597,7 +597,7 @@ func TestListTargets(t *testing.T) {
 		SortBy: "lastName",
 	}
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if resp2.Ok {
 		t.Fatal("should fail if not members found")
@@ -614,7 +614,7 @@ func TestListTargets(t *testing.T) {
 		SortBy: "lastName",
 	}
 	// make request
-	resp3 := wsc.Request(req3, &s)
+	resp3 := wsc.Request(req3, s)
 	// check register went successful
 	if resp3.Ok {
 		t.Fatal("should fail if db list targets fail")
@@ -630,42 +630,42 @@ func TestGetTarget(t *testing.T) {
 	}
 
 	// should fail if target not found
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "getTarget"
 	req.TargetID = new(uuid.UUID)
 	*req.TargetID = uuid.New()
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if db Target fails")
 	}
 
 	// should fail if db targetMembers fail
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "getTarget"
 	req2.TargetID = new(uuid.UUID)
 	*req2.TargetID = uuid.New()
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if resp2.Ok {
 		t.Fatal("should fail if db Target members fails")
 	}
 
 	// otherwise should success
-	s3 := ethereum.SignKeys{}
+	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
 	var req3 types.MetaRequest
 	req3.Method = "getTarget"
 	req3.TargetID = new(uuid.UUID)
 	*req3.TargetID = uuid.New()
 	// make request
-	resp3 := wsc.Request(req3, &s3)
+	resp3 := wsc.Request(req3, s3)
 	// check register went successful
 	if !resp3.Ok {
 		t.Fatal("should success")
@@ -680,14 +680,14 @@ func TestDumpTarget(t *testing.T) {
 	}
 
 	// should fail if db target fails
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "dumpTarget"
 	req.TargetID = new(uuid.UUID)
 	*req.TargetID = uuid.New()
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if db Target fails")
@@ -695,13 +695,13 @@ func TestDumpTarget(t *testing.T) {
 
 	// should fail if db dumpClaims fails
 	/*
-		s2 := ethereum.SignKeys{}
+		s2 := ethereum.NewSignKeys()
 		s2.AddHexKey(testdb.Signers[1].Priv)
 		var req2 types.MetaRequest
 		req2.Method = "dumpTarget"
 		req2.TargetID = uuid.New()
 		// make request
-		resp2 := wsc.Request(req2, &s2)
+		resp2 := wsc.Request(req2, s2)
 		// check register went successful
 		if resp2.Ok {
 			t.Fatal("should fail if db Target fails")
@@ -710,13 +710,13 @@ func TestDumpTarget(t *testing.T) {
 
 	// otherwise should success
 	/*
-		s3 := ethereum.SignKeys{}
+		s3 := ethereum.NewSignKeys()
 		s3.AddHexKey(testdb.Signers[2].Priv)
 		var req3 types.MetaRequest
 		req3.Method = "dumpTarget"
 		req3.TargetID = uuid.New()
 		// make request
-		resp3 := wsc.Request(req3, &s3)
+		resp3 := wsc.Request(req3, s3)
 		// check register went successful
 		if !resp3.Ok {
 			t.Fatal("should success")
@@ -732,14 +732,14 @@ func TestAddCensus(t *testing.T) {
 	}
 
 	// should fail if len(targetID) == 0
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "addCensus"
 	req.TargetID = new(uuid.UUID)
 	*req.TargetID = uuid.Nil
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if len(targetId) == 0")
@@ -752,7 +752,7 @@ func TestAddCensus(t *testing.T) {
 	*req2.TargetID = uuid.New()
 	req2.CensusID = ""
 	// make request
-	resp2 := wsc.Request(req2, &s)
+	resp2 := wsc.Request(req2, s)
 	// check register went successful
 	if resp2.Ok {
 		t.Fatal("should fail if len(censusId) == 0")
@@ -765,7 +765,7 @@ func TestAddCensus(t *testing.T) {
 	*req3.TargetID = uuid.New()
 	req3.CensusID = ""
 	// make request
-	resp3 := wsc.Request(req3, &s)
+	resp3 := wsc.Request(req3, s)
 	// check register went successful
 	if resp3.Ok {
 		t.Fatal("should fail if cannot decode censusId")
@@ -774,13 +774,13 @@ func TestAddCensus(t *testing.T) {
 	// TODO  Enable when targets implemented
 	// should fail if db Target() fails
 	// var req4 types.MetaRequest
-	// s2 := ethereum.SignKeys{}
+	// s2 := ethereum.NewSignKeys()
 	// s2.AddHexKey(testdb.Signers[3].Priv)
 	// req4.Method = "addCensus"
 	// req4.TargetID = uuid.New()
 	// req4.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
 	// // make request
-	// resp4 := wsc.Request(req4, &s2)
+	// resp4 := wsc.Request(req4, s2)
 	// // check register went successful
 	// if resp4.Ok {
 	// 	t.Fatal("should fail if db Target() fails")
@@ -788,14 +788,14 @@ func TestAddCensus(t *testing.T) {
 
 	// should fail if addCensus fails
 	var req5 types.MetaRequest
-	s3 := ethereum.SignKeys{}
+	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
 	req5.Method = "addCensus"
 	req5.TargetID = new(uuid.UUID)
 	*req5.TargetID = uuid.New()
 	req5.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
 	// make request
-	resp5 := wsc.Request(req5, &s3)
+	resp5 := wsc.Request(req5, s3)
 	// check register went successful
 	if resp5.Ok {
 		t.Fatal("should fail if db AddCensus() fails")
@@ -808,7 +808,7 @@ func TestAddCensus(t *testing.T) {
 	*req6.TargetID = uuid.New()
 	req6.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
 	// make request
-	resp6 := wsc.Request(req6, &s)
+	resp6 := wsc.Request(req6, s)
 	// check register went successful
 	if !resp6.Ok {
 		t.Fatal("should success")
@@ -822,13 +822,13 @@ func TestGetCensus(t *testing.T) {
 		t.Fatal(err)
 	}
 	// should fail if len(censusID) == 0
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
 	req.Method = "getCensus"
 	req.CensusID = ""
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if len(censusID) == 0")
@@ -841,7 +841,7 @@ func TestGetCensus(t *testing.T) {
 	*req2.TargetID = uuid.New()
 	req2.CensusID = "0xA"
 	// make request
-	resp2 := wsc.Request(req2, &s)
+	resp2 := wsc.Request(req2, s)
 	// check register went successful
 	if resp2.Ok {
 		t.Fatal("should fail if cannot decode censusId")
@@ -852,7 +852,7 @@ func TestGetCensus(t *testing.T) {
 	req3.Method = "getCensus"
 	req3.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
 	// make request
-	resp3 := wsc.Request(req3, &s)
+	resp3 := wsc.Request(req3, s)
 	// check register went successful
 	if resp3.Ok {
 		t.Fatal("should fail if db Census() fails")
@@ -860,12 +860,12 @@ func TestGetCensus(t *testing.T) {
 
 	// otherwise should success
 	var req4 types.MetaRequest
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[2].Priv)
 	req4.Method = "getCensus"
 	req4.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
 	// make request
-	resp4 := wsc.Request(req4, &s2)
+	resp4 := wsc.Request(req4, s2)
 	// check register went successful
 	if !resp4.Ok {
 		t.Fatal("should success")
@@ -879,26 +879,26 @@ func TestCountCensus(t *testing.T) {
 		t.Fatal(err)
 	}
 	// should fail if db CountCensus() fails
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[1].Priv)
 	var req types.MetaRequest
 	req.Method = "countCensus"
 	req.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if CountCensus() fails")
 	}
 
 	// otherwise should success
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[0].Priv)
 	var req2 types.MetaRequest
 	req2.Method = "countCensus"
 	req2.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
 	// make request
-	resp2 := wsc.Request(req2, &s2)
+	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if !resp2.Ok {
 		t.Fatal("should success")
@@ -912,7 +912,7 @@ func TestListCensus(t *testing.T) {
 		t.Fatal(err)
 	}
 	// should fail if checkOptions fails
-	s := ethereum.SignKeys{}
+	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[1].Priv)
 	var req types.MetaRequest
 	req.Method = "listCensus"
@@ -923,7 +923,7 @@ func TestListCensus(t *testing.T) {
 		SortBy: "lastName",
 	}
 	// make request
-	resp := wsc.Request(req, &s)
+	resp := wsc.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if checkOptions fails")
@@ -939,13 +939,13 @@ func TestListCensus(t *testing.T) {
 		SortBy: "lastName",
 	}
 	// make request
-	resp2 := wsc.Request(req2, &s)
+	resp2 := wsc.Request(req2, s)
 	// check register went successful
 	if resp2.Ok {
 		t.Fatal("should fail if no rows")
 	}
 	// should fail if db ListCensus fails
-	s2 := ethereum.SignKeys{}
+	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[0].Priv)
 	var req3 types.MetaRequest
 	req3.Method = "listCensus"
@@ -956,14 +956,14 @@ func TestListCensus(t *testing.T) {
 		SortBy: "lastName",
 	}
 	// make request
-	resp3 := wsc.Request(req3, &s2)
+	resp3 := wsc.Request(req3, s2)
 	// check register went successful
 	if resp3.Ok {
 		t.Fatal("should fail if db ListCensus fails")
 	}
 
 	// otherwise should success
-	s3 := ethereum.SignKeys{}
+	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
 	var req4 types.MetaRequest
 	req4.Method = "listCensus"
@@ -974,7 +974,7 @@ func TestListCensus(t *testing.T) {
 		SortBy: "name",
 	}
 	// m4ke request
-	resp4 := wsc.Request(req4, &s3)
+	resp4 := wsc.Request(req4, s3)
 	// check register went successful
 	if !resp4.Ok {
 		t.Fatal("should success")

@@ -51,10 +51,7 @@ func TestSignUp(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	signers, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	signers, entities := testcommon.CreateEntities(1)
 	// create and make request
 	var req types.MetaRequest
 	req.Method = "signUp"
@@ -81,10 +78,7 @@ func TestListMembers(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(3)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(3)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
@@ -208,10 +202,7 @@ func TestGetMember(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
@@ -250,10 +241,7 @@ func TestUpdateMember(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
@@ -313,10 +301,7 @@ func TestDeleteMember(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
@@ -358,10 +343,7 @@ func TestGenerateTokens(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into DB: %s", err)
@@ -390,10 +372,7 @@ func TestExportTokens(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
@@ -454,10 +433,7 @@ func TestGetTarget(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
@@ -490,10 +466,7 @@ func TestListTargets(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
@@ -525,10 +498,7 @@ func TestDumpTarget(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
@@ -574,10 +544,7 @@ func TestImportMembers(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
@@ -621,10 +588,7 @@ func TestAddCensus(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
@@ -659,6 +623,7 @@ func TestAddCensus(t *testing.T) {
 	if idBytes, err = hex.DecodeString(util.TrimHex(id)); err != nil {
 		t.Fatalf("cannot decode randpom id: %s", err)
 	}
+
 	if root, err = hex.DecodeString(util.RandomHex(len(entities[0].ID))); err != nil {
 		t.Fatalf("cannot generate root: %s", err)
 	}
@@ -705,9 +670,6 @@ func TestAddCensus(t *testing.T) {
 
 	// Genreate ID and root
 	id = util.RandomHex(len(entities[0].ID))
-	if _, err = hex.DecodeString(util.TrimHex(id)); err != nil {
-		t.Fatalf("cannot decode randpom id: %s", err)
-	}
 	if root, err = hex.DecodeString(util.RandomHex(len(entities[0].ID))); err != nil {
 		t.Fatalf("cannot generate root: %s", err)
 	}
@@ -747,10 +709,7 @@ func TestGetCensus(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
@@ -780,7 +739,6 @@ func TestGetCensus(t *testing.T) {
 		MerkleRoot:    root,
 		MerkleTreeURI: fmt.Sprintf("ipfs://%s", util.TrimHex(id)),
 	}
-
 	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, censusInfo)
 	if err != nil {
 		t.Fatal("error adding census to the db")
@@ -826,10 +784,7 @@ func TestListCensus(t *testing.T) {
 	}
 
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
-	if err != nil {
-		t.Fatalf("cannot create entities: %s", err)
-	}
+	entitySigners, entities := testcommon.CreateEntities(1)
 	// add entity
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)

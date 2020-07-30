@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
+
 	"gitlab.com/vocdoni/go-dvote/crypto"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
@@ -26,7 +28,7 @@ type RouterRequest struct {
 	method             string
 	id                 string
 	Authenticated      bool
-	Address            string
+	Address            ethcommon.Address
 	SignaturePublicKey string
 	Context            dvote.MessageContext
 	private            bool
@@ -136,11 +138,8 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 		if method.public {
 			request.Authenticated = true
 		} else {
-			for _, addr := range r.signer.Authorized {
-				if fmt.Sprintf("%x", addr) == request.Address {
-					request.Authenticated = true
-					break
-				}
+			if r.signer.Authorized[request.Address] {
+				request.Authenticated = true
 			}
 		}
 	}
