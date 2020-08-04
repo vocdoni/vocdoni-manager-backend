@@ -12,6 +12,7 @@ import (
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/manager/manager-backend/database"
+	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
 	"gitlab.com/vocdoni/manager/manager-backend/router"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
 	"gitlab.com/vocdoni/manager/manager-backend/util"
@@ -847,6 +848,11 @@ func checkOptions(filter *types.ListOptions) error {
 		if !found {
 			return fmt.Errorf("invalid filter field")
 		}
+		// sqli guard
+		protectedOrderField := pgsql.ToOrderBySQLi(filter.SortBy)
+		if protectedOrderField == -1 {
+			return fmt.Errorf("invalid sort by field on query: %s", filter.SortBy)
+		}
 		// Check order
 		if len(filter.Order) > 0 && !(filter.Order == "ascend" || filter.Order == "descend") {
 			return fmt.Errorf("invalid filter order")
@@ -856,6 +862,7 @@ func checkOptions(filter *types.ListOptions) error {
 		// Also check that order does not make sense without sortby
 		return fmt.Errorf("invalid filter order")
 	}
+
 	return nil
 
 }

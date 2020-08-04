@@ -81,7 +81,7 @@ func TestListMembers(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(1)
+	entitySigners, entities, err := testcommon.CreateEntities(3)
 	if err != nil {
 		t.Fatalf("cannot create entities: %s", err)
 	}
@@ -120,6 +120,84 @@ func TestListMembers(t *testing.T) {
 	if len(resp.Members) != 1 {
 		t.Fatalf("expected %d members, but got %d", 1, len(resp.Members))
 	}
+
+	// check members are returned ordered
+	// add entity
+	if err := api.DB.AddEntity(entities[1].ID, &entities[1].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+	// add members
+	// create members
+	_, members, err = testcommon.CreateMembers(entities[1].ID, 10)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
+	memInfo = make([]types.Member, len(members))
+	for idx, mem := range members {
+		memInfo[idx] = *mem
+	}
+	// add members
+	if err := api.DB.AddMemberBulk(entities[1].ID, memInfo); err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+
+	req.Method = "listMembers"
+	req.ListOptions = &types.ListOptions{
+		Count:  0,
+		Order:  "ascend",
+		Skip:   0,
+		SortBy: "firstName",
+	}
+	// create and make request
+	resp = wsc.Request(req, entitySigners[1])
+	if !resp.Ok {
+		t.Fatalf("request failed: %+v", req)
+	}
+	if len(resp.Members) != 10 {
+		t.Fatalf("expected %d members, but got %d", 1, len(resp.Members))
+	}
+
+	// check sqli guard (protection against sqli)
+	req.Method = "listMembers"
+	req.ListOptions = &types.ListOptions{
+		Count:  0,
+		Order:  "ascend",
+		Skip:   0,
+		SortBy: "*",
+	}
+	// create and make request
+	resp = wsc.Request(req, entitySigners[1])
+	if resp.Ok {
+		t.Fatalf("request failed: %+v", req)
+	}
+
+	req.Method = "listMembers"
+	req.ListOptions = &types.ListOptions{
+		Count:  0,
+		Order:  "ascend",
+		Skip:   0,
+		SortBy: " ",
+	}
+	// create and make request
+	resp = wsc.Request(req, entitySigners[1])
+	if resp.Ok {
+		t.Fatalf("request failed: %+v", req)
+	}
+
+	req.Method = "listMembers"
+	req.ListOptions = &types.ListOptions{
+		Count:  0,
+		Order:  "ascend",
+		Skip:   0,
+		SortBy: "(case/**/when/**/1=1/**/then/**/email/**/else/**/phone/**/end);",
+	}
+	// create and make request
+	resp = wsc.Request(req, entitySigners[1])
+	if resp.Ok {
+		t.Fatalf("request failed: %+v", req)
+	}
+
+	t.Logf("members: %+v", resp.Members)
 }
 
 func TestGetMember(t *testing.T) {

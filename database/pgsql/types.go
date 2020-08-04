@@ -109,3 +109,46 @@ func ToMember(x *PGMember) *types.Member {
 	x.CustomFields.AssignTo(y.MemberInfo.CustomFields)
 	return &y
 }
+
+//go:generate stringer -type=OrderBySQLi
+type OrderBySQLi int
+
+const (
+	DateOfBirth OrderBySQLi = iota
+	Email
+	FirstName
+	LastName
+	Phone
+	StreetAddress
+	Consented
+	Verified
+	Origin
+	CustomFields
+)
+
+func ToOrderBySQLi(orderBy string) OrderBySQLi {
+	switch orderBy {
+	case "dateOfBirth":
+		return DateOfBirth
+	case "email":
+		return Email
+	case "firstName":
+		return FirstName
+	case "lastName":
+		return LastName
+	case "phone":
+		return Phone
+	case "streetAddress":
+		return StreetAddress
+	case "consented":
+		return Consented
+	case "verified":
+		return Verified
+	case "origin":
+		return Origin
+	case "customFields":
+		return CustomFields
+	default:
+		return -1
+	}
+}

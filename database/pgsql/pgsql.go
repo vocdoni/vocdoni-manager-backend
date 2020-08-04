@@ -809,7 +809,7 @@ func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]ty
 	selectQuery := `SELECT
 	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
 					FROM members WHERE entity_id =$1
-					ORDER BY $2 %s LIMIT $3 OFFSET $4`
+					ORDER BY %s %s LIMIT $2 OFFSET $3`
 	// Define default values for arguments
 	t := reflect.TypeOf(types.MemberInfo{})
 	field, found := t.FieldByName(strings.Title("lastName"))
@@ -852,9 +852,10 @@ func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]ty
 			}
 		}
 	}
-	query := fmt.Sprintf(selectQuery, order)
+
+	query := fmt.Sprintf(selectQuery, orderField, order)
 	var pgMembers []PGMember
-	err = d.db.Select(&pgMembers, query, entityID, orderField, limit, offset)
+	err = d.db.Select(&pgMembers, query, entityID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
