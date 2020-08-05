@@ -786,7 +786,9 @@ func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) 
 	}
 	members := make([]types.Member, len(pgMembers))
 	for i, member := range pgMembers {
-		members[i] = *ToMember(&member)
+		if member.PubKey == nil {
+			members[i] = *ToMember(&member)
+		}
 	}
 	return members, nil
 }
