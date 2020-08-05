@@ -129,6 +129,7 @@ type MemberInfo struct {
 // }
 
 type User struct {
+	CreatedUpdated
 	PubKey         []byte `json:"publicKey" db:"public_key"`
 	DigestedPubKey []byte `json:"digestedPublicKey" db:"digested_public_key"`
 }
@@ -170,6 +171,7 @@ type CensusMember struct {
 }
 
 type Target struct {
+	CreatedUpdated
 	ID       uuid.UUID       `json:"id" db:"id"`
 	EntityID []byte          `json:"entityId" db:"entity_id"`
 	Name     string          `json:"name" db:"name"`

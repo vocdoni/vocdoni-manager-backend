@@ -90,15 +90,22 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	if err != nil {
 		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
 	}
-	entity := &types.Entity{EntityInfo: *info, ID: entityID}
+	entity := &types.Entity{
+		EntityInfo: *info,
+		ID:         entityID,
+		CreatedUpdated: types.CreatedUpdated{
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+	}
 	pgEntity, err := ToPGEntity(entity)
 	if err != nil {
 		return fmt.Errorf("cannot convert entity data types to postgres types: %v", err)
 	}
 	// TODO: Calculate EntityID (consult go-dvote)
 	insert := `INSERT INTO entities
-			(id, is_authorized, address, email, name, callback_url, callback_secret, census_managers_addresses)
-			VALUES (:id, :is_authorized, :address, :email, :name, :callback_url, :callback_secret, :pg_census_managers_addresses)`
+			(id, is_authorized, address, email, name, callback_url, callback_secret, census_managers_addresses, created_at, updated_at)
+			VALUES (:id, :is_authorized, :address, :email, :name, :callback_url, :callback_secret, :pg_census_managers_addresses, :created_at, :updated_at)`
 	_, err = tx.NamedExec(insert, pgEntity)
 	if err != nil {
 		return fmt.Errorf("cannot add insert query in the transaction: %v", err)
@@ -153,7 +160,8 @@ func (d *Database) AuthorizeEntity(entityID []byte) error {
 		return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
 	}
 	update := `UPDATE entities SET
-				is_authorized = COALESCE(NULLIF(:is_authorized, false), is_authorized)
+				is_authorized = COALESCE(NULLIF(:is_authorized, false), is_authorized),
+				updated_at = now()
 				WHERE (id = :id )
 				AND  :is_authorized IS DISTINCT FROM is_authorized`
 	result, err := d.db.NamedExec(update, pgentity)
@@ -183,7 +191,8 @@ func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
 				name = COALESCE(NULLIF(:name, ''), name),
 				callback_url = COALESCE(NULLIF(:callback_url, ''), callback_url),
 				callback_secret = COALESCE(NULLIF(:callback_secret, ''), callback_secret),
-				email = COALESCE(NULLIF(:email, ''), email)
+				email = COALESCE(NULLIF(:email, ''), email),
+				updated_at = now()
 				WHERE (id = :id )
 				AND  (:address IS DISTINCT FROM address OR
 				:name IS DISTINCT FROM name OR
@@ -230,9 +239,11 @@ func (d *Database) AddUser(user *types.User) error {
 	if len(user.DigestedPubKey) == 0 {
 		user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
 	}
+	user.CreatedAt = time.Now()
+	user.UpdatedAt = time.Now()
 	insert := `INSERT INTO users
-				(public_key, digested_public_key)
-				VALUES (:public_key, :digested_public_key)`
+				(public_key, digested_public_key, created_at, updated_at)
+				VALUES (:public_key, :digested_public_key, :created_at, :updated_at)`
 	result, err := d.db.NamedExec(insert, user)
 	if err != nil {
 		return fmt.Errorf("cannot add user: %v", err)
@@ -268,7 +279,17 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 		if tokens[idx] == uuid.Nil {
 			return fmt.Errorf("error parsing the uuids")
 		}
-		pgmembers[idx] = PGMember{Member: types.Member{ID: tokens[idx], EntityID: entityID, MemberInfo: types.MemberInfo{}}}
+		pgmembers[idx] = PGMember{
+			Member: types.Member{
+				ID:         tokens[idx],
+				EntityID:   entityID,
+				MemberInfo: types.MemberInfo{},
+				CreatedUpdated: types.CreatedUpdated{
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				},
+			},
+		}
 		// pgmembers[idx].ID = tokens[idx]
 		// pgmembers[idx].EntityID = entityID
 	}
@@ -278,8 +299,8 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
 	}
 	insert := `INSERT INTO members
-				(id,entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified)
-				VALUES (:id, :entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified)`
+				(id,entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, created_at, updated_at)
+				VALUES (:id, :entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :created_at, :updated_at)`
 	// result, err = tx.NamedExec(insert, pgmembers)
 	if result, err = tx.NamedExec(insert, pgmembers); err != nil {
 		rollbackErr := tx.Rollback()
@@ -333,13 +354,19 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	if err != nil && err != sql.ErrNoRows {
 		return uuid.Nil, fmt.Errorf("error retrieving members corresponding user: %v", err)
 	} else if err == sql.ErrNoRows {
-		user := &types.User{PubKey: pubKey}
+		user := &types.User{
+			PubKey: pubKey,
+			CreatedUpdated: types.CreatedUpdated{
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+		}
 		if len(user.DigestedPubKey) == 0 {
 			user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
 		}
 		insert := `INSERT INTO users
-					(public_key, digested_public_key)
-					VALUES (:public_key, :digested_public_key)`
+					(public_key, digested_public_key, created_at, updated_at)
+					VALUES (:public_key, :digested_public_key, :created_at, :updated_at)`
 		var result sql.Result
 		if result, err = tx.NamedExec(insert, user); err == nil {
 			var rows int64
@@ -355,12 +382,14 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 		}
 	}
 	pgmember, err := ToPGMember(member)
+	pgmember.CreatedAt = time.Now()
+	pgmember.UpdatedAt = time.Now()
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("cannot convert member data types to postgres types: %v", err)
 	}
 	insert := `INSERT INTO members
-	 			(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
-				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)
+	 			(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
+				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)
 				RETURNING id`
 	// no err is returned if tx violated a db constraint,
 	// but we need the result in order to get the created id.
@@ -439,7 +468,8 @@ func (d *Database) TempImportMembers(entityID []byte, info []types.MemberInfo) e
 		if err != nil {
 			return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
 		}
-
+		pgMember.CreatedAt = time.Now()
+		pgMember.UpdatedAt = time.Now()
 		members = append(members, *pgMember)
 	}
 
@@ -448,8 +478,8 @@ func (d *Database) TempImportMembers(entityID []byte, info []types.MemberInfo) e
 		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
 	}
 	insert := `INSERT INTO members
-				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
-				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
+				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
+				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
 	if result, err = tx.NamedExec(insert, members); err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
@@ -492,6 +522,8 @@ func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error
 		if err != nil {
 			return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
 		}
+		pgMember.CreatedAt = time.Now()
+		pgMember.UpdatedAt = time.Now()
 		members = append(members, *pgMember)
 	}
 	// Effort to use COPY FROM with pgx
@@ -527,8 +559,8 @@ func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error
 		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
 	}
 	insert := `INSERT INTO members
-				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
-				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
+				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
+				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
 	if result, err = tx.NamedExec(insert, members); err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
@@ -575,7 +607,14 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 		if len(member.PubKey) == 0 {
 			return fmt.Errorf("found empty public keys")
 		}
-		users[idx] = types.User{PubKey: member.PubKey, DigestedPubKey: snarks.Poseidon.Hash(member.PubKey)}
+		users[idx] = types.User{
+			PubKey:         member.PubKey,
+			DigestedPubKey: snarks.Poseidon.Hash(member.PubKey),
+			CreatedUpdated: types.CreatedUpdated{
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+		}
 		// Member related
 		if hex.EncodeToString(member.EntityID) != hex.EncodeToString(entityID) {
 			return fmt.Errorf("trying to import members for other entity")
@@ -584,17 +623,19 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 		if err != nil {
 			return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
 		}
+		pgMember.CreatedAt = time.Now()
+		pgMember.UpdatedAt = time.Now()
 		pgMembers = append(pgMembers, *pgMember)
 	}
 	insertUsers := `INSERT INTO users
-					(public_key, digested_public_key) VALUES (:public_key, :digested_public_key)`
+					(public_key, digested_public_key, created_at, updated_at) VALUES (:public_key, :digested_public_key, :created_at, :updated_at)`
 	if _, err = tx.NamedExec(insertUsers, users); err != nil {
 		return fmt.Errorf("error creating users %v", err)
 	}
 
 	insert := `INSERT INTO members
-				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields)
-				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields)`
+				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
+				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
 	if result, err = tx.NamedExec(insert, pgMembers); err != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
@@ -635,7 +676,8 @@ func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *type
 				first_name = COALESCE(NULLIF(:first_name, ''), first_name),
 				last_name = COALESCE(NULLIF(:last_name, ''), last_name),
 				email = COALESCE(NULLIF(:email, ''), email),
-				date_of_birth = COALESCE(NULLIF(:date_of_birth, date_of_birth), date_of_birth)
+				date_of_birth = COALESCE(NULLIF(:date_of_birth, date_of_birth), date_of_birth),
+				updated_at = now()
 				WHERE (id = :id AND entity_id = :entity_id)
 				AND  (:street_address IS DISTINCT FROM street_address OR
 				:first_name IS DISTINCT FROM first_name OR
@@ -673,10 +715,17 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 	_, err = d.User(pubKey)
 	if err == sql.ErrNoRows {
 		// This is the expected behaviour
-		user := &types.User{PubKey: pubKey, DigestedPubKey: snarks.Poseidon.Hash(pubKey)}
+		user := &types.User{
+			PubKey:         pubKey,
+			DigestedPubKey: snarks.Poseidon.Hash(pubKey),
+			CreatedUpdated: types.CreatedUpdated{
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+		}
 		insert := `INSERT INTO users
-					(public_key, digested_public_key)
-					VALUES (:public_key, :digested_public_key)`
+					(public_key, digested_public_key, created_at, updated_at)
+					VALUES (:public_key, :digested_public_key, :created_at, :updated_at)`
 		result, err := tx.NamedExec(insert, user)
 		if err != nil {
 			if rollErr := tx.Rollback(); err != nil {
@@ -890,9 +939,11 @@ func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, 
 	if hex.EncodeToString(target.EntityID) != hex.EncodeToString(entityID) {
 		return uuid.Nil, fmt.Errorf("trying to add target for another entity")
 	}
+	target.CreatedAt = time.Now()
+	target.UpdatedAt = time.Now()
 	insert := `INSERT INTO targets
-	 			(entity_id, name, filters)
-				VALUES (:entity_id, :name, :filters)
+	 			(entity_id, name, filters, created_at, updated_at)
+				VALUES (:entity_id, :name, :filters, :created_at, :updated_at)
 				RETURNING id`
 	// no err is returned if tx violated a db constraint,
 	// but we need the result in order to get the created id.
@@ -988,11 +1039,18 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID *uuid.UUID, inf
 	}
 	// TODO check valid target selecting
 
-	census := types.Census{ID: censusID, EntityID: entityID, TargetID: *targetID, CensusInfo: *info}
+	info.CreatedAt = time.Now()
+	info.UpdatedAt = time.Now()
+	census := types.Census{
+		ID:         censusID,
+		EntityID:   entityID,
+		TargetID:   *targetID,
+		CensusInfo: *info,
+	}
 	insert := `INSERT  
 				INTO censuses
-	 			(id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri)
-				VALUES (:id, :entity_id, :target_id, :name, :size, :merkle_root, :merkle_tree_uri)`
+	 			(id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri, created_at, updated_at)
+				VALUES (:id, :entity_id, :target_id, :name, :size, :merkle_root, :merkle_tree_uri, :created_at, :updated_at)`
 	var result sql.Result
 
 	if result, err = d.db.NamedExec(insert, census); err == nil {
@@ -1034,13 +1092,15 @@ func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uui
 	}
 
 	census := types.Census{ID: censusID, EntityID: entityID, TargetID: *targetID, CensusInfo: *info}
+	census.CreatedAt = time.Now()
+	census.UpdatedAt = time.Now()
 	tx, err := d.db.Beginx()
 	if err != nil {
 		return 0, fmt.Errorf("cannot initialize postgres transaction: %v", err)
 	}
 	insertCensus := `INSERT  INTO censuses
-					(id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri)
-					VALUES (:id, :entity_id, :target_id, :name, :size, :merkle_root, :merkle_tree_uri)`
+					(id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri, created_at, updated_at)
+					VALUES (:id, :entity_id, :target_id, :name, :size, :merkle_root, :merkle_tree_uri, :created_at, :updated_at)`
 	result, err := tx.NamedExec(insertCensus, census)
 	if err != nil {
 		return 0, fmt.Errorf("cannot add census: %v", err)
@@ -1080,7 +1140,7 @@ func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uui
 		}
 		return 0, fmt.Errorf("rolled back because failed to add census members, expected to add %d members but added %d", len(censusMembers), addedRows)
 	}
-	updateCensus := `UPDATE censuses SET size = $1 WHERE id = $2`
+	updateCensus := `UPDATE censuses SET size = $1, updated_at = now() WHERE id = $2`
 	result, err = tx.Exec(updateCensus, addedRows, censusID)
 	if err != nil {
 		rollbackErr := tx.Rollback()
