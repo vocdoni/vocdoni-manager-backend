@@ -245,7 +245,7 @@ func (d *Database) DeleteMember(entityID []byte, memberID *uuid.UUID) error {
 	return nil
 }
 
-func (d *Database) TempImportMembers(entityID []byte, info []types.MemberInfo) error {
+func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberInfo) error {
 	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return fmt.Errorf("error importing members of entity: %s", failEid)

@@ -440,7 +440,7 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 	}
 
 	// Add members
-	if err = m.db.TempImportMembers(entityID, request.MembersInfo); err != nil {
+	if err = m.db.ImportMembers(entityID, request.MembersInfo); err != nil {
 		log.Errorf("could not import members for %q: (%v)", request.SignaturePublicKey, err)
 		m.Router.SendError(request, err.Error())
 		return

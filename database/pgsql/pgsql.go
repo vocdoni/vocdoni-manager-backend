@@ -443,7 +443,7 @@ func createEthRandomKeysBatch(n int) []*ethereum.SignKeys {
 	return s
 }
 
-func (d *Database) TempImportMembers(entityID []byte, info []types.MemberInfo) error {
+func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberInfo) error {
 	var err error
 	var result sql.Result
 	var rows int64
