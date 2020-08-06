@@ -314,7 +314,7 @@ func TestMember(t *testing.T) {
 	if err != nil {
 		t.Fatal("cannot fetch tokens and emails from the Prostgres DB (pgsql.go:MembersTokensEmails)")
 	}
-	if len(tokenMembers) != len(allMembers) {
+	if len(tokenMembers) != len(bulkMembers) {
 		t.Fatalf("Expected retrieving tokens for %d members but instead retrieved %d (pgsql.go:MembersTokensEmails)", len(allMembers), len(tokenMembers))
 	}
 

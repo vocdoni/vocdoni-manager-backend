@@ -413,16 +413,36 @@ func TestExportTokens(t *testing.T) {
 		t.Error(err)
 	}
 
+	// Test that members with public keys are not
 	var req types.MetaRequest
 	req.Method = "exportTokens"
 	resp := wsc.Request(req, entitySigners[0])
 	if !resp.Ok {
 		t.Fatalf("request failed: %+v", req)
 	}
-	if len(resp.MembersTokens) != 3 {
-		t.Fatalf("expected 3 tokens, but got %d", len(resp.MembersTokens))
+	if len(resp.MembersTokens) != 0 {
+		t.Fatalf("expected 0 tokens, but got %d", len(resp.MembersTokens))
 	}
-	// another entity cannot request
+
+	// Check that members without public keys are exported
+	var importMembers []types.MemberInfo
+	for i := 0; i < 10; i++ {
+		info := types.MemberInfo{FirstName: fmt.Sprintf("Name%d", i), LastName: fmt.Sprintf("LastName%d", i)}
+		importMembers = append(importMembers, info)
+	}
+	err = api.DB.ImportMembers(entities[0].ID, importMembers)
+	if err != nil {
+		t.Fatalf("cannot add members to Postgres DB (pgsql.go:importMembers): %s", err)
+	}
+
+	resp = wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Fatalf("request failed: %+v", req)
+	}
+	if len(resp.MembersTokens) != len(importMembers) {
+		t.Fatalf("expected %d tokens, but got %d", len(importMembers), len(resp.MembersTokens))
+	}
+
 }
 
 func TestGetTarget(t *testing.T) {

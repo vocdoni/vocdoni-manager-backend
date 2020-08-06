@@ -827,7 +827,7 @@ func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) 
 func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) {
 	selectQuery := `SELECT
 	 				id, email
-					FROM members WHERE entity_id =$1`
+					FROM members WHERE entity_id = $1 AND public_key is null`
 
 	var pgMembers []PGMember
 	if err := d.db.Select(&pgMembers, selectQuery, entityID); err != nil {
@@ -835,9 +835,7 @@ func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) 
 	}
 	members := make([]types.Member, len(pgMembers))
 	for i, member := range pgMembers {
-		if member.PubKey == nil {
-			members[i] = *ToMember(&member)
-		}
+		members[i] = *ToMember(&member)
 	}
 	return members, nil
 }
