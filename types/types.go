@@ -10,8 +10,8 @@ import (
 )
 
 type CreatedUpdated struct {
-	CreatedAt time.Time `json:"-" db:"created_at"`
-	UpdatedAt time.Time `json:"-" db:"updated_at"`
+	CreatedAt time.Time `json:"createdAt,omitempty" db:"created_at"`
+	UpdatedAt time.Time `json:"updatedAt,omitempty" db:"updated_at"`
 }
 
 type Entity struct {

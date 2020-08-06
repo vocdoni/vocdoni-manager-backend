@@ -1021,7 +1021,7 @@ func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
 		return nil, fmt.Errorf("error retrieving target")
 	}
 	var census types.Census
-	selectQuery := `SELECT id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri
+	selectQuery := `SELECT id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri, created_at, updated_at
 					FROM censuses
 					WHERE entity_id = $1 AND id = $2`
 	row := d.db.QueryRowx(selectQuery, entityID, censusID)
@@ -1182,7 +1182,7 @@ func (d *Database) ListCensus(entityID []byte) ([]types.Census, error) {
 	if len(entityID) == 0 {
 		return nil, fmt.Errorf("error retrieving target")
 	}
-	selectQuery := `SELECT id, entity_id, target_id, name, merkle_root, merkle_tree_uri
+	selectQuery := `SELECT id, entity_id, target_id, name, merkle_root, merkle_tree_uri, created_at, updated_at
 					FROM censuses
 					WHERE entity_id=$1`
 	var censuses []types.Census
