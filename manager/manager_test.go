@@ -971,7 +971,7 @@ func TestListCensus(t *testing.T) {
 		Count:  10,
 		Order:  "ascend",
 		Skip:   2,
-		SortBy: "lastName",
+		SortBy: "name",
 	}
 	// m4ke request
 	resp4 := wsc.Request(req4, &s3)

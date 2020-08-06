@@ -161,7 +161,7 @@ func (m *Manager) listMembers(request router.RouterRequest) {
 	}
 
 	// check filter
-	if err = checkOptions(request.ListOptions); err != nil {
+	if err = checkOptions(request.ListOptions, request.Method); err != nil {
 		log.Warnf("invalid filter options %q: (%v)", request.SignaturePublicKey, err)
 		m.Router.SendError(request, "invalid filter options")
 		return
@@ -499,7 +499,7 @@ func (m *Manager) listTargets(request router.RouterRequest) {
 	}
 
 	// check filter
-	if err = checkOptions(request.ListOptions); err != nil {
+	if err = checkOptions(request.ListOptions, request.Method); err != nil {
 		log.Warnf("invalid filter options %q: (%v)", request.SignaturePublicKey, err)
 		m.Router.SendError(request, err.Error())
 		return
@@ -766,16 +766,15 @@ func (m *Manager) listCensus(request router.RouterRequest) {
 	}
 
 	// check filter
-	err = checkOptions(request.ListOptions)
-	if err != nil {
+	if err := checkOptions(request.ListOptions, request.Method); err != nil {
 		log.Warnf("invalid filter options %q: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, err.Error())
+		m.Router.SendError(request, "invalid filter options")
 		return
 	}
 
 	// Query for members
 	// TODO Implement listCensus in Db that supports filters
-	response.Censuses, err = m.db.ListCensus(entityID)
+	response.Censuses, err = m.db.ListCensus(entityID, request.ListOptions)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			m.Router.SendError(request, "no censuses found")
@@ -833,7 +832,7 @@ func (m *Manager) deleteCensus(request router.RouterRequest) {
 	m.send(request, response)
 }
 
-func checkOptions(filter *types.ListOptions) error {
+func checkOptions(filter *types.ListOptions, method string) error {
 	if filter == nil {
 		return nil
 	}
@@ -841,8 +840,17 @@ func checkOptions(filter *types.ListOptions) error {
 	if filter.Skip < 0 || filter.Count < 0 {
 		return fmt.Errorf("invalid skip/count")
 	}
+	var t reflect.Type
+	// check method
+	switch method {
+	case "listMembers":
+		t = reflect.TypeOf(types.MemberInfo{})
+	case "listCensus":
+		t = reflect.TypeOf(types.CensusInfo{})
+	default:
+		return fmt.Errorf("invalid method")
+	}
 	// Check sortby
-	t := reflect.TypeOf(types.MemberInfo{})
 	if len(filter.SortBy) > 0 {
 		_, found := t.FieldByName(strings.Title(filter.SortBy))
 		if !found {
@@ -862,7 +870,5 @@ func checkOptions(filter *types.ListOptions) error {
 		// Also check that order does not make sense without sortby
 		return fmt.Errorf("invalid filter order")
 	}
-
 	return nil
-
 }

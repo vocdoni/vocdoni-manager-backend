@@ -184,7 +184,7 @@ func (d *Database) CountCensus(entityID []byte) (int, error) {
 	return 0, nil
 }
 
-func (d *Database) ListCensus(entityID []byte) ([]types.Census, error) {
+func (d *Database) ListCensus(entityID []byte, filter *types.ListOptions) ([]types.Census, error) {
 	if fmt.Sprintf("%x", entityID) == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
 		return nil, sql.ErrNoRows
 	}

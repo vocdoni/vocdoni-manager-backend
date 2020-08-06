@@ -124,6 +124,10 @@ const (
 	Verified
 	Origin
 	CustomFields
+	Name
+	MerkleRoot
+	MerkleTreeURI
+	Size
 )
 
 func ToOrderBySQLi(orderBy string) OrderBySQLi {
@@ -148,6 +152,14 @@ func ToOrderBySQLi(orderBy string) OrderBySQLi {
 		return Origin
 	case "customFields":
 		return CustomFields
+	case "name":
+		return Name
+	case "merkleRoot":
+		return MerkleRoot
+	case "merkleTreeURI":
+		return MerkleTreeURI
+	case "size":
+		return Size
 	default:
 		return -1
 	}

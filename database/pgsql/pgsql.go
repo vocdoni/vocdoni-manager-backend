@@ -1176,15 +1176,60 @@ func (d *Database) CountCensus(entityID []byte) (int, error) {
 	return censusCount, nil
 }
 
-func (d *Database) ListCensus(entityID []byte) ([]types.Census, error) {
+func (d *Database) ListCensus(entityID []byte, filter *types.ListOptions) ([]types.Census, error) {
+	// check entityID
 	if len(entityID) == 0 {
 		return nil, fmt.Errorf("error retrieving target")
 	}
-	selectQuery := `SELECT id, entity_id, target_id, name, merkle_root, merkle_tree_uri, created_at, updated_at
+	// create select query
+	selectQuery := `SELECT id, entity_id, target_id, name, merkle_root, merkle_tree_uri
 					FROM censuses
-					WHERE entity_id=$1`
+					WHERE entity_id=$1
+					ORDER BY %s %s LIMIT $2 OFFSET $3`
+	// define default values for query args
+	t := reflect.TypeOf(types.Census{})
+	field, found := t.FieldByName(strings.Title("name"))
+	if !found {
+		return nil, fmt.Errorf("name field not found in DB. Something is very wrong")
+	}
+	orderField := field.Tag.Get("db")
+	order := "ASC"
+	var limit, offset sql.NullInt32
+	// default limit should be nil
+	if err := limit.Scan(nil); err != nil {
+		return nil, err
+	}
+	if err := offset.Scan(0); err != nil {
+		return nil, err
+	}
+	// offset = 0
+	// check filter
+	if filter != nil {
+		// check sortBy
+		if len(filter.SortBy) > 0 {
+			if field, found = t.FieldByName(strings.Title(filter.SortBy)); found {
+				if filter.Order == "descend" {
+					order = "DESC"
+				}
+				orderField = field.Tag.Get("db")
+			}
+		}
+		// check skip
+		if filter.Skip > 0 {
+			if err := offset.Scan(filter.Skip); err != nil {
+				return nil, err
+			}
+		}
+		// check count
+		if filter.Count > 0 {
+			if err := limit.Scan(filter.Count); err != nil {
+				return nil, err
+			}
+		}
+	}
+	query := fmt.Sprintf(selectQuery, orderField, order)
 	var censuses []types.Census
-	if err := d.db.Select(&censuses, selectQuery, entityID); err != nil {
+	if err := d.db.Select(&censuses, query, entityID, limit, offset); err != nil {
 		return nil, err
 	}
 	return censuses, nil

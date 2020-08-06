@@ -538,7 +538,7 @@ func TestCensus(t *testing.T) {
 	}
 
 	var censuses []types.Census
-	censuses, err = api.DB.ListCensus(entities[0].ID)
+	censuses, err = api.DB.ListCensus(entities[0].ID, &types.ListOptions{})
 	if err != nil || len(censuses) != 2 {
 		t.Fatal("unable to list censuses correctly (pgsql.go:Censuses)")
 	}

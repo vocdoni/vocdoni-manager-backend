@@ -18,11 +18,15 @@ func _() {
 	_ = x[Verified-7]
 	_ = x[Origin-8]
 	_ = x[CustomFields-9]
+	_ = x[Name-10]
+	_ = x[MerkleRoot-11]
+	_ = x[MerkleTreeURI-12]
+	_ = x[Size-13]
 }
 
-const _OrderBySQLi_name = "DateOfBirthEmailFirstNameLastNamePhoneStreetAddressConsentedVerifiedOriginCustomFields"
+const _OrderBySQLi_name = "DateOfBirthEmailFirstNameLastNamePhoneStreetAddressConsentedVerifiedOriginCustomFieldsNameMerkleRootMerkleTreeURISize"
 
-var _OrderBySQLi_index = [...]uint8{0, 11, 16, 25, 33, 38, 51, 60, 68, 74, 86}
+var _OrderBySQLi_index = [...]uint8{0, 11, 16, 25, 33, 38, 51, 60, 68, 74, 86, 90, 100, 113, 117}
 
 func (i OrderBySQLi) String() string {
 	if i < 0 || i >= OrderBySQLi(len(_OrderBySQLi_index)-1) {

@@ -837,6 +837,7 @@ func TestListCensus(t *testing.T) {
 
 	//Test to  get 0 censuses
 	req.Method = "listCensus"
+	req.ListOptions = new(types.ListOptions)
 
 	resp := wsc.Request(req, entitySigners[0])
 	if !resp.Ok || len(resp.Censuses) != 0 {
@@ -904,6 +905,30 @@ func TestListCensus(t *testing.T) {
 		t.Fatalf("unable to list censuses when 2 censuses exist: %s", resp.Message)
 	}
 
+	// check order
+	req.ListOptions = &types.ListOptions{
+		Count:  0,
+		Order:  "descend",
+		Skip:   0,
+		SortBy: "name",
+	}
+
+	resp = wsc.Request(req, entitySigners[0])
+	if !resp.Ok || len(resp.Censuses) != 2 {
+		t.Fatalf("unable to list censuses when 2 censuses exist: %s", resp.Message)
+	}
+
+	req.ListOptions = &types.ListOptions{
+		Count:  0,
+		Order:  "descend",
+		Skip:   1,
+		SortBy: "name",
+	}
+
+	resp = wsc.Request(req, entitySigners[0])
+	if !resp.Ok || len(resp.Censuses) != 1 {
+		t.Fatalf("unable to list censuses when 1 census should be returned: %s", resp.Message)
+	}
 }
 
 func TestDeleteCensus(t *testing.T) {
