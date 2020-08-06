@@ -807,3 +807,97 @@ func TestListCensus(t *testing.T) {
 	}
 
 }
+
+func TestDeleteCensus(t *testing.T) {
+	var req types.MetaRequest
+	var censusInfo *types.CensusInfo
+	var root, idBytes []byte
+	var err error
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// create entity
+	entitySigners, entities, err := testcommon.CreateEntities(2)
+	if err != nil {
+		t.Fatalf("cannot create entities: %s", err)
+	}
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	//Add target
+	target := &types.Target{EntityID: entities[0].ID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
+
+	var targetID uuid.UUID
+	targetID, err = api.DB.AddTarget(entities[0].ID, target)
+	if err != nil {
+		t.Fatalf("cannot add created target into database: %s", err)
+	}
+
+	// Genreate ID and root
+	id := util.RandomHex(len(entities[0].ID))
+	if idBytes, err = hex.DecodeString(util.TrimHex(id)); err != nil {
+		t.Fatalf("cannot decode randpom id: %s", err)
+	}
+	if root, err = hex.DecodeString(util.RandomHex(len(entities[0].ID))); err != nil {
+		t.Fatalf("cannot generate root: %s", err)
+	}
+	name := fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
+	// create census info
+	censusInfo = &types.CensusInfo{
+		Name:          name,
+		MerkleRoot:    root,
+		MerkleTreeURI: fmt.Sprintf("ipfs://%s", util.TrimHex(id)),
+	}
+
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, censusInfo)
+	if err != nil {
+		t.Fatal("error adding census to the db")
+	}
+
+	//Test that census cannot be deleted from another entity
+	req.Method = "deleteCensus"
+	req.CensusID = id
+
+	resp := wsc.Request(req, entitySigners[1])
+	if resp.Ok {
+		t.Fatalf("able to delete census of another entity: %s", resp.Message)
+	}
+
+	//Test simple delete census
+	req.Method = "deleteCensus"
+	req.CensusID = id
+
+	resp = wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Fatalf("unable to delete census: %s", resp.Message)
+	}
+
+	count, err := api.DB.CountCensus(entities[0].ID)
+	if err != nil {
+		t.Fatalf("error counting censues: %s", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected to count 0 censuses but got %d", count)
+	}
+
+	//Test that empty censusID fails
+	req.CensusID = ""
+	resp = wsc.Request(req, entitySigners[0])
+	if resp.Ok {
+		t.Fatalf("able to delete a census without censusId: %s", resp.Message)
+	}
+
+	//Test that random censusID fails
+	req.CensusID = util.RandomHex(len(entities[0].ID))
+	resp = wsc.Request(req, entitySigners[0])
+	if resp.Ok {
+		t.Fatalf("able to delete a census with a random censusId: %s", resp.Message)
+	}
+
+	//TODO test that if census had members in census_members they were removed
+}

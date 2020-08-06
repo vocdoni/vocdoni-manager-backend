@@ -542,4 +542,39 @@ func TestCensus(t *testing.T) {
 	if err != nil || len(censuses) != 2 {
 		t.Fatal("unable to list censuses correctly (pgsql.go:Censuses)")
 	}
+
+	// Verify that an existing census can be deleted
+	if err = api.DB.DeleteCensus(entities[0].ID, censuses[0].ID); err != nil {
+		t.Fatalf("cannot delete census correctly (pgsql.go:DeleteCensus): %v", err)
+	}
+
+	census, err := api.DB.Census(entities[0].ID, censuses[0].ID)
+	if err != nil && err != sql.ErrNoRows {
+		t.Fatalf("error in checking wether census was deleted correctly (pgsql.go:DeleteCensus): %v", err)
+	}
+	if err == nil || census != nil {
+		t.Fatal(" census was not deleted correctly (pgsql.go:DeleteCensus)")
+	}
+
+	//Verify that one census is counted
+	if count, err := api.DB.CountCensus(entities[0].ID); err != nil || count != 1 {
+		t.Errorf("counted %d", count)
+		t.Fatalf("cannot count censuses correctly: %+v", err)
+	}
+
+	// Verify that a random non-existing census cannot be deleted
+	randomCensusID := util.RandomHex(len(censuses[0].ID))
+	randomCensusIDBytes, _ := hex.DecodeString(randomCensusID)
+	if err = api.DB.DeleteCensus(entities[0].ID, randomCensusIDBytes); err == nil {
+		t.Fatalf("managed to delete a census with a random generated census ID (pgsql.go:DeleteCensus): %v", err)
+	}
+
+	//Verify that one census is counted
+	if count, err := api.DB.CountCensus(entities[0].ID); err != nil || count != 1 {
+		t.Errorf("counted %d", count)
+		t.Fatalf("cannot count censuses correctly: %+v", err)
+	}
+
+	// Verify that the corresponding members are also deleted
+
 }

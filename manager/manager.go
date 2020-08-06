@@ -81,6 +81,9 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("listCensus", path+"/manager", m.listCensus, false, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("deleteCensus", path+"/manager", m.deleteCensus, false, false); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -782,6 +785,50 @@ func (m *Manager) listCensus(request router.RouterRequest) {
 		return
 	}
 	log.Debugf("Entity: %q listCensuses: %d censuses", request.SignaturePublicKey, len(response.Censuses))
+	m.send(request, response)
+}
+
+func (m *Manager) deleteCensus(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	if len(request.CensusID) == 0 {
+		log.Debugf("invalid census id %q for %s", request.CensusID, request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid census id")
+		return
+	}
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey)
+	if err != nil {
+		log.Errorf("cannot recover %q entityID: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID")
+		return
+	}
+
+	var censusID []byte
+	if censusID, err = util.DecodeCensusID(request.CensusID, request.SignaturePublicKey); err != nil {
+		log.Errorf("cannot decode census id %q for %s", request.CensusID, request.SignaturePublicKey)
+		m.Router.SendError(request, "cannot decode census id")
+		return
+	}
+
+	err = m.db.DeleteCensus(entityID, censusID)
+	if err != nil && err != sql.ErrNoRows {
+		log.Errorf("error deleting census %s for entity %x: (%v)", request.CensusID, entityID, err)
+		m.Router.SendError(request, "cannot delete census")
+		return
+	}
+
+	log.Debugf("Entity: %x deleteCensus:%s", entityID, request.CensusID)
 	m.send(request, response)
 }
 

@@ -1129,6 +1129,28 @@ func (d *Database) ListCensus(entityID []byte) ([]types.Census, error) {
 	return censuses, nil
 }
 
+func (d *Database) DeleteCensus(entityID []byte, censusID []byte) error {
+	if len(censusID) == 0 || len(entityID) == 0 {
+		log.Debug("deleteCensus: invalid arguments")
+		return fmt.Errorf("invalid arguments")
+	}
+
+	deleteQuery := `DELETE FROM censuses WHERE id = $1 and entity_id =$2`
+	result, err := d.db.Exec(deleteQuery, censusID, entityID)
+	if err != nil {
+		return fmt.Errorf("error deleting census: %v", err)
+	}
+	if err == nil {
+		if rows, err := result.RowsAffected(); rows != 1 {
+			return fmt.Errorf("nothing to delete")
+		} else if err != nil {
+			return fmt.Errorf("error verifying deleted census: %v", err)
+		}
+	}
+
+	return nil
+}
+
 func (d *Database) Ping() error {
 	return d.db.Ping()
 }

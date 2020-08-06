@@ -202,6 +202,14 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID *uuid.UUID, inf
 	return nil
 }
 
+func (d *Database) DeleteCensus(entityID []byte, censusID []byte) error {
+	failEid := hex.EncodeToString(entityID)
+	if failEid == "91d078ba8ee8d10c3ee85b712bfdcb8dfa257599ae4fa74cabc365e25b001b14" {
+		return fmt.Errorf("cannot add census to entity: %s", failEid)
+	}
+	return nil
+}
+
 func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uuid.UUID, info *types.CensusInfo) (int64, error) {
 	failEid := hex.EncodeToString(entityID)
 	if failEid == "91d078ba8ee8d10c3ee85b712bfdcb8dfa257599ae4fa74cabc365e25b001b14" {
