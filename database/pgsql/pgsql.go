@@ -1182,7 +1182,7 @@ func (d *Database) ListCensus(entityID []byte, filter *types.ListOptions) ([]typ
 		return nil, fmt.Errorf("error retrieving target")
 	}
 	// create select query
-	selectQuery := `SELECT id, entity_id, target_id, name, merkle_root, merkle_tree_uri
+	selectQuery := `SELECT id, entity_id, target_id, name, merkle_root, merkle_tree_uri, created_at, updated_at
 					FROM censuses
 					WHERE entity_id=$1
 					ORDER BY %s %s LIMIT $2 OFFSET $3`

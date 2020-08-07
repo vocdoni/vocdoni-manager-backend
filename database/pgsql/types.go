@@ -128,6 +128,8 @@ const (
 	MerkleRoot
 	MerkleTreeURI
 	Size
+	CreatedAt
+	UpdatedAt
 )
 
 func ToOrderBySQLi(orderBy string) OrderBySQLi {
@@ -160,6 +162,10 @@ func ToOrderBySQLi(orderBy string) OrderBySQLi {
 		return MerkleTreeURI
 	case "size":
 		return Size
+	case "createdAt":
+		return CreatedAt
+	case "updatedAt":
+		return UpdatedAt
 	default:
 		return -1
 	}
