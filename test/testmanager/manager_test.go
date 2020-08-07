@@ -898,7 +898,7 @@ func TestDeleteCensus(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	entitySigners, entities, err := testcommon.CreateEntities(2)
+	entitySigners, entities := testcommon.CreateEntities(2)
 	if err != nil {
 		t.Fatalf("cannot create entities: %s", err)
 	}
