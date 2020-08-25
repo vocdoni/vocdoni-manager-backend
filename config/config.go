@@ -30,6 +30,8 @@ type Manager struct {
 	SigningKey string
 	// Migration options
 	Migrate *Migrate
+	// Notifications
+	Notifications Notifications
 }
 
 func (m *Manager) ValidMode() bool {
@@ -85,4 +87,8 @@ type Migrate struct {
 type MetricsCfg struct {
 	Enabled         bool
 	RefreshInterval int
+}
+
+type Notifications struct {
+	FirebaseKeyFile string
 }
