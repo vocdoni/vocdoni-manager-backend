@@ -6,16 +6,17 @@ import (
 
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
+	"gitlab.com/vocdoni/go-dvote/metrics"
 	"gitlab.com/vocdoni/go-dvote/net"
 	"gitlab.com/vocdoni/go-dvote/types"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/router"
-	"gitlab.com/vocdoni/manager/manager-backend/services/metrics"
 )
 
 // EndPoint handles the Websocket connection
 type EndPoint struct {
 	Router       *router.Router
+	Proxy        *net.Proxy
 	MetricsAgent *metrics.Agent
 }
 
@@ -48,7 +49,7 @@ func NewEndpoint(cfg *config.Manager, signer *ethereum.SignKeys) (*EndPoint, err
 	if cfg.Metrics != nil && cfg.Metrics.Enabled {
 		ma = metrics.NewAgent("/metrics", time.Second*time.Duration(cfg.Metrics.RefreshInterval), pxy)
 	}
-	return &EndPoint{Router: r, MetricsAgent: ma}, nil
+	return &EndPoint{Router: r, Proxy: pxy, MetricsAgent: ma}, nil
 }
 
 // proxy creates a new service for routing HTTP connections using go-chi server

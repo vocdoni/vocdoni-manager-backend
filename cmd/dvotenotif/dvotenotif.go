@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strings"
+	"time"
 
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -12,8 +14,13 @@ import (
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
+	"gitlab.com/vocdoni/go-dvote/chain"
+	"gitlab.com/vocdoni/go-dvote/chain/ethevents"
+	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	log "gitlab.com/vocdoni/go-dvote/log"
+	"gitlab.com/vocdoni/go-dvote/service"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
+	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
 	"golang.org/x/net/context"
 )
 
@@ -49,6 +56,7 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.DB.Dbname = *flag.String("dbName", "database", "DB database name")
 	cfg.DB.Sslmode = *flag.String("dbSslmode", "prefer", "DB postgres sslmode")
 	cfg.Notifications.FirebaseKeyFile = *flag.String("firebaseKey", "", "firebase json file private key")
+	cfg.Ethereum.SigningKey = *flag.String("ethSigningKey", "", "signing private Key (if not specified the Ethereum keystore will be used)")
 
 	// metrics
 	cfg.Metrics.Enabled = *flag.Bool("metricsEnabled", true, "enable prometheus metrics")
@@ -80,6 +88,7 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("db.dbName", flag.Lookup("dbName"))
 	viper.BindPFlag("db.sslMode", flag.Lookup("dbSslmode"))
 	viper.BindPFlag("notifications.firebaseKeyFile", flag.Lookup("firebaseKey"))
+	viper.BindPFlag("ethereum.ethSigningKey", flag.Lookup("ethSingningKey"))
 
 	// metrics
 	viper.BindPFlag("metrics.enabled", flag.Lookup("metricsEnabled"))
@@ -196,4 +205,73 @@ func main() {
 		}
 	}
 
+	// ethereum sign key
+	signer := ethereum.NewSignKeys()
+	if err := signer.AddHexKey(cfg.Ethereum.SigningKey); err != nil {
+		log.Fatal(err)
+	}
+
+	// create and init proxy
+	ep, err := endpoint.NewEndpoint(cfg, signer)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// ethereum service
+	var node *chain.EthChainContext
+	if len(cfg.Notifications.FirebaseKeyFile) > 0 {
+		node, err = service.Ethereum(cfg.Ethereum, cfg.Web3, ep.Proxy, signer, ep.MetricsAgent)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	// wait ethereum node to be ready
+	if !cfg.Ethereum.NoWaitSync {
+		requiredPeers := 2
+		if len(cfg.Web3.W3External) > 0 {
+			requiredPeers = 1
+		}
+		for {
+			if info, err := node.SyncInfo(); err == nil && info.Synced && info.Peers >= requiredPeers && info.Height > 0 {
+				log.Infof("ethereum blockchain synchronized (%+v)", info)
+				break
+			}
+			time.Sleep(time.Second * 5)
+		}
+	}
+	// ethereum events service
+	if !cfg.Ethereum.NoWaitSync {
+		var evh []ethevents.EventHandler
+		var w3uri string
+		switch {
+		case cfg.Web3.W3External == "":
+			// If local ethereum node enabled, use the Go-Ethereum websockets endpoint
+			w3uri = "ws://" + net.JoinHostPort(cfg.Web3.RPCHost, fmt.Sprintf("%d", cfg.Web3.RPCPort))
+		case strings.HasPrefix(cfg.Web3.W3External, "ws"):
+			w3uri = cfg.Web3.W3External
+		case strings.HasSuffix(cfg.Web3.W3External, "ipc"):
+			w3uri = cfg.Web3.W3External
+
+		default:
+			log.Fatal("web3 external must be websocket or IPC for event subscription")
+		}
+
+		// @jordipainan TODO: Handle events
+		//evh = append(evh, ethevents.HandleVochainOracle)
+
+		var initBlock *int64
+		if !cfg.EthEventConfig.SubscribeOnly {
+			initBlock = new(int64)
+			chainSpecs, err := chain.SpecsFor(cfg.Ethereum.ChainType)
+			if err != nil {
+				log.Warn("cannot get chain block to start looking for events, using 0")
+				*initBlock = 0
+			} else {
+				*initBlock = chainSpecs.StartingBlock
+			}
+		}
+		if err := service.EthEvents(cfg.Ethereum.ProcessDomain, w3uri, cfg.Ethereum.ChainType, initBlock, nil, signer, nil, evh); err != nil {
+			log.Fatal(err)
+		}
+	}
 }

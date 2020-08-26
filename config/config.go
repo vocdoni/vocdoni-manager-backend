@@ -1,5 +1,7 @@
 package config
 
+import "gitlab.com/vocdoni/go-dvote/config"
+
 var Modes = map[string]bool{
 	"registry": true,
 	"manager":  true,
@@ -32,6 +34,12 @@ type Manager struct {
 	Migrate *Migrate
 	// Notifications
 	Notifications Notifications
+	// Ethereum node config
+	Ethereum *config.EthCfg
+	// Web3 endpoint config
+	Web3 *config.W3Cfg
+	// EthEventConfig ethereum even subscription config options
+	EthEventConfig *config.EthEventCfg
 }
 
 func (m *Manager) ValidMode() bool {
