@@ -33,13 +33,13 @@ type Manager struct {
 	// Migration options
 	Migrate *Migrate
 	// Notifications
-	Notifications Notifications
+	Notifications *Notifications
 	// Ethereum node config
 	Ethereum *config.EthCfg
 	// Web3 endpoint config
 	Web3 *config.W3Cfg
-	// EthEventConfig ethereum even subscription config options
-	EthEventConfig *config.EthEventCfg
+	// EthereumEvents ethereum even subscription config options
+	EthereumEvents *config.EthEventCfg
 }
 
 func (m *Manager) ValidMode() bool {
@@ -49,10 +49,14 @@ func (m *Manager) ValidMode() bool {
 // NewConfig initializes the fields in the config stuct
 func NewConfig() *Manager {
 	return &Manager{
-		API:     new(API),
-		DB:      new(DB),
-		Migrate: new(Migrate),
-		Metrics: new(MetricsCfg),
+		API:            new(API),
+		DB:             new(DB),
+		Migrate:        new(Migrate),
+		Metrics:        new(MetricsCfg),
+		Notifications:  new(Notifications),
+		Ethereum:       new(config.EthCfg),
+		Web3:           new(config.W3Cfg),
+		EthereumEvents: new(config.EthEventCfg),
 	}
 }
 

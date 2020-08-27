@@ -45,6 +45,7 @@ func newConfig() (*config.Manager, config.Error) {
 		return
 	}()))
 
+	// global
 	cfg.LogLevel = *flag.String("logLevel", "info", "Log level (debug, info, warn, error, fatal)")
 	cfg.LogOutput = *flag.String("logOutput", "stdout", "Log output (stdout, stderr or filepath)")
 	cfg.LogErrorFile = *flag.String("logErrorFile", "", "Log errors and warnings to a file")
@@ -55,9 +56,26 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.DB.Password = *flag.String("dbPassword", "password", "DB password")
 	cfg.DB.Dbname = *flag.String("dbName", "database", "DB database name")
 	cfg.DB.Sslmode = *flag.String("dbSslmode", "prefer", "DB postgres sslmode")
+	// notifications
 	cfg.Notifications.FirebaseKeyFile = *flag.String("firebaseKey", "", "firebase json file private key")
+	//ethereum node
 	cfg.Ethereum.SigningKey = *flag.String("ethSigningKey", "", "signing private Key (if not specified the Ethereum keystore will be used)")
-
+	cfg.Ethereum.ChainType = *flag.String("ethChain", "goerli", fmt.Sprintf("Ethereum blockchain to use: %s", chain.AvailableChains))
+	cfg.Ethereum.LightMode = *flag.Bool("ethChainLightMode", false, "synchronize Ethereum blockchain in light mode")
+	cfg.Ethereum.NodePort = *flag.Int("ethNodePort", 30303, "Ethereum p2p node port to use")
+	cfg.Ethereum.BootNodes = *flag.StringArray("ethBootNodes", []string{}, "Ethereum p2p custom bootstrap nodes (enode://<pubKey>@<ip>[:port])")
+	cfg.Ethereum.TrustedPeers = *flag.StringArray("ethTrustedPeers", []string{}, "Ethereum p2p trusted peer nodes (enode://<pubKey>@<ip>[:port])")
+	cfg.Ethereum.ProcessDomain = *flag.String("ethProcessDomain", "voting-process.vocdoni.eth", "voting contract ENS domain")
+	cfg.Ethereum.NoWaitSync = *flag.Bool("ethNoWaitSync", false, "do not wait for Ethereum to synchronize (for testing only)")
+	// ethereum events
+	cfg.EthereumEvents.CensusSync = *flag.Bool("ethCensusSync", true, "automatically import new census published on the smart contract")
+	cfg.EthereumEvents.SubscribeOnly = *flag.Bool("ethSubscribeOnly", true, "only subscribe to new ethereum events (do not read past log)")
+	// ethereum web3
+	cfg.Web3.W3External = *flag.String("w3External", "", "use an external web3 endpoint instead of the local one. Supported protocols: http(s)://, ws(s):// and IPC filepath")
+	cfg.Web3.Enabled = *flag.Bool("w3Enabled", true, "if true, a web3 public endpoint will be enabled")
+	cfg.Web3.Route = *flag.String("w3Route", "/web3", "web3 endpoint API route")
+	cfg.Web3.RPCPort = *flag.Int("w3RPCPort", 9091, "web3 RPC port")
+	cfg.Web3.RPCHost = *flag.String("w3RPCHost", "127.0.0.1", "web3 RPC host")
 	// metrics
 	cfg.Metrics.Enabled = *flag.Bool("metricsEnabled", true, "enable prometheus metrics")
 	cfg.Metrics.RefreshInterval = *flag.Int("metricsRefreshInterval", 10, "metrics refresh interval in seconds")
@@ -87,9 +105,26 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("db.password", flag.Lookup("dbPassword"))
 	viper.BindPFlag("db.dbName", flag.Lookup("dbName"))
 	viper.BindPFlag("db.sslMode", flag.Lookup("dbSslmode"))
+	// notifications
 	viper.BindPFlag("notifications.firebaseKeyFile", flag.Lookup("firebaseKey"))
-	viper.BindPFlag("ethereum.ethSigningKey", flag.Lookup("ethSingningKey"))
-
+	// ethereum node
+	viper.Set("ethereum.datadir", cfg.DataDir+"/ethereum")
+	viper.BindPFlag("ethereum.signingKey", flag.Lookup("ethSigningKey"))
+	viper.BindPFlag("ethereum.chainType", flag.Lookup("ethChain"))
+	viper.BindPFlag("ethereum.lightMode", flag.Lookup("ethChainLightMode"))
+	viper.BindPFlag("ethereum.nodePort", flag.Lookup("ethNodePort"))
+	viper.BindPFlag("ethereum.bootNodes", flag.Lookup("ethBootNodes"))
+	viper.BindPFlag("ethereum.trustedPeers", flag.Lookup("ethTrustedPeers"))
+	viper.BindPFlag("ethereum.processDomain", flag.Lookup("ethProcessDomain"))
+	viper.BindPFlag("ethereum.noWaitSync", flag.Lookup("ethNoWaitSync"))
+	viper.BindPFlag("ethereumEvents.censusSync", flag.Lookup("ethCensusSync"))
+	viper.BindPFlag("ethereumEvents.subscribeOnly", flag.Lookup("ethSubscribeOnly"))
+	// ethereum web3
+	viper.BindPFlag("web3.w3External", flag.Lookup("w3External"))
+	viper.BindPFlag("web3.route", flag.Lookup("w3Route"))
+	viper.BindPFlag("web3.enabled", flag.Lookup("w3Enabled"))
+	viper.BindPFlag("web3.RPCPort", flag.Lookup("w3RPCPort"))
+	viper.BindPFlag("web3.RPCHost", flag.Lookup("w3RPCHost"))
 	// metrics
 	viper.BindPFlag("metrics.enabled", flag.Lookup("metricsEnabled"))
 	viper.BindPFlag("metrics.refreshInterval", flag.Lookup("metricsRefreshInterval"))
@@ -260,7 +295,7 @@ func main() {
 		//evh = append(evh, ethevents.HandleVochainOracle)
 
 		var initBlock *int64
-		if !cfg.EthEventConfig.SubscribeOnly {
+		if !cfg.EthereumEvents.SubscribeOnly {
 			initBlock = new(int64)
 			chainSpecs, err := chain.SpecsFor(cfg.Ethereum.ChainType)
 			if err != nil {
