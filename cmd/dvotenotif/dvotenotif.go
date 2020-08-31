@@ -9,19 +9,15 @@ import (
 
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"google.golang.org/api/iterator"
-	"google.golang.org/api/option"
 
-	firebase "firebase.google.com/go"
-	"firebase.google.com/go/auth"
 	"gitlab.com/vocdoni/go-dvote/chain"
 	"gitlab.com/vocdoni/go-dvote/chain/ethevents"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/service"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
+	"gitlab.com/vocdoni/manager/manager-backend/notifications"
 	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
-	"golang.org/x/net/context"
 )
 
 func newConfig() (*config.Manager, config.Error) {
@@ -196,50 +192,6 @@ func main() {
 		log.Fatalf("invalid mode %s", cfg.Mode)
 	}
 
-	ctx := context.Background()
-	opt := option.WithCredentialsFile(cfg.Notifications.FirebaseKeyFile)
-	app, err := firebase.NewApp(ctx, nil, opt)
-	if err != nil {
-		log.Fatal(err)
-	}
-	client, err := app.Auth(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	token, err := client.CustomToken(ctx, "pepe2")
-	if err != nil {
-		log.Errorf("cannot create new token: (%s)", err)
-	}
-	log.Infof("new token: %s", token)
-
-	user := &auth.UserToCreate{}
-	user.UID("pepe3")
-	user.DisplayName("Pepe Tres")
-
-	_, err = client.CreateUser(ctx, user)
-	if err != nil {
-		log.Error(err)
-	}
-
-	ur, err := client.GetUser(ctx, "pepe2")
-	if err != nil {
-		log.Error(err)
-	}
-	log.Warnf("%+v", ur.UserInfo)
-
-	it := client.Users(ctx, "")
-	for {
-		if a, err := it.Next(); err == iterator.Done {
-			break
-		} else {
-			if err != nil {
-				log.Fatal(err)
-			}
-			log.Infof("%+v", *a.UserRecord.UserInfo)
-		}
-	}
-
 	// ethereum sign key
 	signer := ethereum.NewSignKeys()
 	if err := signer.AddHexKey(cfg.Ethereum.SigningKey); err != nil {
@@ -274,6 +226,11 @@ func main() {
 			time.Sleep(time.Second * 5)
 		}
 	}
+
+	// start notifications service
+	var fa notifications.FirebaseAdmin
+	fa.Init(cfg.Notifications.FirebaseKeyFile)
+
 	// ethereum events service
 	if !cfg.Ethereum.NoWaitSync {
 		var evh []ethevents.EventHandler
@@ -291,8 +248,7 @@ func main() {
 			log.Fatal("web3 external must be websocket or IPC for event subscription")
 		}
 
-		// @jordipainan TODO: Handle events
-		//evh = append(evh, ethevents.HandleVochainOracle)
+		evh = append(evh, fa.HandleEthereum)
 
 		var initBlock *int64
 		if !cfg.EthereumEvents.SubscribeOnly {

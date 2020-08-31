@@ -3,7 +3,8 @@ module gitlab.com/vocdoni/manager/manager-backend
 go 1.14
 
 require (
-	firebase.google.com/go v3.13.0+incompatible // indirect
+	cloud.google.com/go/firestore v1.1.1 // indirect
+	firebase.google.com/go v3.13.0+incompatible
 	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/badoux/checkmail v0.0.0-20181210160741-9661bd69e9ad
 	github.com/ethereum/go-ethereum v1.9.15
@@ -22,5 +23,6 @@ require (
 	gitlab.com/vocdoni/go-dvote v0.1.1-0.20200903151104-c0d895d669af
 	golang.org/x/mod v0.3.0 // indirect
 	golang.org/x/tools v0.0.0-20200617042924-7f3f4b10a808 // indirect
+	google.golang.org/api v0.17.0
 	nhooyr.io/websocket v1.8.6
 )
