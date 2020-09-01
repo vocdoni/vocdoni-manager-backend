@@ -96,7 +96,7 @@ func (n *NotificationAPI) subscribe(request router.RouterRequest) {
 			return
 		}
 
-		// subscribe to entity
+		// subscribe to entity by default
 		// check entityID
 		entityID, err := hex.DecodeString(util.TrimHex(request.EntityID))
 		if err != nil {
@@ -124,6 +124,57 @@ func (n *NotificationAPI) subscribe(request router.RouterRequest) {
 	}
 }
 
-func (n *NotificationAPI) unsubscribe(req router.RouterRequest) {
+func (n *NotificationAPI) unsubscribe(request router.RouterRequest) {
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		n.Router.SendError(request, "invalid public key")
+		return
+	}
 
+	switch n.pn.(type) {
+	case FirebaseAdmin:
+		// check user
+		var ur *auth.UserRecord
+		if u, err := n.pn.GetUser(request.SignaturePublicKey); err != nil {
+			// if err is user not found continue, else return error
+			if err.(*finternal.FirebaseError).ErrorCode != finternal.NotFound {
+				log.Warnf("cannot get user: %s", err)
+				n.Router.SendError(request, fmt.Sprintf("cannot get user: %s", err))
+				return
+			} else {
+				log.Warn("user does not exist")
+				n.Router.SendError(request, "user does not exist")
+				return
+			}
+		} else {
+			// found user, check pubkey == uid
+			if u.(auth.UserRecord).UID != request.SignaturePublicKey {
+				log.Warn("uid does not match the recovered public key")
+				n.Router.SendError(request, "uid does not match the recovered public key")
+				return
+			}
+			ur = u.(*auth.UserRecord)
+		}
+
+		// unsubscribe from entity
+		// check entityID
+		entityID, err := hex.DecodeString(util.TrimHex(request.EntityID))
+		if err != nil {
+			log.Warn(err)
+			n.Router.SendError(request, "invalid entityId")
+			return
+		}
+		// @jordipainan TODO: check topic format
+		// @jordipainan TODO: handle language to subscribe by default
+		if err := n.pn.UnsubscribeTopic([]string{request.Token}, request.Topic); err != nil {
+			log.Warnf("cannot ussubscribe from entity: %s topic: %s with token: %s. Error: %s", entityID, request.Topic, request.Token, err)
+			n.Router.SendError(request, "cannot unsubscribe from entity topic")
+			return
+		}
+
+		// send successful response
+		log.Infof("user: %s unsubscribed from entity: %s topic: %s notifications", ur.UID, request.EntityID, request.Topic)
+		n.send(request, types.MetaResponse{})
+	}
 }
