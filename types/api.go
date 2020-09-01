@@ -63,6 +63,7 @@ type MetaResponse struct {
 	Target        *Target      `json:"target,omitempty"`
 	Targets       []Target     `json:"targets,omitempty"`
 	Timestamp     int32        `json:"timestamp"`
+	Token         string       `json:"token,omitempty"`
 	Tokens        []uuid.UUID  `json:"tokens,omitempty"`
 	TokenStatus   string       `json:"tokenStatus,omitempty"`
 }

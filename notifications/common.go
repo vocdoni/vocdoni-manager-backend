@@ -39,15 +39,13 @@ type PushNotifier interface {
 	Enqueue(notification interface{}) error
 	Dequeue(notification interface{}) error
 	Queue() interface{}
-}
-
-// PushNotifierAdmin contains the methods that all notification push admin services must implement
-type PushNotifierAdmin interface {
 	// user management
 	GetUser(uid string) (interface{}, error)
-	CreateUser(uid string, userData interface{}) (interface{}, error)
+	CreateUser(userData interface{}) (interface{}, error)
 	UpdateUser(uid string, userData interface{}) (interface{}, error)
 	DeleteUser(uid string) error
+	// tokens
+	GenerateToken(uid string) (string, error)
 
 	Init() error
 }

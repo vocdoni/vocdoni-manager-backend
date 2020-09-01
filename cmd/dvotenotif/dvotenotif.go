@@ -229,7 +229,8 @@ func main() {
 
 	// start notifications service
 	var fa notifications.FirebaseAdmin
-	fa.Init(cfg.Notifications.FirebaseKeyFile)
+	fa.Key = cfg.Notifications.FirebaseKeyFile
+	fa.Init()
 
 	// ethereum events service
 	if !cfg.Ethereum.NoWaitSync {

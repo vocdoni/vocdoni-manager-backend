@@ -21,11 +21,13 @@ import (
 type FirebaseAdmin struct {
 	*sdk.App
 	Client *auth.Client
+	Key    interface{}
 }
 
 // Init initializes the Firebase Admin instance
-func (fa *FirebaseAdmin) Init(keyfile string) (err error) {
-	opt := option.WithCredentialsFile(keyfile)
+func (fa FirebaseAdmin) Init() (err error) {
+	v, _ := fa.Key.(string)
+	opt := option.WithCredentialsFile(v)
 	fa.App, err = firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
 		return err
@@ -37,83 +39,95 @@ func (fa *FirebaseAdmin) Init(keyfile string) (err error) {
 	return nil
 }
 
-func (fa *FirebaseAdmin) getMessagingClient() (*messaging.Client, error) {
+func (fa FirebaseAdmin) getMessagingClient() (*messaging.Client, error) {
 	return fa.Messaging(context.Background())
 }
 
 // subscribe & unsubscribe users
 
 // SubscribeTopic subscribes a list of users to a given topic
-func (fa *FirebaseAdmin) SubscribeTopic(tokens []string, topic string) (*messaging.TopicManagementResponse, error) {
+func (fa FirebaseAdmin) SubscribeTopic(tokens []string, topic string) error {
 	client, err := fa.getMessagingClient()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return client.SubscribeToTopic(context.Background(), tokens, topic)
+	if _, err := client.SubscribeToTopic(context.Background(), tokens, topic); err != nil {
+		return err
+	}
+	return nil
 }
 
 // UnsubscribeTopic unsubscribes a list of users to a given topic
-func (fa *FirebaseAdmin) UnsubscribeTopic(tokens []string, topic string) (*messaging.TopicManagementResponse, error) {
+func (fa FirebaseAdmin) UnsubscribeTopic(tokens []string, topic string) error {
 	client, err := fa.getMessagingClient()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return client.UnsubscribeFromTopic(context.Background(), tokens, topic)
+	if _, err := client.UnsubscribeFromTopic(context.Background(), tokens, topic); err != nil {
+		return err
+	}
+	return nil
 }
 
 // user management
 
 // GetUser retrieves user's data
-func (fa *FirebaseAdmin) GetUser(uid string) (*auth.UserRecord, error) {
+func (fa FirebaseAdmin) GetUser(uid string) (interface{}, error) {
 	return fa.Client.GetUser(context.Background(), uid)
 }
 
 // GetUserByEmail returns user's data from the user matching the given email
-func (fa *FirebaseAdmin) GetUserByEmail(email string) (*auth.UserRecord, error) {
+func (fa FirebaseAdmin) GetUserByEmail(email string) (interface{}, error) {
 	return fa.Client.GetUserByEmail(context.Background(), email)
 }
 
-// func (fa *FirebaseAdmin) UserBulk(ids *[]auth.UserIdentifier) (*auth.GetUsersResult, error) {}
-// func (fa *FirebaseAdmin) Users() (*auth.UserIterator, error) {}
+// func (fa FirebaseAdmin) UserBulk(ids *[]auth.UserIdentifier) (*auth.GetUsersResult, error) {}
+// func (fa FirebaseAdmin) Users() (*auth.UserIterator, error) {}
 
 // CreateUser creates a user with the given user info
-func (fa *FirebaseAdmin) CreateUser(user *auth.UserToCreate) (*auth.UserRecord, error) {
-	return fa.Client.CreateUser(context.Background(), user)
+func (fa FirebaseAdmin) CreateUser(user interface{}) (interface{}, error) {
+	return fa.Client.CreateUser(context.Background(), user.(*auth.UserToCreate))
 }
 
 // UpdateUser updates a user given its UID and the info to update
-func (fa *FirebaseAdmin) UpdateUser(uid string, userFields *auth.UserToUpdate) (*auth.UserRecord, error) {
-	return fa.Client.UpdateUser(context.Background(), uid, userFields)
+func (fa FirebaseAdmin) UpdateUser(uid string, userFields interface{}) (interface{}, error) {
+	return fa.Client.UpdateUser(context.Background(), uid, userFields.(*auth.UserToUpdate))
 }
 
 // DeleteUser deletes a user with the given UID
-func (fa *FirebaseAdmin) DeleteUser(uid string) error {
+func (fa FirebaseAdmin) DeleteUser(uid string) error {
 	return fa.Client.DeleteUser(context.Background(), uid)
 }
 
 // DeleteUserBulk  deletes a list of users giving its ids
-func (fa *FirebaseAdmin) DeleteUserBulk(uids []string) (*auth.DeleteUsersResult, error) {
+func (fa FirebaseAdmin) DeleteUserBulk(uids []string) (interface{}, error) {
 	return fa.Client.DeleteUsers(context.Background(), uids)
+}
+
+// tokens
+func (fa FirebaseAdmin) GenerateToken(uid string) (string, error) {
+	return fa.Client.CustomToken(context.Background(), uid)
 }
 
 // messaging
 
 // Send sends a push notification
-func (fa *FirebaseAdmin) Send(pn *FirebasePushNotification) error {
-	if err := fa.Check(pn); err != nil {
-		return err
+func (fa FirebaseAdmin) Send(pn interface{}) error {
+	if !fa.Check(pn) {
+		return errors.New("invalid push notification")
 	}
-	switch pn.Common.Platform {
+	fpn := pn.(FirebasePushNotification)
+	switch fpn.Common.Platform {
 	case PlatformAndroid:
-		if pn.Android == nil {
+		if fpn.Android == nil {
 			return errors.New("android config must be set")
 		}
 	case PlatformIos:
-		if pn.APNS == nil {
+		if fpn.APNS == nil {
 			return errors.New("ios config must be set")
 		}
 	case PlatformWeb:
-		if pn.Webpush == nil {
+		if fpn.Webpush == nil {
 			return errors.New("web config must be set")
 		}
 	case PlatformAll:
@@ -122,10 +136,10 @@ func (fa *FirebaseAdmin) Send(pn *FirebasePushNotification) error {
 		return errors.New("invalid or unsupported platform")
 	}
 
-	return fa.send(pn)
+	return fa.send(&fpn)
 }
 
-func (fa *FirebaseAdmin) send(pn *FirebasePushNotification) error {
+func (fa FirebaseAdmin) send(pn *FirebasePushNotification) error {
 	client, err := fa.getMessagingClient()
 	if err != nil {
 		return err
@@ -137,14 +151,14 @@ func (fa *FirebaseAdmin) send(pn *FirebasePushNotification) error {
 }
 
 // Check checks a firebase push notification format
-func (fa *FirebaseAdmin) Check(pn *FirebasePushNotification) error {
-	return nil
+func (fa FirebaseAdmin) Check(notification interface{}) bool {
+	return true
 }
 
 // handlers
 
 // HandleEthereum handles an Ethereum event
-func (fa *FirebaseAdmin) HandleEthereum(event *ethtypes.Log, e *ethevents.EthereumEvents) error {
+func (fa FirebaseAdmin) HandleEthereum(event *ethtypes.Log, e *ethevents.EthereumEvents) error {
 	var err error
 	var notification *FirebasePushNotification
 	switch event.Topics[0].Hex() {
@@ -165,7 +179,7 @@ func (fa *FirebaseAdmin) HandleEthereum(event *ethtypes.Log, e *ethevents.Ethere
 	return nil
 }
 
-func (fa *FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
+func (fa FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
 	// get process metadata
 	processTx, err := ProcessMeta(&e.ContractABI, event.Data, e.ProcessHandle)
 	if err != nil {
@@ -192,12 +206,22 @@ func (fa *FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *etheve
 	return notification, nil
 }
 
-func (fa *FirebaseAdmin) handleEthereumResultsPublished(event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
+func (fa FirebaseAdmin) handleEthereumResultsPublished(event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
 	return nil, nil
 }
 
 // HandleIPFS handles an IPFS file content change
-func (fa *FirebaseAdmin) HandleIPFS() error {
+func (fa FirebaseAdmin) HandleIPFS() error {
+	return nil
+}
+
+func (fa FirebaseAdmin) Enqueue(notification interface{}) error {
+	return nil
+}
+func (fa FirebaseAdmin) Dequeue(notification interface{}) error {
+	return nil
+}
+func (fa FirebaseAdmin) Queue() interface{} {
 	return nil
 }
 
