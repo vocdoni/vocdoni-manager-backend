@@ -79,7 +79,7 @@ func (t *TokenAPI) getSecret(entityID []byte) (string, error) {
 func (t *TokenAPI) revoke(request router.RouterRequest) {
 	if len(request.EntityID) == 0 {
 		log.Warnf("trying to revoke token %q for null entity %s", request.Token, request.EntityID)
-		t.Router.SendError(request, "invalid entity id")
+		t.Router.SendError(request, "invalid entityId")
 		return
 
 	}
@@ -139,14 +139,14 @@ func (t *TokenAPI) status(request router.RouterRequest) {
 
 	if len(request.EntityID) == 0 {
 		log.Warnf("trying to revoke token %q for null entity %s", request.Token, request.EntityID)
-		t.Router.SendError(request, "invalid entity id")
+		t.Router.SendError(request, "invalid entityId")
 		return
 
 	}
 	// check entityId exists
 	entityID, err := hex.DecodeString(util.TrimHex(request.EntityID))
 	if err != nil {
-		log.Warnf("trying to revoke token %q but cannot decode entityId %q : (%v)", request.Token, request.EntityID, err)
+		log.Warnf("trying retrieve status of token %q but cannot decode entityId %q : (%v)", request.Token, request.EntityID, err)
 		t.Router.SendError(request, "invalid entityId")
 		return
 	}
@@ -211,7 +211,7 @@ func (t *TokenAPI) generate(request router.RouterRequest) {
 
 	if len(request.EntityID) == 0 {
 		log.Warnf("trying to generate tokens for null entity %s", request.EntityID)
-		t.Router.SendError(request, "invalid entity id")
+		t.Router.SendError(request, "invalid entityId")
 		return
 
 	}
