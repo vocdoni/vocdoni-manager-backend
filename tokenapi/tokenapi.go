@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
+	"gitlab.com/vocdoni/go-dvote/net"
 	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/manager/manager-backend/database"
 	"gitlab.com/vocdoni/manager/manager-backend/router"
@@ -33,7 +34,17 @@ func NewTokenAPI(r *router.Router, d database.Database, ma *metrics.Agent) *Toke
 
 // RegisterMethods registers all tokenAPI methods behind the given path
 func (t *TokenAPI) RegisterMethods(path string) error {
-	t.Router.Transport.AddNamespace(path + "/token")
+	var transport net.Transport
+	if tr, ok := t.Router.Transports["http"]; ok {
+		transport = tr
+	} else if tr, ok = t.Router.Transports["ws"]; ok {
+		transport = tr
+	} else {
+		return fmt.Errorf("no compatible transports found (ws or http)")
+	}
+
+	log.Infof("adding namespace token %s", path+"/token")
+	transport.AddNamespace(path + "/token")
 	if err := t.Router.AddHandler("revoke", path+"/token", t.revoke, false, true); err != nil {
 		return err
 	}
@@ -46,8 +57,12 @@ func (t *TokenAPI) RegisterMethods(path string) error {
 	return nil
 }
 
-func (t *TokenAPI) send(req router.RouterRequest, resp types.MetaResponse) {
-	t.Router.Transport.Send(t.Router.BuildReply(req, resp))
+func (t *TokenAPI) send(req *router.RouterRequest, resp *types.MetaResponse) {
+	if req == nil || req.MessageContext == nil || resp == nil {
+		log.Errorf("message context or request is nil, cannot send reply message")
+		return
+	}
+	req.Send(t.Router.BuildReply(req, resp))
 }
 
 func checkAuth(fields []string, timestamp int32, auth string) bool {
@@ -131,7 +146,7 @@ func (t *TokenAPI) revoke(request router.RouterRequest) {
 
 	log.Infof("deleted member with token (%q) for entity (%s)", request.Token, request.EntityID)
 	var resp types.MetaResponse
-	t.send(request, resp)
+	t.send(&request, &resp)
 }
 
 func (t *TokenAPI) status(request router.RouterRequest) {
@@ -191,19 +206,19 @@ func (t *TokenAPI) status(request router.RouterRequest) {
 		}
 		log.Warnf("database error: trying to get status for token (%q) for entity (%q): (%v)", request.Token, request.EntityID, err)
 		resp.TokenStatus = "invalid"
-		t.send(request, resp)
+		t.send(&request, &resp)
 		return
 	}
 
 	if len(hex.EncodeToString(member.PubKey)) != ethereum.PubKeyLength {
 		log.Debugf("status for member with token (%q) for entity (%s): ", request.Token, request.EntityID)
 		resp.TokenStatus = "available"
-		t.send(request, resp)
+		t.send(&request, &resp)
 		return
 	}
 
 	resp.TokenStatus = "registered"
-	t.send(request, resp)
+	t.send(&request, &resp)
 }
 
 func (t *TokenAPI) generate(request router.RouterRequest) {
@@ -261,5 +276,5 @@ func (t *TokenAPI) generate(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q generateTokens: %d tokens", request.SignaturePublicKey, len(response.Tokens))
-	t.send(request, response)
+	t.send(&request, &response)
 }

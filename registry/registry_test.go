@@ -50,11 +50,22 @@ func TestRegisterMethods(t *testing.T) {
 	// create router channel
 	listenerOutput := make(chan gtypes.Message)
 	// create ws
-	ws := new(net.WebsocketHandle)
-	ws.Init(new(gtypes.Connection))
-	ws.SetProxy(pxy)
+	//ws := new(net.WebsocketHandle)
+	//ws.Init(new(gtypes.Connection))
+	//ws.SetProxy(pxy)
+	// create http
+	http := new(net.HttpHandler)
+	if err := http.Init(new(gtypes.Connection)); err != nil {
+		t.Fatalf("cannot start http handler: (%s)", err)
+	}
+	http.SetProxy(pxy)
+	go http.Listen(listenerOutput)
+	// create transports map
+	ts := make(map[string]net.Transport)
+	//ts["ws"] = ws
+	ts["http"] = http
 	// init router
-	r := router.InitRouter(listenerOutput, ws, signer)
+	r := router.InitRouter(listenerOutput, ts, signer)
 	// create database
 	db, err := testdb.New()
 	if err != nil {
@@ -79,7 +90,7 @@ func TestRegister(t *testing.T) {
 	s := ethereum.NewSignKeys()
 	s.Generate()
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
+	conn, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -92,7 +103,7 @@ func TestRegister(t *testing.T) {
 		Email: "info@vocdoni.io",
 	}
 	// make request
-	resp := wsc.Request(req, s)
+	resp := conn.Request(req, s)
 	// check register went successful
 	if !resp.Ok {
 		t.Fatal(err)
@@ -108,7 +119,7 @@ func TestRegister(t *testing.T) {
 		Email: "info@vocdoni.io",
 	}
 	// make request
-	resp2 := wsc.Request(req2, s2)
+	resp2 := conn.Request(req2, s2)
 	// check register went successful
 	if !resp2.Ok {
 		t.Fatal(err)
@@ -121,7 +132,7 @@ func TestRegister(t *testing.T) {
 		Email: "info@vocdoni.io",
 	}
 	// make request
-	resp = wsc.Request(req, s)
+	resp = conn.Request(req, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if invalid entityID")
@@ -135,7 +146,7 @@ func TestRegister(t *testing.T) {
 		Email: "fail@fail.fail",
 	}
 	// make request
-	resp = wsc.Request(req4, s)
+	resp = conn.Request(req4, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if add member fails")
@@ -149,7 +160,7 @@ func TestRegister(t *testing.T) {
 		Email: "info@vocdoni.io",
 	}
 	// make request
-	resp = wsc.Request(req7, s)
+	resp = conn.Request(req7, s)
 	// check register went successful
 	if resp.Ok {
 		t.Fatal("should fail if entity does not exist")
@@ -179,7 +190,7 @@ func TestRegister(t *testing.T) {
 		Email: "info@vocdoni.io",
 	}
 	// make request
-	resp = wsc.Request(req9, constSigner)
+	resp = conn.Request(req9, constSigner)
 	// check register went successful
 	if !resp.Ok {
 		t.Fatal("should create user")
@@ -229,7 +240,7 @@ func TestStatus(t *testing.T) {
 	// generate signing keys
 	s.Generate()
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
+	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -301,7 +312,7 @@ func TestSubscribe(t *testing.T) {
 	// generate signing keys
 	s.Generate()
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
+	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -318,7 +329,7 @@ func TestUnsubscribe(t *testing.T) {
 	// generate signing keys
 	s.Generate()
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
+	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)

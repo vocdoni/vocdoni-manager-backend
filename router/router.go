@@ -24,37 +24,37 @@ type registeredMethod struct {
 
 type RouterRequest struct {
 	types.MetaRequest
+	dvote.MessageContext
 
 	method             string
 	id                 string
 	Authenticated      bool
 	Address            ethcommon.Address
 	SignaturePublicKey string
-	Context            dvote.MessageContext
 	private            bool
 }
 
 // Router holds a router object
 type Router struct {
-	Transport net.Transport
-	methods   map[string]registeredMethod
-	inbound   <-chan dvote.Message
-	signer    *ethereum.SignKeys
+	Transports map[string]net.Transport
+	methods    map[string]registeredMethod
+	inbound    <-chan dvote.Message
+	signer     *ethereum.SignKeys
 }
 
 // NewRouter creates a router multiplexer instance
-func NewRouter(inbound <-chan dvote.Message, transport net.Transport, signer *ethereum.SignKeys) *Router {
+func NewRouter(inbound <-chan dvote.Message, transports map[string]net.Transport, signer *ethereum.SignKeys) *Router {
 	r := new(Router)
 	r.methods = make(map[string]registeredMethod)
 	r.inbound = inbound
-	r.Transport = transport
+	r.Transports = transports
 	r.signer = signer
 	return r
 }
 
 // InitRouter sets up a Router object which can then be used to route requests
-func InitRouter(inbound <-chan dvote.Message, transport net.Transport, signer *ethereum.SignKeys) *Router {
-	return NewRouter(inbound, transport, signer)
+func InitRouter(inbound <-chan dvote.Message, transports map[string]net.Transport, signer *ethereum.SignKeys) *Router {
+	return NewRouter(inbound, transports, signer)
 }
 
 // AddHandler adds a new function handler for serving a specific method identified by name
@@ -98,7 +98,7 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 		return request, err
 	}
 	request.id = reqOuter.ID
-	request.Context = context
+	request.MessageContext = context
 
 	var reqInner types.MetaRequest
 	if err := json.Unmarshal(reqOuter.MetaRequest, &reqInner); err != nil {
@@ -146,7 +146,7 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 	return request, err
 }
 
-func (r *Router) BuildReply(request RouterRequest, resp types.MetaResponse) dvote.Message {
+func (r *Router) BuildReply(request *RouterRequest, resp *types.MetaResponse) dvote.Message {
 	// Add any last fields to the inner response, and marshal it with sorted
 	// fields for signing.
 	resp.Ok = true
@@ -159,7 +159,7 @@ func (r *Router) BuildReply(request RouterRequest, resp types.MetaResponse) dvot
 		log.Error(err)
 		return dvote.Message{
 			TimeStamp: int32(time.Now().Unix()),
-			Context:   request.Context,
+			Context:   request.MessageContext,
 			Data:      []byte(err.Error()),
 		}
 	}
@@ -187,14 +187,14 @@ func (r *Router) BuildReply(request RouterRequest, resp types.MetaResponse) dvot
 		log.Error(err)
 		return dvote.Message{
 			TimeStamp: int32(time.Now().Unix()),
-			Context:   request.Context,
+			Context:   request.MessageContext,
 			Data:      []byte(err.Error()),
 		}
 	}
 	log.Debugf("response: %s", respData)
 	return dvote.Message{
 		TimeStamp: int32(time.Now().Unix()),
-		Context:   request.Context,
+		Context:   request.MessageContext,
 		Data:      respData,
 	}
 }
@@ -243,16 +243,16 @@ func (r *Router) SendError(request RouterRequest, errMsg string) {
 		Signature:    signature,
 		MetaResponse: respInner,
 	}
-	if request.Context != nil {
+	if request.MessageContext != nil {
 		data, err := json.Marshal(respOuter)
 		if err != nil {
 			log.Warnf("error marshaling response body: %s", err)
 		}
 		msg := dvote.Message{
 			TimeStamp: int32(time.Now().Unix()),
-			Context:   request.Context,
+			Context:   request.MessageContext,
 			Data:      data,
 		}
-		r.Transport.Send(msg)
+		request.Send(msg)
 	}
 }

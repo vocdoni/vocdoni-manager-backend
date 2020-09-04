@@ -1,10 +1,13 @@
 package testcommon
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"testing"
 	"time"
 
@@ -17,20 +20,36 @@ import (
 
 // APIConnection holds an API websocket connection
 type APIConnection struct {
-	tb   testing.TB
-	Conn *websocket.Conn
+	tb      testing.TB
+	WS      *websocket.Conn
+	HTTP    *http.Client
+	Address string
 }
 
 // NewAPIConnection starts a connection with the given endpoint address. The
 // connection is closed automatically when the test or benchmark finishes.
 func NewAPIConnection(addr string, tb testing.TB) (*APIConnection, error) {
-	r := &APIConnection{tb: tb}
+	r := &APIConnection{tb: tb, Address: addr}
 	var err error
-	r.Conn, _, err = websocket.Dial(context.TODO(), addr, nil)
+	r.WS, _, err = websocket.Dial(context.TODO(), addr, nil)
 	if err != nil {
 		return nil, err
 	}
-	r.tb.Cleanup(func() { r.Conn.Close(websocket.StatusNormalClosure, "") })
+	r.tb.Cleanup(func() { r.WS.Close(websocket.StatusNormalClosure, "") })
+	return r, nil
+}
+
+// NewHTTPapiConnection starts a connection with the given endpoint address. The
+// connection is closed automatically when the test or benchmark finishes.
+func NewHTTPapiConnection(addr string, tb testing.TB) (*APIConnection, error) {
+	tr := &http.Transport{
+		MaxIdleConns:       10,
+		IdleConnTimeout:    10 * time.Second,
+		DisableCompression: true,
+	}
+	r := &APIConnection{tb: tb, Address: addr, HTTP: &http.Client{Transport: tr, Timeout: time.Second * 2}}
+
+	r.tb.Cleanup(func() { r.HTTP.CloseIdleConnections() })
 	return r, nil
 }
 
@@ -63,12 +82,26 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	}
 
 	log.Infof("request: %s", reqBody)
-	if err := r.Conn.Write(context.TODO(), websocket.MessageText, reqBody); err != nil {
-		r.tb.Fatalf("%s: %v", method, err)
+	var message []byte
+	if r.WS != nil {
+		if err := r.WS.Write(context.TODO(), websocket.MessageText, reqBody); err != nil {
+			r.tb.Fatalf("%s: %v", method, err)
+		}
+		_, message, err = r.WS.Read(context.TODO())
+		if err != nil {
+			r.tb.Fatalf("%s: %v", method, err)
+		}
 	}
-	_, message, err := r.Conn.Read(context.TODO())
-	if err != nil {
-		r.tb.Fatalf("%s: %v", method, err)
+	if r.HTTP != nil {
+		resp, err := r.HTTP.Post(r.Address, "application/json", bytes.NewBuffer(reqBody))
+		if err != nil {
+			r.tb.Fatalf("%s: %v", method, err)
+		}
+		message, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			r.tb.Fatalf("%s: %v", method, err)
+		}
+		resp.Body.Close()
 	}
 	log.Infof("response: %s", message)
 	var respOuter types.ResponseMessage

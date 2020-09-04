@@ -32,9 +32,18 @@ func NewEndpoint(cfg *config.Manager, signer *ethereum.SignKeys) (*EndPoint, err
 	ws := new(net.WebsocketHandle)
 	ws.Init(new(types.Connection))
 	ws.SetProxy(pxy)
+
+	http := new(net.HttpHandler)
+	http.Init(new(types.Connection))
+	http.SetProxy(pxy)
+
 	listenerOutput := make(chan types.Message)
 	go ws.Listen(listenerOutput)
-	r := router.InitRouter(listenerOutput, ws, signer)
+	go http.Listen(listenerOutput)
+	transportMap := make(map[string]net.Transport)
+	transportMap["ws"] = ws
+	transportMap["http"] = http
+	r := router.InitRouter(listenerOutput, transportMap, signer)
 	var ma *metrics.Agent
 	if cfg.Metrics != nil && cfg.Metrics.Enabled {
 		ma = metrics.NewAgent("/metrics", time.Second*time.Duration(cfg.Metrics.RefreshInterval), pxy)

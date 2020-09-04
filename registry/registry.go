@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
+	"gitlab.com/vocdoni/go-dvote/net"
 	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/manager/manager-backend/database"
 	"gitlab.com/vocdoni/manager/manager-backend/router"
@@ -34,7 +35,17 @@ func NewRegistry(r *router.Router, d database.Database, ma *metrics.Agent) *Regi
 
 // RegisterMethods registers all registry methods behind the given path
 func (r *Registry) RegisterMethods(path string) error {
-	r.Router.Transport.AddNamespace(path + "/registry")
+	var transport net.Transport
+	if t, ok := r.Router.Transports["http"]; ok {
+		transport = t
+	} else if t, ok = r.Router.Transports["ws"]; ok {
+		transport = t
+	} else {
+		return fmt.Errorf("no compatible transports found (ws or http)")
+	}
+
+	log.Infof("adding namespace registry %s", path+"/registry")
+	transport.AddNamespace(path + "/registry")
 	if err := r.Router.AddHandler("register", path+"/registry", r.register, false, false); err != nil {
 		return err
 	}
@@ -57,8 +68,12 @@ func (r *Registry) RegisterMethods(path string) error {
 	return nil
 }
 
-func (r *Registry) send(req router.RouterRequest, resp types.MetaResponse) {
-	r.Router.Transport.Send(r.Router.BuildReply(req, resp))
+func (r *Registry) send(req *router.RouterRequest, resp *types.MetaResponse) {
+	if req == nil || req.MessageContext == nil || resp == nil {
+		log.Errorf("message context or request is nil, cannot send reply message")
+		return
+	}
+	req.Send(r.Router.BuildReply(req, resp))
 }
 
 func (r *Registry) register(request router.RouterRequest) {
@@ -97,7 +112,7 @@ func (r *Registry) register(request router.RouterRequest) {
 	member = &types.Member{ID: uid, PubKey: user.PubKey, EntityID: entityID, MemberInfo: *request.MemberInfo}
 
 	log.Infof("new member added %+v for entity %s", *member, request.EntityID)
-	r.send(request, response)
+	r.send(&request, &response)
 
 	// increase stats counter
 	RegistryRequests.With(prometheus.Labels{"method": "register_success"}).Inc()
@@ -225,7 +240,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	}
 
 	log.Infof("token %s validated for Entity %x", request.Token, entityID)
-	r.send(request, response)
+	r.send(&request, &response)
 
 	// increase stats counter
 	RegistryRequests.With(prometheus.Labels{"method": "validateToken_sucess"}).Inc()
@@ -290,7 +305,7 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 				NeedsUpdate: false,
 			}
 			RegistryRequests.With(prometheus.Labels{"method": "status_not_registered"}).Inc()
-			r.Router.Transport.Send(r.Router.BuildReply(request, response))
+			request.Send(r.Router.BuildReply(&request, &response))
 			return
 		}
 		log.Warn(err)
@@ -306,7 +321,7 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 			NeedsUpdate: false,
 		}
 	}
-	r.Router.Transport.Send(r.Router.BuildReply(request, response))
+	request.Send(r.Router.BuildReply(&request, &response))
 }
 
 func (r *Registry) subscribe(request router.RouterRequest) {
@@ -379,7 +394,7 @@ func (r *Registry) subscribe(request router.RouterRequest) {
 		// already subscribed
 		r.Router.SendError(request, "already subscribed")
 	*/
-	r.send(request, types.MetaResponse{Ok: true})
+	r.send(&request, &types.MetaResponse{Ok: true})
 }
 
 func (r *Registry) unsubscribe(request router.RouterRequest) {
@@ -445,12 +460,12 @@ func (r *Registry) unsubscribe(request router.RouterRequest) {
 		// not subscribed
 		r.Router.SendError(request, "not subscribed")
 	*/
-	r.send(request, types.MetaResponse{Ok: true})
+	r.send(&request, &types.MetaResponse{Ok: true})
 }
 
 func (r *Registry) listSubscriptions(request router.RouterRequest) {
 	var response types.MetaResponse
-	r.Router.Transport.Send(r.Router.BuildReply(request, response))
+	request.Send(r.Router.BuildReply(&request, &response))
 }
 
 // ===== helpers =======

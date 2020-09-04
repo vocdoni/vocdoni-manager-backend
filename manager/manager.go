@@ -14,6 +14,7 @@ import (
 
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
+	"gitlab.com/vocdoni/go-dvote/net"
 	dvoteUtil "gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/manager/manager-backend/database"
 	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
@@ -34,7 +35,17 @@ func NewManager(r *router.Router, d database.Database) *Manager {
 
 // RegisterMethods registers all registry methods behind the given path
 func (m *Manager) RegisterMethods(path string) error {
-	m.Router.Transport.AddNamespace(path + "/manager")
+	var transport net.Transport
+	if t, ok := m.Router.Transports["ws"]; ok {
+		transport = t
+	} else if t, ok = m.Router.Transports["http"]; ok {
+		transport = t
+	} else {
+		return fmt.Errorf("no compatible transports found (ws or http)")
+	}
+
+	log.Infof("adding namespace manager %s", path+"/manager")
+	transport.AddNamespace(path + "/manager")
 	if err := m.Router.AddHandler("signUp", path+"/manager", m.signUp, false, false); err != nil {
 		return err
 	}
@@ -92,8 +103,12 @@ func (m *Manager) RegisterMethods(path string) error {
 	return nil
 }
 
-func (m *Manager) send(req router.RouterRequest, resp types.MetaResponse) {
-	m.Router.Transport.Send(m.Router.BuildReply(req, resp))
+func (m *Manager) send(req *router.RouterRequest, resp *types.MetaResponse) {
+	if req == nil || req.MessageContext == nil || resp == nil {
+		log.Errorf("message context or request is nil, cannot send reply message")
+		return
+	}
+	req.Send(m.Router.BuildReply(req, resp))
 }
 
 func (m *Manager) signUp(request router.RouterRequest) {
@@ -147,7 +162,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q signUp", request.SignaturePublicKey)
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) listMembers(request router.RouterRequest) {
@@ -188,7 +203,7 @@ func (m *Manager) listMembers(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q listMembers", request.SignaturePublicKey)
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) getMember(request router.RouterRequest) {
@@ -242,7 +257,7 @@ func (m *Manager) getMember(request router.RouterRequest) {
 	}
 
 	log.Infof("listing member %q for Entity with public Key %s", request.MemberID.String(), request.SignaturePublicKey)
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) updateMember(request router.RouterRequest) {
@@ -275,7 +290,7 @@ func (m *Manager) updateMember(request router.RouterRequest) {
 	}
 
 	log.Infof("update member %q for Entity with public Key %s", request.Member.ID.String(), request.SignaturePublicKey)
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) deleteMember(request router.RouterRequest) {
@@ -308,7 +323,7 @@ func (m *Manager) deleteMember(request router.RouterRequest) {
 	}
 
 	log.Infof("deleted member %q for Entity with public Key %s", request.MemberID.String(), request.SignaturePublicKey)
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) countMembers(request router.RouterRequest) {
@@ -337,7 +352,7 @@ func (m *Manager) countMembers(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity %q countMembers: %d members", request.SignaturePublicKey, response.Count)
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) generateTokens(request router.RouterRequest) {
@@ -377,7 +392,7 @@ func (m *Manager) generateTokens(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q generateTokens: %d tokens", request.SignaturePublicKey, len(response.Tokens))
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) exportTokens(request router.RouterRequest) {
@@ -416,7 +431,7 @@ func (m *Manager) exportTokens(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q exportTokens: %d tokens", request.SignaturePublicKey, len(members))
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) importMembers(request router.RouterRequest) {
@@ -456,7 +471,7 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q importMembers: %d members", request.SignaturePublicKey, len(request.MembersInfo))
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) countTargets(request router.RouterRequest) {
@@ -485,7 +500,7 @@ func (m *Manager) countTargets(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity %q countTargets: %d targets", request.SignaturePublicKey, response.Count)
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) listTargets(request router.RouterRequest) {
@@ -528,7 +543,7 @@ func (m *Manager) listTargets(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q listTargets: %d targets", request.SignaturePublicKey, len(response.Targets))
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) getTarget(request router.RouterRequest) {
@@ -569,7 +584,7 @@ func (m *Manager) getTarget(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q getTarget: %s", request.SignaturePublicKey, request.TargetID.String())
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) dumpTarget(request router.RouterRequest) {
@@ -616,7 +631,7 @@ func (m *Manager) dumpTarget(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q dumpTarget: %d claims", request.SignaturePublicKey, len(response.Claims))
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) addCensus(request router.RouterRequest) {
@@ -666,7 +681,7 @@ func (m *Manager) addCensus(request router.RouterRequest) {
 
 	log.Debugf("Entity: %q addCensus: %s  %d members", request.SignaturePublicKey, request.CensusID, size)
 	log.Infof("addCensus")
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) getCensus(request router.RouterRequest) {
@@ -722,7 +737,7 @@ func (m *Manager) getCensus(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q getCensus:%s", request.SignaturePublicKey, request.CensusID)
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) countCensus(request router.RouterRequest) {
@@ -751,7 +766,7 @@ func (m *Manager) countCensus(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity %q countCensus: %d censuses", request.SignaturePublicKey, response.Count)
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) listCensus(request router.RouterRequest) {
@@ -794,7 +809,7 @@ func (m *Manager) listCensus(request router.RouterRequest) {
 		return
 	}
 	log.Debugf("Entity: %q listCensuses: %d censuses", request.SignaturePublicKey, len(response.Censuses))
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func (m *Manager) deleteCensus(request router.RouterRequest) {
@@ -838,7 +853,7 @@ func (m *Manager) deleteCensus(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %x deleteCensus:%s", entityID, request.CensusID)
-	m.send(request, response)
+	m.send(&request, &response)
 }
 
 func checkOptions(filter *types.ListOptions, method string) error {

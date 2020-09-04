@@ -15,10 +15,10 @@ echo "### Waiting for API to be ready"
 sleep 5
 
 echo "### Running tests ###"
-docker-compose run test timeout 300 ./managertest --host ws://dvotemanager:8000/api/registry --method=generateTokens --usersNumber=500 --logLevel=info
+docker-compose run test timeout 300 ./managertest --host dvotemanager:8000 --method=generateTokens --usersNumber=500 --logLevel=info
 grab "$?"
 
-docker-compose run test timeout 300 ./managertest --host ws://dvotemanager:8000/api/registry --method=registrationFlow --usersNumber=500 --logLevel=info
+docker-compose run test timeout 300 ./managertest --host dvotemanager:8000 --method=registrationFlow --usersNumber=500 --logLevel=info
 grab "$?"
 
 echo "### Post run logs ###"

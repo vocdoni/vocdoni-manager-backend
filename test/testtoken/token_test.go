@@ -55,7 +55,7 @@ func TestAuthentication(t *testing.T) {
 		t.Fatalf("cannot create uuids: %s", err)
 	}
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/token", api.Port), t)
+	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -120,7 +120,7 @@ func TestAuthentication(t *testing.T) {
 
 func TestGenerate(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/token", api.Port), t)
+	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -167,7 +167,7 @@ func TestStatus(t *testing.T) {
 		t.Fatalf("cannot create uuids: %s", err)
 	}
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/token", api.Port), t)
+	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -303,7 +303,7 @@ func TestRevoke(t *testing.T) {
 		t.Fatalf("cannot create uuids: %s", err)
 	}
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/token", api.Port), t)
+	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)

@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/badoux/checkmail v0.0.0-20181210160741-9661bd69e9ad
+	github.com/ethereum/go-ethereum v1.9.15
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
@@ -17,9 +18,8 @@ require (
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
-	gitlab.com/vocdoni/go-dvote v0.1.1-0.20200729090232-521c7ff7fd6a
+	gitlab.com/vocdoni/go-dvote v0.1.1-0.20200903151104-c0d895d669af
 	golang.org/x/mod v0.3.0 // indirect
 	golang.org/x/tools v0.0.0-20200617042924-7f3f4b10a808 // indirect
 	nhooyr.io/websocket v1.8.6
-	github.com/ethereum/go-ethereum v1.9.15
 )

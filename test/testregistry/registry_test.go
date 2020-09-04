@@ -55,7 +55,7 @@ func TestRegister(t *testing.T) {
 		t.Fatalf("cannot create members: %s", err)
 	}
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
+	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -186,7 +186,7 @@ func TestValidateToken(t *testing.T) {
 	}
 
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
+	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -347,7 +347,7 @@ func TestStatus(t *testing.T) {
 		t.Fatalf("cannot create members: %s", err)
 	}
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/registry", api.Port), t)
+	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)

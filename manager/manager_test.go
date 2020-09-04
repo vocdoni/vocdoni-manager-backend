@@ -51,8 +51,17 @@ func TestRegisterMethods(t *testing.T) {
 	ws := new(net.WebsocketHandle)
 	ws.Init(new(gtypes.Connection))
 	ws.SetProxy(pxy)
+	// create http
+	//http := new(net.HttpHandler)
+	//http.Init(new(gtypes.Connection))
+	//http.SetProxy(pxy)
+	//go http.Listen(listenerOutput)
+	// create transports map
+	ts := make(map[string]net.Transport)
+	ts["ws"] = ws
+	//ts["http"] = http
 	// init router
-	r := router.InitRouter(listenerOutput, ws, signer)
+	r := router.InitRouter(listenerOutput, ts, signer)
 	// create database
 	db, err := testdb.New()
 	if err != nil {
