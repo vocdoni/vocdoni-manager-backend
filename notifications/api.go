@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	"firebase.google.com/go/auth"
-	finternal "firebase.google.com/go/v4/internal"
+	"firebase.google.com/go/v4/errorutils"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/metrics"
+	"gitlab.com/vocdoni/go-dvote/net"
 	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/manager/manager-backend/router"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
@@ -32,7 +33,16 @@ func NewNotificationAPI(r *router.Router, pn PushNotifier, ma *metrics.Agent) *N
 
 // RegisterMethods registers all registry methods behind the given path
 func (n *NotificationAPI) RegisterMethods(path string) error {
-	n.Router.Transport.AddNamespace(path + "/notifications")
+	var transport net.Transport
+	if t, ok := n.Router.Transports["http"]; ok {
+		transport = t
+	} else if t, ok = n.Router.Transports["ws"]; ok {
+		transport = t
+	} else {
+		return fmt.Errorf("no compatible transports found (ws or http)")
+	}
+	log.Infof("adding namespace notifications %s", path+"/notifications")
+	transport.AddNamespace(path + "/notifications")
 	if err := n.Router.AddHandler("subscribe", path+"/notifications", n.subscribe, false, false); err != nil {
 		return err
 	}
@@ -43,8 +53,12 @@ func (n *NotificationAPI) RegisterMethods(path string) error {
 	return nil
 }
 
-func (n *NotificationAPI) send(req router.RouterRequest, resp types.MetaResponse) {
-	n.Router.Transport.Send(n.Router.BuildReply(req, resp))
+func (n *NotificationAPI) send(req *router.RouterRequest, resp *types.MetaResponse) {
+	if req == nil || req.MessageContext == nil || resp == nil {
+		log.Errorf("message context or request is nil, cannot send reply message")
+		return
+	}
+	req.Send(n.Router.BuildReply(req, resp))
 }
 
 func (n *NotificationAPI) subscribe(request router.RouterRequest) {
@@ -62,9 +76,14 @@ func (n *NotificationAPI) subscribe(request router.RouterRequest) {
 		// check user
 		if u, err := n.pn.GetUser(request.SignaturePublicKey); err != nil {
 			// if err is user not found continue, else return error
-			if err.(*finternal.FirebaseError).ErrorCode != finternal.NotFound {
+			if errorutils.IsInternal(err) || errorutils.IsUnknown(err) {
 				log.Warnf("cannot get user: %s", err)
 				n.Router.SendError(request, fmt.Sprintf("cannot get user: %s", err))
+				return
+			}
+			if errorutils.IsNotFound(err) {
+				log.Warn("user does not exist")
+				n.Router.SendError(request, "user does not exist")
 				return
 			}
 		} else {
@@ -120,7 +139,7 @@ func (n *NotificationAPI) subscribe(request router.RouterRequest) {
 
 		// send successful response
 		log.Infof("user: %s subscribed to entity: %s notifications", createdUser.(auth.UserRecord).UID, request.EntityID)
-		n.send(request, response)
+		n.send(&request, &response)
 	}
 }
 
@@ -138,11 +157,12 @@ func (n *NotificationAPI) unsubscribe(request router.RouterRequest) {
 		var ur *auth.UserRecord
 		if u, err := n.pn.GetUser(request.SignaturePublicKey); err != nil {
 			// if err is user not found continue, else return error
-			if err.(*finternal.FirebaseError).ErrorCode != finternal.NotFound {
+			if errorutils.IsInternal(err) || errorutils.IsUnknown(err) {
 				log.Warnf("cannot get user: %s", err)
 				n.Router.SendError(request, fmt.Sprintf("cannot get user: %s", err))
 				return
-			} else {
+			}
+			if errorutils.IsNotFound(err) {
 				log.Warn("user does not exist")
 				n.Router.SendError(request, "user does not exist")
 				return
@@ -175,6 +195,6 @@ func (n *NotificationAPI) unsubscribe(request router.RouterRequest) {
 
 		// send successful response
 		log.Infof("user: %s unsubscribed from entity: %s topic: %s notifications", ur.UID, request.EntityID, request.Topic)
-		n.send(request, types.MetaResponse{})
+		n.send(&request, &types.MetaResponse{})
 	}
 }
