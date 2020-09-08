@@ -3,10 +3,11 @@ package config
 import "gitlab.com/vocdoni/go-dvote/config"
 
 var Modes = map[string]bool{
-	"registry": true,
-	"manager":  true,
-	"token":    true,
-	"all":      true,
+	"registry":      true,
+	"manager":       true,
+	"token":         true,
+	"notifications": true,
+	"all":           true,
 }
 
 type Manager struct {

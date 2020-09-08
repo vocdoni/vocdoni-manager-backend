@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	firebase "firebase.google.com/go"
-	sdk "firebase.google.com/go"
 	"firebase.google.com/go/auth"
 	"firebase.google.com/go/messaging"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -19,7 +18,7 @@ import (
 
 // FirebaseAdmin wraps the firebase admin SDK App struct
 type FirebaseAdmin struct {
-	*sdk.App
+	*firebase.App
 	Client *auth.Client
 	Key    interface{}
 }
@@ -195,7 +194,7 @@ func (fa FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *etheven
 	// add notification fields
 	notification := &FirebasePushNotification{}
 	notification.Data = dataMap
-	notification.Topic = processTx.EntityID + "/votes"
+	notification.Topic = processTx.EntityID + "/" + defaultLang + "/votes"
 	notification.Notification.Title = "New process created"
 	notification.Notification.Body = fmt.Sprintf("Entity %s created a new process, click me for more details", processTx.EntityID)
 
@@ -206,9 +205,9 @@ func (fa FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *etheven
 	return notification, nil
 }
 
-func (fa FirebaseAdmin) handleEthereumResultsPublished(event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
-	return nil, nil
-}
+//func (fa FirebaseAdmin) handleEthereumResultsPublished(event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
+//	return nil, nil
+//}
 
 // HandleIPFS handles an IPFS file content change
 func (fa FirebaseAdmin) HandleIPFS() error {

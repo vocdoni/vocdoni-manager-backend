@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	flag "github.com/spf13/pflag"
@@ -195,7 +197,7 @@ func main() {
 	// ethereum sign key
 	signer := ethereum.NewSignKeys()
 	if err := signer.AddHexKey(cfg.Ethereum.SigningKey); err != nil {
-		log.Fatal(err)
+		log.Fatalf("invalid signing key: %s", err)
 	}
 
 	// create and init proxy
@@ -206,13 +208,13 @@ func main() {
 
 	// ethereum service
 	var node *chain.EthChainContext
-	if len(cfg.Notifications.FirebaseKeyFile) > 0 {
+	if cfg.Web3.W3External == "" {
 		node, err = service.Ethereum(cfg.Ethereum, cfg.Web3, ep.Proxy, signer, ep.MetricsAgent)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
-	// wait ethereum node to be ready
+	// wait ethereum node to be ready if local node
 	if !cfg.Ethereum.NoWaitSync {
 		requiredPeers := 2
 		if len(cfg.Web3.W3External) > 0 {
@@ -227,43 +229,68 @@ func main() {
 		}
 	}
 
-	// start notifications service
+	// init notifications service
 	var fa notifications.FirebaseAdmin
-	fa.Key = cfg.Notifications.FirebaseKeyFile
-	fa.Init()
+	if len(cfg.Notifications.FirebaseKeyFile) > 0 {
+		fa.Key = cfg.Notifications.FirebaseKeyFile
+		if err := fa.Init(); err != nil {
+			log.Fatalf("cannot init push notifications service: %s", err)
+		}
+	}
+	log.Info("push notifications service started")
 
 	// ethereum events service
-	if !cfg.Ethereum.NoWaitSync {
-		var evh []ethevents.EventHandler
-		var w3uri string
-		switch {
-		case cfg.Web3.W3External == "":
-			// If local ethereum node enabled, use the Go-Ethereum websockets endpoint
-			w3uri = "ws://" + net.JoinHostPort(cfg.Web3.RPCHost, fmt.Sprintf("%d", cfg.Web3.RPCPort))
-		case strings.HasPrefix(cfg.Web3.W3External, "ws"):
-			w3uri = cfg.Web3.W3External
-		case strings.HasSuffix(cfg.Web3.W3External, "ipc"):
-			w3uri = cfg.Web3.W3External
+	var evh []ethevents.EventHandler
+	var w3uri string
+	switch {
+	case cfg.Web3.W3External == "":
+		// If local ethereum node enabled, use the Go-Ethereum websockets endpoint
+		w3uri = "ws://" + net.JoinHostPort(cfg.Web3.RPCHost, fmt.Sprintf("%d", cfg.Web3.RPCPort))
+	case strings.HasPrefix(cfg.Web3.W3External, "ws"):
+		w3uri = cfg.Web3.W3External
+	case strings.HasSuffix(cfg.Web3.W3External, "ipc"):
+		w3uri = cfg.Web3.W3External
 
-		default:
-			log.Fatal("web3 external must be websocket or IPC for event subscription")
+	default:
+		log.Fatal("web3 external must be websocket or IPC for event subscription")
+	}
+
+	evh = append(evh, fa.HandleEthereum)
+
+	var initBlock *int64
+	if !cfg.EthereumEvents.SubscribeOnly {
+		initBlock = new(int64)
+		chainSpecs, err := chain.SpecsFor(cfg.Ethereum.ChainType)
+		if err != nil {
+			log.Warn("cannot get chain block to start looking for events, using 0")
+			*initBlock = 0
+		} else {
+			*initBlock = chainSpecs.StartingBlock
 		}
+	}
+	if err := service.EthEvents(cfg.Ethereum.ProcessDomain, w3uri, cfg.Ethereum.ChainType, initBlock, nil, signer, nil, evh); err != nil {
+		log.Fatal(err)
+	}
 
-		evh = append(evh, fa.HandleEthereum)
-
-		var initBlock *int64
-		if !cfg.EthereumEvents.SubscribeOnly {
-			initBlock = new(int64)
-			chainSpecs, err := chain.SpecsFor(cfg.Ethereum.ChainType)
-			if err != nil {
-				log.Warn("cannot get chain block to start looking for events, using 0")
-				*initBlock = 0
-			} else {
-				*initBlock = chainSpecs.StartingBlock
-			}
-		}
-		if err := service.EthEvents(cfg.Ethereum.ProcessDomain, w3uri, cfg.Ethereum.ChainType, initBlock, nil, signer, nil, evh); err != nil {
+	// start notifications API
+	if cfg.Mode == "notifications" || cfg.Mode == "all" {
+		log.Infof("enabling Notifications API methods")
+		notif := notifications.NewNotificationAPI(ep.Router, fa, ep.MetricsAgent)
+		if err := notif.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}
 	}
+
+	// Only start routing once we have registered all methods. Otherwise we
+	// have a data race.
+	go ep.Router.Route()
+
+	log.Info("startup complete")
+
+	// close if interrupt received
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
+	log.Warnf("received SIGTERM, exiting at %s", time.Now().Format(time.RFC850))
+	os.Exit(0)
 }
