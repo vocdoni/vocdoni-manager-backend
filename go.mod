@@ -3,7 +3,6 @@ module gitlab.com/vocdoni/manager/manager-backend
 go 1.14
 
 require (
-	firebase.google.com/go v3.13.0+incompatible
 	firebase.google.com/go/v4 v4.0.0
 	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/badoux/checkmail v0.0.0-20181210160741-9661bd69e9ad

@@ -18,7 +18,7 @@ import (
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/service"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
-	"gitlab.com/vocdoni/manager/manager-backend/notifications"
+	"gitlab.com/vocdoni/manager/manager-backend/notify"
 	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
 )
 
@@ -55,7 +55,8 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.DB.Dbname = *flag.String("dbName", "database", "DB database name")
 	cfg.DB.Sslmode = *flag.String("dbSslmode", "prefer", "DB postgres sslmode")
 	// notifications
-	cfg.Notifications.FirebaseKeyFile = *flag.String("firebaseKey", "", "firebase json file private key")
+	cfg.Notifications.KeyFile = *flag.String("pushNotificationsKeyFile", "", "path to notifications service private key file")
+	cfg.Notifications.Service = *flag.Int("pushNotificationsService", notify.Firebase, "push notifications service, 1: Firebase")
 	//ethereum node
 	cfg.Ethereum.SigningKey = *flag.String("ethSigningKey", "", "signing private Key (if not specified the Ethereum keystore will be used)")
 	cfg.Ethereum.ChainType = *flag.String("ethChain", "goerli", fmt.Sprintf("Ethereum blockchain to use: %s", chain.AvailableChains))
@@ -104,7 +105,8 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("db.dbName", flag.Lookup("dbName"))
 	viper.BindPFlag("db.sslMode", flag.Lookup("dbSslmode"))
 	// notifications
-	viper.BindPFlag("notifications.firebaseKeyFile", flag.Lookup("firebaseKey"))
+	viper.BindPFlag("notifications.pushNotificationsKeyFile", flag.Lookup("pushNotificationsKeyFile"))
+	viper.BindPFlag("notifications.pushNotificationsService", flag.Lookup("pushNotificationsService"))
 	// ethereum node
 	viper.Set("ethereum.datadir", cfg.DataDir+"/ethereum")
 	viper.BindPFlag("ethereum.signingKey", flag.Lookup("ethSigningKey"))
@@ -230,12 +232,20 @@ func main() {
 	}
 
 	// init notifications service
-	var fa notifications.FirebaseAdmin
-	if len(cfg.Notifications.FirebaseKeyFile) > 0 {
-		fa.Key = cfg.Notifications.FirebaseKeyFile
+	var fa notify.PushNotifier
+	if len(cfg.Notifications.KeyFile) > 0 {
+		switch cfg.Notifications.Service {
+		case notify.Firebase:
+			fa = notify.NewFirebaseAdmin(cfg.Notifications.KeyFile)
+		default:
+			log.Fatal("unsuported push notifications service")
+		}
+
 		if err := fa.Init(); err != nil {
 			log.Fatalf("cannot init push notifications service: %s", err)
 		}
+	} else {
+		log.Fatal("cannot start push notifications service without a key file")
 	}
 	log.Info("push notifications service started")
 
@@ -275,7 +285,7 @@ func main() {
 	// start notifications API
 	if cfg.Mode == "notifications" || cfg.Mode == "all" {
 		log.Infof("enabling Notifications API methods")
-		notif := notifications.NewNotificationAPI(ep.Router, fa, ep.MetricsAgent)
+		notif := notify.NewAPI(ep.Router, fa, ep.MetricsAgent)
 		if err := notif.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}

@@ -103,5 +103,6 @@ type MetricsCfg struct {
 }
 
 type Notifications struct {
-	FirebaseKeyFile string
+	Service int
+	KeyFile string
 }
