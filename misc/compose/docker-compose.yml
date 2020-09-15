@@ -28,7 +28,7 @@ services:
     <<: *log-config
 
   manager-backend:
-    image: vocdoni/manager-backend:latest
+    image: vocdoni/manager-backend:release-0.6
     build:
       context: ../../
     env_file:
@@ -70,7 +70,7 @@ services:
     <<: *log-config
 
   manager-frontend:
-    image: vocdoni/manager-frontend:latest
+    image: vocdoni/manager-frontend:release-0.6
     env_file:
       - env
     restart: "no"
