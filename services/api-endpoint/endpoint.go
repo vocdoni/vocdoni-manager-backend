@@ -29,20 +29,14 @@ func NewEndpoint(cfg *config.Manager, signer *ethereum.SignKeys) (*EndPoint, err
 	if err != nil {
 		return nil, err
 	}
-	ws := new(net.WebsocketHandle)
-	ws.Init(new(types.Connection))
-	ws.SetProxy(pxy)
-
-	http := new(net.HttpHandler)
-	http.Init(new(types.Connection))
-	http.SetProxy(pxy)
+	ts := new(net.HttpWsHandler)
+	ts.Init(new(types.Connection))
+	ts.SetProxy(pxy)
 
 	listenerOutput := make(chan types.Message)
-	go ws.Listen(listenerOutput)
-	go http.Listen(listenerOutput)
+	go ts.Listen(listenerOutput)
 	transportMap := make(map[string]net.Transport)
-	transportMap["ws"] = ws
-	transportMap["http"] = http
+	transportMap["httpws"] = ts
 	r := router.InitRouter(listenerOutput, transportMap, signer)
 	var ma *metrics.Agent
 	if cfg.Metrics != nil && cfg.Metrics.Enabled {

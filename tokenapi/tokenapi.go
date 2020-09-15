@@ -35,7 +35,9 @@ func NewTokenAPI(r *router.Router, d database.Database, ma *metrics.Agent) *Toke
 // RegisterMethods registers all tokenAPI methods behind the given path
 func (t *TokenAPI) RegisterMethods(path string) error {
 	var transport net.Transport
-	if tr, ok := t.Router.Transports["http"]; ok {
+	if tr, ok := t.Router.Transports["httpws"]; ok {
+		transport = tr
+	} else if tr, ok = t.Router.Transports["http"]; ok {
 		transport = tr
 	} else if tr, ok = t.Router.Transports["ws"]; ok {
 		transport = tr

@@ -36,10 +36,12 @@ func NewManager(r *router.Router, d database.Database) *Manager {
 // RegisterMethods registers all registry methods behind the given path
 func (m *Manager) RegisterMethods(path string) error {
 	var transport net.Transport
-	if t, ok := m.Router.Transports["ws"]; ok {
-		transport = t
-	} else if t, ok = m.Router.Transports["http"]; ok {
-		transport = t
+	if tr, ok := m.Router.Transports["httpws"]; ok {
+		transport = tr
+	} else if tr, ok = m.Router.Transports["ws"]; ok {
+		transport = tr
+	} else if tr, ok = m.Router.Transports["http"]; ok {
+		transport = tr
 	} else {
 		return fmt.Errorf("no compatible transports found (ws or http)")
 	}
