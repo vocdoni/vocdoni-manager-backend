@@ -28,7 +28,9 @@ func NewAPI(r *router.Router, pn PushNotifier, ma *metrics.Agent) *API {
 // RegisterMethods registers all registry methods behind the given path
 func (n *API) RegisterMethods(path string) error {
 	var transport net.Transport
-	if t, ok := n.Router.Transports["http"]; ok {
+	if t, ok := n.Router.Transports["httpws"]; ok {
+		transport = t
+	} else if t, ok = n.Router.Transports["http"]; ok {
 		transport = t
 	} else if t, ok = n.Router.Transports["ws"]; ok {
 		transport = t
