@@ -149,6 +149,10 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		m.Router.SendError(request, "cannot add entity to the DB")
 	}
 	entityInfo = &types.EntityInfo{Address: entityAddressBytes, CensusManagersAddresses: [][]byte{entityAddressBytes}, Origins: []types.Origin{types.Token}}
+	if len(request.EntityName) > 0 {
+		entityInfo.Name = request.EntityName
+	}
+
 	// Add Entity
 	if err = m.db.AddEntity(entityID, entityInfo); err != nil {
 		log.Errorf("cannot add entity %q to the DB: (%v)", request.SignaturePublicKey, err)
