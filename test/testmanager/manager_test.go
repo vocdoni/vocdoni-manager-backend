@@ -51,13 +51,13 @@ func TestSignUp(t *testing.T) {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// create entity
-	signers, entities := testcommon.CreateEntities(1)
-	// create and make request
+	signers, entities := testcommon.CreateEntities(2)
+	// create and make simple request
 	var req types.MetaRequest
 	req.Method = "signUp"
 	resp := wsc.Request(req, signers[0])
 	if !resp.Ok {
-		t.Fatalf("request failed: %+v", req)
+		t.Fatalf("entity singup without data failed: %+v", req)
 	}
 	// cannot add twice
 	resp2 := wsc.Request(req, signers[0])
@@ -67,6 +67,24 @@ func TestSignUp(t *testing.T) {
 
 	if targets, err := api.DB.ListTargets(entities[0].ID); err != nil || len(targets) != 1 {
 		t.Fatal("entities \"all\" automatically created target could not be retrieved")
+	}
+
+	// verify that information gets stored correctly
+	req.Method = "signUp"
+	req.Entity = &types.EntityInfo{}
+	req.Entity.Name = entities[1].Name
+	req.Entity.Email = entities[1].Email
+	resp = wsc.Request(req, signers[1])
+	if !resp.Ok {
+		t.Fatalf("entity singUp with data failed: %+v", req)
+	}
+
+	entity, err := api.DB.Entity(entities[1].ID)
+	if err != nil {
+		t.Fatal("error retrieving entity after signUp")
+	}
+	if entity.Name != entities[1].Name || entity.Email != entities[1].Email {
+		t.Fatalf("entity signUp data were not stored correctly")
 	}
 }
 
