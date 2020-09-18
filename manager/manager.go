@@ -51,6 +51,9 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("signUp", path+"/manager", m.signUp, false, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("updateEntity", path+"/manager", m.updateEntity, false, false); err != nil {
+		return err
+	}
 	if err := m.Router.AddHandler("countMembers", path+"/manager", m.countMembers, false, false); err != nil {
 		return err
 	}
@@ -170,6 +173,47 @@ func (m *Manager) signUp(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q signUp", request.SignaturePublicKey)
+	m.send(&request, &response)
+}
+
+func (m *Manager) updateEntity(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	// check public key length
+	// dvoteUtil.IsHexEncodedStringWithLength
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Errorf("cannot recover %q entityID: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID")
+		return
+	}
+
+	if request.Entity == nil {
+		log.Errorf("updateEntity with no entity data to update for %x", entityID)
+		m.Router.SendError(request, "no entity data to update")
+		return
+	}
+
+	entityInfo := &types.EntityInfo{
+		Name:  request.Entity.Name,
+		Email: request.Entity.Email,
+	}
+	// Add Entity
+	if err = m.db.UpdateEntity(entityID, entityInfo); err != nil {
+		log.Errorf("cannot update entity %x to the DB: (%v)", entityID, err)
+		m.Router.SendError(request, "cannot update entity")
+		return
+	}
+
+	log.Debugf("Entity: %x entityUpdate", entityID)
 	m.send(&request, &response)
 }
 

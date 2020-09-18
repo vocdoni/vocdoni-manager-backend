@@ -88,6 +88,67 @@ func TestSignUp(t *testing.T) {
 	}
 }
 
+func TestUpdateEntity(t *testing.T) {
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// Create and add entity
+	signers, entities := testcommon.CreateEntities(1)
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &types.EntityInfo{Address: entities[0].Address, CensusManagersAddresses: entities[0].CensusManagersAddresses}); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+	// update without data should fail
+	var req types.MetaRequest
+	req.Method = "updateEntity"
+	resp := wsc.Request(req, signers[0])
+	if resp.Ok {
+		t.Fatalf("entity update without data succeeded: %+v", req)
+	}
+
+	// update with correct data should succeed
+	req.Entity = &types.EntityInfo{
+		Name:  entities[0].Name,
+		Email: entities[0].Email,
+	}
+	resp = wsc.Request(req, signers[0])
+	if !resp.Ok {
+		t.Fatalf("entity update with data failed: %+v", req)
+	}
+
+	entity, err := api.DB.Entity(entities[0].ID)
+	if err != nil {
+		t.Fatal("error retrieving entity after signUp")
+	}
+	if entity.Name != entities[0].Name || entity.Email != entities[0].Email {
+		t.Fatalf("entity data were not updated correctly")
+	}
+
+	// should not update data that are not allowed to be updated
+	testURL := "test"
+	req.Entity = &types.EntityInfo{
+		Name:        "New",
+		Email:       "New",
+		CallbackURL: testURL,
+	}
+	resp = wsc.Request(req, signers[0])
+	if !resp.Ok {
+		t.Fatalf("entity update with data failed: %+v", req)
+	}
+
+	entity, err = api.DB.Entity(entities[0].ID)
+	if err != nil {
+		t.Fatal("error retrieving entity after signUp")
+	}
+	if entity.CallbackURL == testURL {
+		t.Fatalf("entity data were updated while they should not")
+	}
+
+}
+
 func TestListMembers(t *testing.T) {
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
