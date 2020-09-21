@@ -76,3 +76,4 @@ docker-release:
   only:
     - master
     - /^release-.*$/
+    - stage
