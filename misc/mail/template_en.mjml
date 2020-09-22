@@ -1,0 +1,34 @@
+<mjml>
+  <mj-body>
+
+    <mj-section padding-top="20px" padding-bottom="0px">
+      <mj-column background-color="#f7f7f7" padding="20px">
+
+        <mj-image src="cid:logoVoc.png" href="NO-REF" width="140px" alt="" align="center" border="none" width="182px" padding-left="0px" padding-right="0px" padding-bottom="30px" padding-top="0"></mj-image>
+
+        <mj-text font-family="Helvetica, Arial, sans-serif">Hello {{NAME}},</mj-text>
+        <mj-text font-family="Helvetica, Arial, sans-serif">You are invited to join the organization {{ORG_NAME}} in the Vocdoni platform.</mj-text>
+        <mj-text font-family="Helvetica, Arial, sans-serif">Vocdoni is a participation platform where you can keep you up to date with everything that happens at {{ORG_NAME}} and participate in the decisionmaking through secure digital voting.</a></mj-text>
+
+        <mj-text font-family="Helvetica, Arial, sans-serif">To join the {{ORG_NAME}}:</mj-text>
+
+
+        <mj-text font-family="Helvetica, Arial, sans-serif">1. First download the Vocdoni app <a href="https://play.google.com/store/apps/details?id=org.vocdoni.app">here</a> (if you have Android) or <a href="https://apps.apple.com/es/app/vocdoni/id1505234624">here</a> (if you have iPhone)</mj-text>
+
+
+        <mj-text font-family="Helvetica, Arial, sans-serif">2. Create an account and register at {{ORG_NAME}} <a href="{{VALIDATION_LINK}}">opening this link</a> on your smartphone.</mj-text>
+
+        <mj-text font-family="Helvetica, Arial, sans-serif">If this doesn't work, copy and paste the following link into your browser bar:</mj-text>
+        <mj-text><pre><small>{{VALIDATION_LINK}}</small></pre></mj-text>
+
+        <mj-divider border-width="1px" border-color="#ccc"/>
+
+        <mj-text font-family="Helvetica, Arial, sans-serif"> If you have further problems, please contact the organization's administrator by clicking <a href="mailto:{{ORG_EMAIL}}">here</a>.</mj-text>
+
+        <mj-text font-family="Helvetica, Arial, sans-serif">Thanks, {{ORG_NAME}} </mj-text>
+
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>

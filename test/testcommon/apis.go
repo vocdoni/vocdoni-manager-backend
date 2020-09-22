@@ -9,6 +9,7 @@ import (
 	"gitlab.com/vocdoni/manager/manager-backend/database/testdb"
 	"gitlab.com/vocdoni/manager/manager-backend/manager"
 	"gitlab.com/vocdoni/manager/manager-backend/registry"
+	"gitlab.com/vocdoni/manager/manager-backend/smtpclient"
 	"gitlab.com/vocdoni/manager/manager-backend/tokenapi"
 
 	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
@@ -63,7 +64,16 @@ func (t *TestAPI) Start(dbc *config.DB, route string) error {
 		if err := reg.RegisterMethods(route); err != nil {
 			log.Fatal(err)
 		}
-		mgr := manager.NewManager(t.EP.Router, t.DB)
+		smtpConfig := &config.SMTP{
+			User:          "coby.rippin@ethereal.email",
+			Password:      "HmjWVQ86X3Q6nKBR3u",
+			Host:          "smtp.ethereal.email",
+			Port:          587,
+			ValidationURL: "https://vocdoni.link/validation",
+			Sender:        "coby.rippin@ethereal.email",
+		}
+		s := smtpclient.New(smtpConfig)
+		mgr := manager.NewManager(t.EP.Router, t.DB, s)
 		if err := mgr.RegisterMethods(route); err != nil {
 			log.Fatal(err)
 		}

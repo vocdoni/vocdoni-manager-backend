@@ -1,0 +1,37 @@
+Versió en castellà
+
+Hola {{.Name}},
+
+{{.OrgName}} te ha invitado a unirte a su plataforma de gobernanza.
+
+Como miembro de {{.OrgName}}, recibirás todas las noticias de la organización en tu móvil y podrás participar en la toma de decisiones mediante voto digital seguro.
+
+Para unirte a {{.OrgName}}:
+1. Instala Vocdoni para Android o iPhone desde la tienda de aplicaciones de tu dispositivo.
+2. Crea tu identidad dentro de la app, copia el siguiente enlace en tu navegador y sigue los pasos:
+
+{{.ValidationLink}}
+
+{{if .OrgEmail}}Para más información o ayuda, contacta con {{.OrgEmail}}.{{end}}
+Gracias,
+
+{{.OrgName}}
+
+Versió en català
+
+Hola {{.Name}},
+
+{{.OrgName}} t'ha convidat a unir-te a la seva plataforma de governança.
+
+Com a membre de {{.OrgName}}, rebràs totes les notícies de l'organització en el teu mòbil i podràs participar en la presa de decisions mitjançant vot digital segur.
+
+Per unir-te a {{.OrgName}}:
+1. Instal·la Vocdoni per a Android o iPhone des de la botiga d'aplicacions del teu dispositiu.
+2. Crea la teva identitat dins de l'app, còpia el següent enllaç en el navegador i segueix el passos:
+
+{{.ValidationLink}}
+
+{{if .OrgEmail}}Per a més informació o ajuda, contacta amb {{.OrgEmail}}.{{end}}
+Gràcies,
+
+{{.OrgName}}

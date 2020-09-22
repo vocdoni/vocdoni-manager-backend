@@ -1,0 +1,62 @@
+<mjml>
+  <mj-body>
+
+    <mj-section padding-top="20px" padding-bottom="0px">
+      <mj-column background-color="#f7f7f7" padding="20px">
+
+        <mj-image src="logoVoc.png" href="" width="140px" alt="" align="center" border="none" width="182px" padding-left="0px" padding-right="0px" padding-bottom="30px" padding-top="0"></mj-image>
+        <mj-text font-family="Open Sans, sans-serif" font-weight="700" align="center" font-size="14px">Versión en castellano</mj-text>
+
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Hola {{.Name}},</mj-text>
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">{{.OrgName}} te ha invitado a unirte a su plataforma de gobernanza.</mj-text>
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Como miembro de {{.OrgName}}, recibirás todas las noticias de la organización en tu móvil y podrás participar en la toma de decisiones mediante voto digital seguro.</mj-text>
+
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Para unirte a {{.OrgName}}:</mj-text>
+
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">1. Instala Vocdoni para <a href="https://play.google.com/store/apps/details?id=org.vocdoni.app">Android</a> o <a href="https://apps.apple.com/es/app/vocdoni/id1505234624">iPhone</a></mj-text>
+
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">2. Crea tu cuenta en la app y <a href="{{.ValidationLink}}">sigue este link</a> en tu móvil.</mj-text>
+
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Si tienes problemas con el enlace, copia el siguiente texto en el navegador:</mj-text>
+        <mj-text><pre><small>{{.ValidationLink}}</small></pre></mj-text>
+
+        <mj-divider border-width="1px" border-color="#ccc"/>
+       
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px"> {{if .OrgEmail}}Para más información o ayuda, <a href="mailto:{{.OrgEmail}}">contacta con {{.OrgName}}</a>.{{end}}</mj-text>
+
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Gracias,<br/></br/>{{.OrgName}} </mj-text>
+
+      </mj-column>
+      
+    </mj-section>
+        
+    <mj-section padding-top="20px" padding-bottom="0px">
+      <mj-column background-color="#f7f7f7" padding="20px">
+        <mj-text font-family="Open Sans, sans-serif" font-weight="700" align="center" font-size="14px">Versió en català</mj-text>
+
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Hola {{.Name}},</mj-text>
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">{{.OrgName}} t'ha convidat a unir-te a la seva plataforma de governança.</mj-text>
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Com a membre de {{.OrgName}}, rebràs totes les notícies de l'organització en el teu mòbil i podràs participar en la presa de decisions mitjançant vot digital segur.</mj-text>
+
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Per unir-te a {{.OrgName}}:</mj-text>
+
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">1. Instal·la Vocdoni per a <a href="https://play.google.com/store/apps/details?id=org.vocdoni.app">Android</a> o <a href="https://apps.apple.com/es/app/vocdoni/id1505234624">iPhone</a></mj-text>
+
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">2. Crea la teva identitat dins de l'app i <a href="{{.ValidationLink}}">segueix aquest link</a> en el teu mòbil.</mj-text>
+
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Si tens problemes amb l'enllaç, còpia el següent text en el navegador:</mj-text>
+        <mj-text><pre><small>{{.ValidationLink}}</small></pre></mj-text>
+
+        <mj-divider border-width="1px" border-color="#ccc"/>
+        
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">{{if .OrgEmail}}Per a més informació o ajuda, <a href="mailto:{{.OrgEmail}}">contacta amb {{.OrgName}}</a>.{{end}}</mj-text>
+        
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Gràcies,<br/></br/>{{.OrgName}} </mj-text>
+
+      </mj-column>
+      
+    </mj-section>
+
+  </mj-body>
+</mjml>
+

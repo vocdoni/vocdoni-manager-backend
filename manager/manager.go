@@ -19,6 +19,7 @@ import (
 	"gitlab.com/vocdoni/manager/manager-backend/database"
 	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
 	"gitlab.com/vocdoni/manager/manager-backend/router"
+	"gitlab.com/vocdoni/manager/manager-backend/smtpclient"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
 	"gitlab.com/vocdoni/manager/manager-backend/util"
 )
@@ -26,11 +27,12 @@ import (
 type Manager struct {
 	Router *router.Router
 	db     database.Database
+	smtp   *smtpclient.SMTP
 }
 
 // NewManager creates a new registry handler for the Router
-func NewManager(r *router.Router, d database.Database) *Manager {
-	return &Manager{Router: r, db: d}
+func NewManager(r *router.Router, d database.Database, s *smtpclient.SMTP) *Manager {
+	return &Manager{Router: r, db: d, smtp: s}
 }
 
 // RegisterMethods registers all registry methods behind the given path
@@ -103,6 +105,9 @@ func (m *Manager) RegisterMethods(path string) error {
 		return err
 	}
 	if err := m.Router.AddHandler("deleteCensus", path+"/manager", m.deleteCensus, false, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("sendValidationLink", path+"/manager", m.sendValidationLink, false, false); err != nil {
 		return err
 	}
 	return nil
@@ -905,6 +910,64 @@ func (m *Manager) deleteCensus(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %x deleteCensus:%s", entityID, request.CensusID)
+	m.send(&request, &response)
+}
+
+func (m *Manager) sendValidationLink(request router.RouterRequest) {
+
+	if request.MemberID == nil {
+		log.Warnf("memberID is nil on getMember")
+		m.Router.SendError(request, "invalid memberId")
+		return
+	}
+
+	// check public key length
+	if l := len(request.SignaturePublicKey); l != ethereum.PubKeyLength && l != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	entityID, err := util.PubKeyToEntityID(request.SignaturePublicKey)
+	if err != nil {
+		log.Errorf("cannot recover %q entityID from public key: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID from public key")
+		return
+	}
+
+	entity, err := m.db.Entity(entityID)
+	if err != nil {
+		log.Errorf("cannot recover %q entity: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entity from public key")
+		return
+	}
+
+	member, err := m.db.Member(entityID, request.MemberID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Warn("member not found")
+			m.Router.SendError(request, "member not found")
+			return
+		}
+		log.Errorf("cannot retrieve member %q for entity %q: (%v)", request.MemberID, request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot retrieve member")
+		return
+	}
+
+	if !member.Verified.IsZero() {
+		log.Errorf("member %s is already validated at  %s", member.ID, member.Verified)
+		m.Router.SendError(request, "member already validated")
+		return
+	}
+	if err := m.smtp.SendValidationLink(member, entity); err != nil {
+		log.Errorf("could not send validation link for member %q entity: (%v)", member.ID, err)
+		m.Router.SendError(request, "could not send validation link")
+		return
+	}
+
+	log.Infof("send validation link  member %q for Entity %x", member.ID, entityID)
+	var response types.MetaResponse
 	m.send(&request, &response)
 }
 

@@ -15,6 +15,8 @@ type Manager struct {
 	API *API
 	// Database connection options
 	DB *DB
+	// SMTP options
+	SMTP *SMTP
 	// LogLevel logging level
 	LogLevel string
 	// LogOutput logging output
@@ -53,6 +55,7 @@ func NewConfig() *Manager {
 		API:            new(API),
 		DB:             new(DB),
 		Migrate:        new(Migrate),
+		SMTP:           new(SMTP),
 		Metrics:        new(MetricsCfg),
 		Notifications:  new(Notifications),
 		Ethereum:       new(config.EthCfg),
@@ -68,6 +71,18 @@ type DB struct {
 	Password string
 	Dbname   string
 	Sslmode  string
+}
+
+type SMTP struct {
+	Host          string
+	Port          int
+	User          string
+	Password      string
+	PoolSize      int
+	ValidationURL string
+	Sender        string
+	SenderName    string
+	Contact       string
 }
 
 type API struct {

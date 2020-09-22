@@ -65,9 +65,9 @@ func CreateMembers(entityID []byte, size int) ([]*ethereum.SignKeys, []*types.Me
 				Phone:         randomdata.PhoneNumber(),
 				StreetAddress: randomdata.Address(),
 				Consented:     RandBool(),
-				Verified:      RandDate(),
-				Origin:        types.Token,
-				CustomFields:  json.RawMessage([]byte("{}")),
+				// Verified:      RandDate(),
+				Origin:       types.Token,
+				CustomFields: json.RawMessage([]byte("{}")),
 			},
 		}
 	}

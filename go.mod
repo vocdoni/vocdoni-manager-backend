@@ -13,6 +13,7 @@ require (
 	github.com/jackc/pgtype v1.3.1-0.20200521144610-9d847241cb8f
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jmoiron/sqlx v1.2.1-0.20200324155115-ee514944af4b
+	github.com/jordan-wright/email v4.0.1-0.20200824153738-3f5bafa1cd84+incompatible
 	github.com/lib/pq v1.5.2
 	github.com/prometheus/client_golang v1.6.0
 	github.com/rubenv/sql-migrate v0.0.0-20200616145509-8d140a17f351

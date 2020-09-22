@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestNewManager(t *testing.T) {
-	if mgr := manager.NewManager(api.EP.Router, nil); mgr == nil {
+	if mgr := manager.NewManager(api.EP.Router, nil, nil); mgr == nil {
 		t.Fatal("cannot create manager")
 	}
 }
@@ -68,7 +68,7 @@ func TestRegisterMethods(t *testing.T) {
 		t.Fatalf("cannot create DB: %v", err)
 	}
 	// create manager
-	manager := manager.NewManager(r, db)
+	manager := manager.NewManager(r, db, nil)
 	// register methods
 	if err := manager.RegisterMethods(""); err != nil {
 		t.Fatalf("cannot register methods: %v", err)

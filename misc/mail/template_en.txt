@@ -1,0 +1,15 @@
+Hello {{.Name}},
+
+You are invited to join the organization {{.OrgName}} in the Vocdoni platform.
+
+Vocdoni is a participation platform where you can keep you up to date with everything that happens at {{.OrgName}} and participate in the decisionmaking through secure digital voting.
+
+To join the {{.OrgName}}:
+
+1. First download the Vocdoni app here (if you have Android) or here (if you have iPhone)
+2. Create an account and register at {{.OrgName}} by copying and pasting the following link into your browser bar:
+{{.ValidationLink}}
+
+If you have further problems, please contact the organization's administrator by sending an email to {{.OrgEmail}}
+
+Thanks, {{.OrgName}}

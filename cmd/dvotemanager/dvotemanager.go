@@ -19,6 +19,7 @@ import (
 	"gitlab.com/vocdoni/manager/manager-backend/database"
 	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
 	"gitlab.com/vocdoni/manager/manager-backend/manager"
+	"gitlab.com/vocdoni/manager/manager-backend/smtpclient"
 
 	"gitlab.com/vocdoni/manager/manager-backend/registry"
 	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
@@ -61,6 +62,15 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.DB.Dbname = *flag.String("dbName", "database", "DB database name")
 	cfg.DB.Sslmode = *flag.String("dbSslmode", "prefer", "DB postgres sslmode")
 	cfg.Migrate.Action = *flag.String("migrateAction", "", "Migration action (up,down,status)")
+	cfg.SMTP.Host = *flag.String("smtpHost", "127.0.0.1", "SMTP server host")
+	cfg.SMTP.Port = *flag.Int("smtpPort", 587, "SMTP server port")
+	cfg.SMTP.User = *flag.String("smtpUser", "user", "SMTP Username")
+	cfg.SMTP.Password = *flag.String("smtpPassword", "password", "SMTP password")
+	cfg.SMTP.PoolSize = *flag.Int("smtpPoolSize", 4, "SMTP connection pool size")
+	cfg.SMTP.ValidationURL = *flag.String("smtpValidationURL", "https://vocdoni.link/validation", "URL prefix of the token validation service")
+	cfg.SMTP.Sender = *flag.String("smtpSender", "validation@bender.vocdoni.io", "SMTP Sender address")
+	cfg.SMTP.SenderName = *flag.String("smtpSenderName", "Vocdoni", "Name that appears as sender identity in emails")
+	cfg.SMTP.Contact = *flag.String("smtpContact", "contact@vocdoni.io", "Fallback contact email address in emails")
 
 	// metrics
 	cfg.Metrics.Enabled = *flag.Bool("metricsEnabled", true, "enable prometheus metrics")
@@ -98,6 +108,15 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("db.dbName", flag.Lookup("dbName"))
 	viper.BindPFlag("db.sslMode", flag.Lookup("dbSslmode"))
 	viper.BindPFlag("migrate.action", flag.Lookup("migrateAction"))
+	viper.BindPFlag("smtp.host", flag.Lookup("smtpHost"))
+	viper.BindPFlag("smtp.port", flag.Lookup("smtpPort"))
+	viper.BindPFlag("smtp.user", flag.Lookup("smtpUser"))
+	viper.BindPFlag("smtp.password", flag.Lookup("smtpPassword"))
+	viper.BindPFlag("smtp.poolSize", flag.Lookup("smtpPoolSize"))
+	viper.BindPFlag("smtp.validationURL", flag.Lookup("smtpValidationURL"))
+	viper.BindPFlag("smtp.sender", flag.Lookup("smtpSender"))
+	viper.BindPFlag("smtp.senderName", flag.Lookup("smtpSenderName"))
+	viper.BindPFlag("smtp.contact", flag.Lookup("smtpContact"))
 
 	// metrics
 	viper.BindPFlag("metrics.enabled", flag.Lookup("metricsEnabled"))
@@ -274,6 +293,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Generate SMTP config object
+	smtp := smtpclient.New(cfg.SMTP)
+
 	// User registry
 	if cfg.Mode == "registry" || cfg.Mode == "all" {
 		log.Infof("enabling Registry API methods")
@@ -286,7 +308,7 @@ func main() {
 	// Manager
 	if cfg.Mode == "manager" || cfg.Mode == "all" {
 		log.Infof("enabling Manager API methods")
-		mgr := manager.NewManager(ep.Router, db)
+		mgr := manager.NewManager(ep.Router, db, smtp)
 		if err := mgr.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}
