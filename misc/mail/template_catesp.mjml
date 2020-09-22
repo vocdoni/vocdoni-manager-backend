@@ -4,7 +4,7 @@
     <mj-section padding-top="20px" padding-bottom="0px">
       <mj-column background-color="#f7f7f7" padding="20px">
 
-        <mj-image src="logoVoc.png" href="" width="140px" alt="" align="center" border="none" width="182px" padding-left="0px" padding-right="0px" padding-bottom="30px" padding-top="0"></mj-image>
+        <mj-image src="cid:logoVoc.png" href="" width="140px" alt="" align="center" border="none" width="182px" padding-left="0px" padding-right="0px" padding-bottom="30px" padding-top="0"></mj-image>
         <mj-text font-family="Open Sans, sans-serif" font-weight="700" align="center" font-size="14px">Versión en castellano</mj-text>
 
         <mj-text font-family="Open Sans, sans-serif" font-size="15px">Hola {{.Name}},</mj-text>

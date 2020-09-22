@@ -166,7 +166,7 @@ const HTMLTemplate = `
                                 <tbody>
                                   <tr>
                                     <td style="width:140px;">
-                                      <img alt="" height="auto" src="logoVoc.png" style="border:none;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;" width="140" />
+                                      <img alt="" height="auto" src="cid:logoVoc.png" style="border:none;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;" width="140" />
                                     </td>
                                   </tr>
                                 </tbody>
