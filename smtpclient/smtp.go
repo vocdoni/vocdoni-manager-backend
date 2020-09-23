@@ -67,7 +67,7 @@ func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity) er
 		return fmt.Errorf("invalid member email")
 	}
 
-	link := fmt.Sprintf("%s/%s", s.config.ValidationURL, member.ID.String())
+	link := fmt.Sprintf("%s/0x%x/%s", s.config.ValidationURL, entity.ID, member.ID.String())
 	data := struct {
 		Name           string
 		OrgName        string

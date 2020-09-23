@@ -1,6 +1,7 @@
 package testsmtp
 
 import (
+	"encoding/hex"
 	"math/rand"
 	"net/textproto"
 	"os"
@@ -88,7 +89,12 @@ func TestValidationLink(t *testing.T) {
 			Email:     "manos@vocdoni.io",
 		},
 	}
+	id, err := hex.DecodeString("1026d682dc423d984abf6c086eca923245a33f45e5d1e06e069ac2663e5fff07)")
+	if err != nil {
+		t.Fatal("failed to decode hex string")
+	}
 	e := &types.Entity{
+		ID: []byte(id),
 		EntityInfo: types.EntityInfo{
 			Email: "hola@vocdoni.io",
 			Name:  "TestOrg",
