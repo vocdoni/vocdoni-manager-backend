@@ -89,9 +89,9 @@ func TestValidationLink(t *testing.T) {
 			Email:     "manos@vocdoni.io",
 		},
 	}
-	id, err := hex.DecodeString("1026d682dc423d984abf6c086eca923245a33f45e5d1e06e069ac2663e5fff07)")
+	id, err := hex.DecodeString("1026d682dc423d984abf6c086eca923245a33f45e5d1e06e069ac2663e5fff07")
 	if err != nil {
-		t.Fatal("failed to decode hex string")
+		t.Fatalf("failed to decode hex string: (%v)", err)
 	}
 	e := &types.Entity{
 		ID: []byte(id),
