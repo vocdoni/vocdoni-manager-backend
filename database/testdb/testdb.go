@@ -72,6 +72,10 @@ func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	return &entity, nil
 }
 
+func (d *Database) Entities() ([]*types.Entity, error) {
+	return nil, nil
+}
+
 func (d *Database) EntityHas(entityID []byte, memberID *uuid.UUID) bool {
 	return true
 }

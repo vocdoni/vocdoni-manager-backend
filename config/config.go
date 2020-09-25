@@ -43,6 +43,8 @@ type Manager struct {
 	Web3 *config.W3Cfg
 	// EthereumEvents ethereum even subscription config options
 	EthereumEvents *config.EthEventCfg
+	// IPFS config options
+	IPFS *config.IPFSCfg
 }
 
 func (m *Manager) ValidMode() bool {
@@ -61,6 +63,7 @@ func NewConfig() *Manager {
 		Ethereum:       new(config.EthCfg),
 		Web3:           new(config.W3Cfg),
 		EthereumEvents: new(config.EthEventCfg),
+		IPFS:           new(config.IPFSCfg),
 	}
 }
 

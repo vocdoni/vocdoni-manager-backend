@@ -11,8 +11,6 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	migrate "github.com/rubenv/sql-migrate"
-
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
@@ -185,55 +183,6 @@ func newConfig() (*config.Manager, config.Error) {
 	return cfg, cfgError
 }
 
-func migrator(action string, db database.Database) error {
-	switch action {
-	case "upSync":
-		log.Infof("checking if DB is up to date")
-		mTotal, mApplied, _, err := db.MigrateStatus()
-		if err != nil {
-			return fmt.Errorf("could not retrieve migrations status: (%v)", err)
-		}
-		if mTotal > mApplied {
-			log.Infof("applying missing %d migrations to DB", mTotal-mApplied)
-			n, err := db.MigrationUpSync()
-			if err != nil {
-				return fmt.Errorf("could not apply necessary migrations (%v)", err)
-			}
-			if n != mTotal-mApplied {
-				return fmt.Errorf("could not apply all necessary migrations (%v)", err)
-			}
-		} else if mTotal < mApplied {
-			return fmt.Errorf("someting goes terribly wrong with the DB migrations")
-		}
-	case "up", "down":
-		log.Info("applying migration")
-		op := migrate.Up
-		if action == "down" {
-			op = migrate.Down
-		}
-		n, err := db.Migrate(op)
-		if err != nil {
-			return fmt.Errorf("error applying migration: (%v)", err)
-		}
-		if n != 1 {
-			return fmt.Errorf("reported applied migrations !=1")
-		}
-		log.Infof("%q migration complete", action)
-	case "status":
-		break
-	default:
-		return fmt.Errorf("unknown migrate command")
-	}
-
-	total, actual, record, err := db.MigrateStatus()
-	if err != nil {
-		return fmt.Errorf("could not retrieve migrations status: (%v)", err)
-	}
-	log.Infof("Total Migrations: %d\nApplied migrations: %d (%s)", total, actual, record)
-	return nil
-
-}
-
 func main() {
 	var err error
 	// setup config
@@ -281,7 +230,7 @@ func main() {
 
 	// Standalone Migrations
 	if cfg.Migrate.Action != "" {
-		if err := migrator(cfg.Migrate.Action, db); err != nil {
+		if err := pgsql.Migrator(cfg.Migrate.Action, db); err != nil {
 			log.Fatal(err)
 		}
 		return
@@ -289,7 +238,7 @@ func main() {
 
 	// Check that all migrations are applied before proceeding
 	// and if not apply them
-	if err := migrator("upSync", db); err != nil {
+	if err := pgsql.Migrator("upSync", db); err != nil {
 		log.Fatal(err)
 	}
 

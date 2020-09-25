@@ -177,3 +177,18 @@ type Target struct {
 	Name     string          `json:"name" db:"name"`
 	Filters  json.RawMessage `json:"filters" db:"filters"`
 }
+
+// EntityMetadata represents an entity metadata
+type EntityMetadata struct {
+	Version                      string            `json:"version,omitempty"`
+	Languages                    []string          `json:"languges,omitempty"`
+	Name                         map[string]string `json:"name,omitempty"`
+	Description                  map[string]string `json:"description,omitempty"`
+	VotingProcesses              map[string]string `json:"votingProcesses,omitempty"`
+	NewsFeed                     map[string]string `json:"newsFeed,omitempty"`
+	Media                        map[string]string `json:"media,omitempty"`
+	Actions                      []interface{}     `json:"actions,omitempty"`
+	BootEntities                 []interface{}     `json:"bootEntities,omitempty"`
+	TrustedEntities              []interface{}     `json:"trustedEntities,omitempty"`
+	CensusServiceManagedEntities []interface{}     `json:"censusServiceManagedEntities,omitempty"`
+}

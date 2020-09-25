@@ -35,6 +35,7 @@ type MetaRequest struct {
 	TargetID    *uuid.UUID   `json:"targetId,omitempty"`
 	Timestamp   int32        `json:"timestamp"`
 	Token       string       `json:"token,omitempty"`
+	Topic       string       `json:"topic,omitempty"`
 }
 
 // ResponseMessage wraps an api response

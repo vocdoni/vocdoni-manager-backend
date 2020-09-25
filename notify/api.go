@@ -54,6 +54,9 @@ func (n *API) send(req *router.RouterRequest, resp *types.MetaResponse) {
 	req.Send(n.Router.BuildReply(req, resp))
 }
 
+// The register method creates a Firebase token for a user. If the user does not exist
+// a new Firebase user is created, else the token is created with the existing user UID
+// which is the pubkey extracted from the request signature
 func (n *API) register(request router.RouterRequest) {
 	var response types.MetaResponse
 	var u User

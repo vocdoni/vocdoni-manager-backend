@@ -1,6 +1,12 @@
 package pgsql
 
-import migrate "github.com/rubenv/sql-migrate"
+import (
+	"fmt"
+
+	migrate "github.com/rubenv/sql-migrate"
+	"gitlab.com/vocdoni/go-dvote/log"
+	"gitlab.com/vocdoni/manager/manager-backend/database"
+)
 
 // Migrations available
 var Migrations = migrate.MemoryMigrationSource{
@@ -232,3 +238,51 @@ ALTER TABLE entities ADD COLUMN is_authorized boolean DEFAULT false NOT NULL;
 const migration2down = `
 ALTER TABLE entities DROP COLUMN is_authorized;
 `
+
+func Migrator(action string, db database.Database) error {
+	switch action {
+	case "upSync":
+		log.Infof("checking if DB is up to date")
+		mTotal, mApplied, _, err := db.MigrateStatus()
+		if err != nil {
+			return fmt.Errorf("could not retrieve migrations status: (%v)", err)
+		}
+		if mTotal > mApplied {
+			log.Infof("applying missing %d migrations to DB", mTotal-mApplied)
+			n, err := db.MigrationUpSync()
+			if err != nil {
+				return fmt.Errorf("could not apply necessary migrations (%v)", err)
+			}
+			if n != mTotal-mApplied {
+				return fmt.Errorf("could not apply all necessary migrations (%v)", err)
+			}
+		} else if mTotal < mApplied {
+			return fmt.Errorf("someting goes terribly wrong with the DB migrations")
+		}
+	case "up", "down":
+		log.Info("applying migration")
+		op := migrate.Up
+		if action == "down" {
+			op = migrate.Down
+		}
+		n, err := db.Migrate(op)
+		if err != nil {
+			return fmt.Errorf("error applying migration: (%v)", err)
+		}
+		if n != 1 {
+			return fmt.Errorf("reported applied migrations !=1")
+		}
+		log.Infof("%q migration complete", action)
+	case "status":
+		break
+	default:
+		return fmt.Errorf("unknown migrate command")
+	}
+
+	total, actual, record, err := db.MigrateStatus()
+	if err != nil {
+		return fmt.Errorf("could not retrieve migrations status: (%v)", err)
+	}
+	log.Infof("Total Migrations: %d\nApplied migrations: %d (%s)", total, actual, record)
+	return nil
+}

@@ -15,17 +15,24 @@ import (
 	"google.golang.org/api/option"
 )
 
+// firebase.go contains all the methods required to interact with the
+// FCM Admin SDK wrapped in the FirebaseAdmin struct.
+// It also contains the handler functions to deal with ethereum events
+// and IPFS files changes.
+
 /* ADMIN */
 
-// FirebaseAdmin wraps the firebase admin SDK App struct
+// FirebaseAdmin wraps the firebase admin SDK App struct and a reference to the IPFS file tracker
 type FirebaseAdmin struct {
 	*firebase.App
 	Client *auth.Client
 	Key    string
+	IPFS   *IPFSFileTracker
 }
 
-func NewFirebaseAdmin(key string) *FirebaseAdmin {
-	return &FirebaseAdmin{Key: key}
+// NewFirebaseAdmin returns a pointer to a fresh FirebaseAdmin
+func NewFirebaseAdmin(key string, ft *IPFSFileTracker) *FirebaseAdmin {
+	return &FirebaseAdmin{Key: key, IPFS: ft}
 }
 
 // FirebaseUser wraps a firebase user
@@ -43,12 +50,13 @@ func (fu FirebaseUser) UID() string {
 }
 
 // Service returns an integer representing the Firebase push notifications service
-func (fa FirebaseAdmin) Service() int {
+func (fa *FirebaseAdmin) Service() int {
 	return Firebase
 }
 
 // Init initializes the Firebase Admin instance
-func (fa FirebaseAdmin) Init() (err error) {
+func (fa *FirebaseAdmin) Init() (err error) {
+	log.Info("initializing Firebase app and client with credentials")
 	opt := option.WithCredentialsFile(fa.Key)
 	fa.App, err = firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
@@ -58,17 +66,24 @@ func (fa FirebaseAdmin) Init() (err error) {
 	if err != nil {
 		return err
 	}
+	log.Info("initializing IPFS file tracking service")
+	if err := fa.IPFS.Start(); err != nil {
+		return err
+	}
+	// start ipfs handler
+	go fa.HandleIPFS()
+	log.Info("push notifications ipfs service initialized")
 	return nil
 }
 
-func (fa FirebaseAdmin) getMessagingClient() (*messaging.Client, error) {
+func (fa *FirebaseAdmin) getMessagingClient() (*messaging.Client, error) {
 	return fa.Messaging(context.Background())
 }
 
 // subscribe & unsubscribe users
 
 // SubscribeTopic subscribes a list of users to a given topic
-func (fa FirebaseAdmin) SubscribeTopic(tokens []string, topic string) error {
+func (fa *FirebaseAdmin) SubscribeTopic(tokens []string, topic string) error {
 	client, err := fa.getMessagingClient()
 	if err != nil {
 		return err
@@ -80,7 +95,7 @@ func (fa FirebaseAdmin) SubscribeTopic(tokens []string, topic string) error {
 }
 
 // UnsubscribeTopic unsubscribes a list of users to a given topic
-func (fa FirebaseAdmin) UnsubscribeTopic(tokens []string, topic string) error {
+func (fa *FirebaseAdmin) UnsubscribeTopic(tokens []string, topic string) error {
 	client, err := fa.getMessagingClient()
 	if err != nil {
 		return err
@@ -94,18 +109,18 @@ func (fa FirebaseAdmin) UnsubscribeTopic(tokens []string, topic string) error {
 // user management
 
 // GetUser retrieves user's data
-func (fa FirebaseAdmin) GetUser(uid string) (User, error) {
-	var ur FirebaseUser
+func (fa *FirebaseAdmin) GetUser(uid string) (User, error) {
+	var fu *FirebaseUser
 	var err error
-	if ur.UserRecord, err = fa.Client.GetUser(context.Background(), uid); err != nil {
+	if fu.UserRecord, err = fa.Client.GetUser(context.Background(), uid); err != nil {
 		return nil, err
 	}
-	return ur, nil
+	return fu, nil
 }
 
 // GetUserByEmail returns user's data from the user matching the given email
-func (fa FirebaseAdmin) GetUserByEmail(email string) (User, error) {
-	var ur FirebaseUser
+func (fa *FirebaseAdmin) GetUserByEmail(email string) (User, error) {
+	var ur *FirebaseUser
 	var err error
 	if ur.UserRecord, err = fa.Client.GetUserByEmail(context.Background(), email); err != nil {
 		return nil, err
@@ -113,53 +128,53 @@ func (fa FirebaseAdmin) GetUserByEmail(email string) (User, error) {
 	return ur, nil
 }
 
-// func (fa FirebaseAdmin) UserBulk(ids *[]auth.UserIdentifier) (*auth.GetUsersResult, error) {}
-// func (fa FirebaseAdmin) Users() (*auth.UserIterator, error) {}
+// func (fa *FirebaseAdmin) UserBulk(ids *[]auth.UserIdentifier) (*auth.GetUsersResult, error) {}
+// func (fa *FirebaseAdmin) Users() (*auth.UserIterator, error) {}
 
 // CreateUser creates a user with the given user info
-func (fa FirebaseAdmin) CreateUser(userData User) (User, error) {
-	var ur FirebaseUser
+func (fa *FirebaseAdmin) CreateUser(userData User) (User, error) {
+	var ur *FirebaseUser
 	var err error
-	if ur.UserRecord, err = fa.Client.CreateUser(context.Background(), userData.(FirebaseUser).UserToCreate); err != nil {
+	if ur.UserRecord, err = fa.Client.CreateUser(context.Background(), userData.(*FirebaseUser).UserToCreate); err != nil {
 		return nil, err
 	}
 	return ur, nil
 }
 
 // UpdateUser updates a user given its UID and the info to update
-func (fa FirebaseAdmin) UpdateUser(uid string, userData User) (User, error) {
-	var ur FirebaseUser
+func (fa *FirebaseAdmin) UpdateUser(uid string, userData User) (User, error) {
+	var ur *FirebaseUser
 	var err error
-	if ur.UserRecord, err = fa.Client.UpdateUser(context.Background(), uid, userData.(FirebaseUser).UserToUpdate); err != nil {
+	if ur.UserRecord, err = fa.Client.UpdateUser(context.Background(), uid, userData.(*FirebaseUser).UserToUpdate); err != nil {
 		return nil, err
 	}
 	return ur, err
 }
 
 // DeleteUser deletes a user with the given UID
-func (fa FirebaseAdmin) DeleteUser(uid string) error {
+func (fa *FirebaseAdmin) DeleteUser(uid string) error {
 	return fa.Client.DeleteUser(context.Background(), uid)
 }
 
 // DeleteUserBulk  deletes a list of users giving its ids
-func (fa FirebaseAdmin) DeleteUserBulk(uids []string) (*auth.DeleteUsersResult, error) {
+func (fa *FirebaseAdmin) DeleteUserBulk(uids []string) (*auth.DeleteUsersResult, error) {
 	return fa.Client.DeleteUsers(context.Background(), uids)
 }
 
 // GenerateToken returns a custom Firebase FCM token given an UID
-func (fa FirebaseAdmin) GenerateToken(uid string) (string, error) {
+func (fa *FirebaseAdmin) GenerateToken(uid string) (string, error) {
 	return fa.Client.CustomToken(context.Background(), uid)
 }
 
 // messaging
 
 // Send sends a push notification
-func (fa FirebaseAdmin) Send(pn Notification) error {
+func (fa *FirebaseAdmin) Send(pn Notification) error {
 	if !fa.Check(pn) {
 		return errors.New("invalid push notification")
 	}
-	fpn := pn.(FirebasePushNotification)
-	switch fpn.Platform() {
+	fpn := pn.(*FirebasePushNotification)
+	switch pn.Platform() {
 	case PlatformAndroid:
 		if fpn.FCM.Android == nil {
 			return errors.New("android config must be set")
@@ -178,29 +193,34 @@ func (fa FirebaseAdmin) Send(pn Notification) error {
 		return errors.New("invalid or unsupported platform")
 	}
 
-	return fa.send(&fpn)
+	return fa.send(fpn)
 }
 
-func (fa FirebaseAdmin) send(pn *FirebasePushNotification) error {
+func (fa *FirebaseAdmin) send(pn *FirebasePushNotification) error {
 	client, err := fa.getMessagingClient()
 	if err != nil {
 		return err
 	}
-	if _, err := client.Send(context.Background(), pn.FCM); err != nil {
+	res, err := client.Send(context.Background(), pn.FCM)
+	if err != nil {
 		return err
 	}
+	log.Debugf("sent notification: %s", res)
 	return nil
 }
 
 // Check checks a firebase push notification format
-func (fa FirebaseAdmin) Check(notification Notification) bool {
+func (fa *FirebaseAdmin) Check(notification Notification) bool {
+	if notification.Title() == "" || notification.Body() == "" {
+		return false
+	}
 	return true
 }
 
 // handlers
 
 // HandleEthereum handles an Ethereum event
-func (fa FirebaseAdmin) HandleEthereum(event *ethtypes.Log, e *ethevents.EthereumEvents) error {
+func (fa *FirebaseAdmin) HandleEthereum(event *ethtypes.Log, e *ethevents.EthereumEvents) error {
 	var err error
 	var notification *FirebasePushNotification
 	switch event.Topics[0].Hex() {
@@ -221,7 +241,7 @@ func (fa FirebaseAdmin) HandleEthereum(event *ethtypes.Log, e *ethevents.Ethereu
 	return nil
 }
 
-func (fa FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
+func (fa *FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
 	// get process metadata
 	processTx, err := ProcessMeta(&e.ContractABI, event.Data, e.ProcessHandle)
 	if err != nil {
@@ -232,14 +252,16 @@ func (fa FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *etheven
 	// create notification
 	// get relevant data
 	dataMap := make(map[string]string)
-	dataMap["processID"] = processTx.ProcessID
-	dataMap["processType"] = processTx.ProcessType
+	dataMap["uri"] = fmt.Sprintf("%s/%s/%s", defaultAppRouteNewProcess, processTx.EntityID, processTx.ProcessID)
+	dataMap["event"] = defaultEventsName[1]
+	dataMap["click_action"] = defaultClickAction
 	// add notification fields
 	notification := &FirebasePushNotification{}
+	notification.FCM.Topic = processTx.EntityID + "_" + defaultLang + defaultVoteTopic
+	notification.FCM.Notification.Title = defaultProcessTitle
+	notification.FCM.Notification.Body = fmt.Sprintf("Entity %s created a new process", processTx.EntityID)
+	dataMap["message"] = notification.FCM.Notification.Body
 	notification.FCM.Data = dataMap
-	notification.FCM.Topic = processTx.EntityID + "/" + defaultLang + "/votes"
-	notification.FCM.Notification.Title = "New process created"
-	notification.FCM.Notification.Body = fmt.Sprintf("Entity %s created a new process, click me for more details", processTx.EntityID)
 
 	// send notification
 	if err := fa.Send(notification); err != nil {
@@ -248,23 +270,28 @@ func (fa FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *etheven
 	return notification, nil
 }
 
-//func (fa FirebaseAdmin) handleEthereumResultsPublished(event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
-//	return nil, nil
-//}
-
 // HandleIPFS handles an IPFS file content change
-func (fa FirebaseAdmin) HandleIPFS() error {
-	return nil
-}
+func (fa *FirebaseAdmin) HandleIPFS() {
+	for {
+		newFeed := <-fa.IPFS.UpdatedFilesQueue
+		dataMap := make(map[string]string)
+		dataMap["uri"] = fmt.Sprintf("%s/%s", defaultAppRouteNewPost, newFeed.eID)
+		dataMap["event"] = defaultEventsName[0]
+		dataMap["click_action"] = defaultClickAction
+		// add notification fields
+		notification := &FirebasePushNotification{}
+		notification.FCM.Topic = newFeed.eID + "_" + defaultLang + defaultNewsFeedTopic
+		notification.FCM.Notification.Title = defaultNewsFeedTitle
+		notification.FCM.Notification.Body = fmt.Sprintf("Entity %s created a new feed", newFeed.eID)
+		dataMap["message"] = notification.FCM.Notification.Body
+		notification.FCM.Data = dataMap
 
-func (fa FirebaseAdmin) Enqueue(notification Notification) error {
-	return nil
-}
-func (fa FirebaseAdmin) Dequeue(notification Notification) error {
-	return nil
-}
-func (fa FirebaseAdmin) Queue() []*Notification {
-	return nil
+		// send notification
+		if err := fa.Send(notification); err != nil {
+			log.Warnf("cannot send notification, error: %s", err)
+		}
+		log.Infof("notification: %+v sended", notification)
+	}
 }
 
 /* PUSH NOTIFICATION */
@@ -275,51 +302,63 @@ type FirebasePushNotification struct {
 	FCM      *messaging.Message
 }
 
-func (fpn FirebasePushNotification) ID() string {
+// ID returns the base push notification id
+func (fpn *FirebasePushNotification) ID() string {
 	return fpn.Upstream.ID
 }
 
-func (fpn FirebasePushNotification) Action() string {
+// Action returns the base push notification action
+func (fpn *FirebasePushNotification) Action() string {
 	return fpn.Upstream.Action
 }
 
-func (fpn FirebasePushNotification) Body() string {
+// Body returns the base push notification body
+func (fpn *FirebasePushNotification) Body() string {
 	return fpn.FCM.Notification.Body
 }
 
-func (fpn FirebasePushNotification) Data() Data {
+// Data returns the base push notification data
+func (fpn *FirebasePushNotification) Data() Data {
 	return fpn.FCM.Data
 }
 
-func (fpn FirebasePushNotification) Date() time.Time {
+// Date returns the base push notification date
+func (fpn *FirebasePushNotification) Date() time.Time {
 	return fpn.Upstream.Date
 }
 
-func (fpn FirebasePushNotification) Image() string {
+// Image returns the base push notification image
+func (fpn *FirebasePushNotification) Image() string {
 	return fpn.FCM.Notification.ImageURL
 }
 
-func (fpn FirebasePushNotification) Message() Message {
+// Message returns the base push notification message
+func (fpn *FirebasePushNotification) Message() Message {
 	return fpn.FCM
 }
 
-func (fpn FirebasePushNotification) Platform() int {
+// Platform returns the base push notification platform
+func (fpn *FirebasePushNotification) Platform() int {
 	return fpn.Upstream.Platform
 }
 
-func (fpn FirebasePushNotification) Priority() string {
+// Priority returns the base push notification priority
+func (fpn *FirebasePushNotification) Priority() string {
 	return fpn.Upstream.Priority
 }
 
-func (fpn FirebasePushNotification) Title() string {
+// Title returns the base push notification title
+func (fpn *FirebasePushNotification) Title() string {
 	return fpn.FCM.Notification.Title
 }
 
-func (fpn FirebasePushNotification) Token() string {
+// Token returns the base push notification token
+func (fpn *FirebasePushNotification) Token() string {
 	return fpn.FCM.Token
 }
 
-func (fpn FirebasePushNotification) Topic() string {
+// Topic returns the base push notification topic
+func (fpn *FirebasePushNotification) Topic() string {
 	return fpn.FCM.Topic
 }
 

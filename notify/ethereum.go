@@ -15,11 +15,11 @@ var ethereumEventList = []string{
 type (
 	eventProcessCreated struct {
 		EntityAddress [20]byte
-		ProcessId     [32]byte
+		ProcessId     [32]byte // no-lint
 		MerkleTree    string
 	}
 	resultsPublished struct {
-		ProcessId [32]byte
+		ProcessId [32]byte // no-lint
 		Results   string
 	}
 )

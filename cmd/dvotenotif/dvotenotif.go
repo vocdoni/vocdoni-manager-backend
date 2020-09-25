@@ -18,6 +18,8 @@ import (
 	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/go-dvote/service"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
+	"gitlab.com/vocdoni/manager/manager-backend/database"
+	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
 	"gitlab.com/vocdoni/manager/manager-backend/notify"
 	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
 )
@@ -50,9 +52,9 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.SaveConfig = *flag.Bool("saveConfig", false, "overwrites an existing config file with the CLI provided flags")
 	cfg.DB.Host = *flag.String("dbHost", "127.0.0.1", "DB server address")
 	cfg.DB.Port = *flag.Int("dbPort", 5432, "DB server port")
-	cfg.DB.User = *flag.String("dbUser", "user", "DB Username")
-	cfg.DB.Password = *flag.String("dbPassword", "password", "DB password")
-	cfg.DB.Dbname = *flag.String("dbName", "database", "DB database name")
+	cfg.DB.User = *flag.String("dbUser", "vocdoni", "DB Username")
+	cfg.DB.Password = *flag.String("dbPassword", "vocdoni", "DB password")
+	cfg.DB.Dbname = *flag.String("dbName", "vocdoni", "DB database name")
 	cfg.DB.Sslmode = *flag.String("dbSslmode", "prefer", "DB postgres sslmode")
 	// notifications
 	cfg.Notifications.KeyFile = *flag.String("pushNotificationsKeyFile", "", "path to notifications service private key file")
@@ -75,6 +77,12 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.Web3.Route = *flag.String("w3Route", "/web3", "web3 endpoint API route")
 	cfg.Web3.RPCPort = *flag.Int("w3RPCPort", 9091, "web3 RPC port")
 	cfg.Web3.RPCHost = *flag.String("w3RPCHost", "127.0.0.1", "web3 RPC host")
+	// ipfs
+	cfg.IPFS.NoInit = *flag.Bool("ipfsNoInit", false, "disables inter planetary file system support")
+	cfg.IPFS.SyncKey = *flag.String("ipfsSyncKey", "", "enable IPFS cluster synchronization using the given secret key")
+	cfg.IPFS.SyncPeers = *flag.StringArray("ipfsSyncPeers", []string{}, "use custom ipfsSync peers/bootnodes for accessing the DHT")
+	// db migrations
+	cfg.Migrate.Action = *flag.String("migrateAction", "", "Migration action (up,down,status)")
 	// metrics
 	cfg.Metrics.Enabled = *flag.Bool("metricsEnabled", true, "enable prometheus metrics")
 	cfg.Metrics.RefreshInterval = *flag.Int("metricsRefreshInterval", 10, "metrics refresh interval in seconds")
@@ -105,8 +113,8 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("db.dbName", flag.Lookup("dbName"))
 	viper.BindPFlag("db.sslMode", flag.Lookup("dbSslmode"))
 	// notifications
-	viper.BindPFlag("notifications.pushNotificationsKeyFile", flag.Lookup("pushNotificationsKeyFile"))
-	viper.BindPFlag("notifications.pushNotificationsService", flag.Lookup("pushNotificationsService"))
+	viper.BindPFlag("notifications.KeyFile", flag.Lookup("pushNotificationsKeyFile"))
+	viper.BindPFlag("notifications.Service", flag.Lookup("pushNotificationsService"))
 	// ethereum node
 	viper.Set("ethereum.datadir", cfg.DataDir+"/ethereum")
 	viper.BindPFlag("ethereum.signingKey", flag.Lookup("ethSigningKey"))
@@ -125,6 +133,13 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("web3.enabled", flag.Lookup("w3Enabled"))
 	viper.BindPFlag("web3.RPCPort", flag.Lookup("w3RPCPort"))
 	viper.BindPFlag("web3.RPCHost", flag.Lookup("w3RPCHost"))
+	// ipfs
+	viper.Set("ipfs.ConfigPath", cfg.DataDir+"/ipfs")
+	viper.BindPFlag("ipfs.NoInit", flag.Lookup("ipfsNoInit"))
+	viper.BindPFlag("ipfs.SyncKey", flag.Lookup("ipfsSyncKey"))
+	viper.BindPFlag("ipfs.SyncPeers", flag.Lookup("ipfsSyncPeers"))
+	// db migrations
+	viper.BindPFlag("migrate.action", flag.Lookup("migrateAction"))
 	// metrics
 	viper.BindPFlag("metrics.enabled", flag.Lookup("metricsEnabled"))
 	viper.BindPFlag("metrics.refreshInterval", flag.Lookup("metricsRefreshInterval"))
@@ -231,12 +246,38 @@ func main() {
 		}
 	}
 
+	// db
+	var db database.Database
+
+	// postgres with sqlx
+	db, err = pgsql.New(cfg.DB)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// standalone Migrations
+	if cfg.Migrate.Action != "" {
+		if err := pgsql.Migrator(cfg.Migrate.Action, db); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
+	// check that all migrations are applied before proceeding
+	// and if not apply them
+	if err := pgsql.Migrator("upSync", db); err != nil {
+		log.Fatal(err)
+	}
+
 	// init notifications service
 	var fa notify.PushNotifier
 	if len(cfg.Notifications.KeyFile) > 0 {
+		// create file tracker
+		ipfsFileTracker := notify.NewIPFSFileTracker(cfg.IPFS, ep.MetricsAgent, db)
 		switch cfg.Notifications.Service {
 		case notify.Firebase:
-			fa = notify.NewFirebaseAdmin(cfg.Notifications.KeyFile)
+			fa = notify.NewFirebaseAdmin(cfg.Notifications.KeyFile, ipfsFileTracker)
+			log.Info("initilizing Firebase push notifications service")
 		default:
 			log.Fatal("unsuported push notifications service")
 		}
@@ -265,6 +306,7 @@ func main() {
 		log.Fatal("web3 external must be websocket or IPC for event subscription")
 	}
 
+	// Handle ethereum events and notify
 	evh = append(evh, fa.HandleEthereum)
 
 	var initBlock *int64

@@ -23,7 +23,18 @@ var langs = [...]string{"aa", "ab", "af", "ak", "sq", "am", "ar", "an", "hy", "a
 	"tg", "tl", "th", "bo", "ti", "to", "tn", "ts", "tk", "tr", "tw", "ug", "uk", "ur", "uz",
 	"ve", "vi", "vo", "cy", "wa", "wo", "xh", "yi", "yo", "za", "zh", "zu"}
 
-const defaultLang = "en"
+var defaultEventsName = [...]string{"new-post", "new-process", "entity-updated", "process-ended", "process-results"}
+
+const (
+	defaultLang               = "en"
+	defaultClickAction        = "FLUTTER_NOTIFICATION_CLICK"
+	defaultVoteTopic          = "_votes"
+	defaultNewsFeedTopic      = "_feed"
+	defaultProcessTitle       = "New process created"
+	defaultNewsFeedTitle      = "New feed created"
+	defaultAppRouteNewProcess = "https://vocdoni.link/processes/"
+	defaultAppRouteNewPost    = "https://app.vocdoni.net/posts/view/#/"
+)
 
 // supported Push notifications service
 const (
@@ -64,11 +75,7 @@ type PushNotifier interface {
 	// ethereum
 	HandleEthereum(event *ethtypes.Log, e *ethevents.EthereumEvents) error
 	// ipfs
-	HandleIPFS() error
-	// notification queue
-	Enqueue(notification Notification) error
-	Dequeue(notification Notification) error
-	Queue() []*Notification
+	HandleIPFS()
 	// user management
 	GetUser(uid string) (User, error)
 	CreateUser(userData User) (User, error)
