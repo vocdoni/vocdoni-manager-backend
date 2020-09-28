@@ -23,13 +23,11 @@ var langs = [...]string{"aa", "ab", "af", "ak", "sq", "am", "ar", "an", "hy", "a
 	"tg", "tl", "th", "bo", "ti", "to", "tn", "ts", "tk", "tr", "tw", "ug", "uk", "ur", "uz",
 	"ve", "vi", "vo", "cy", "wa", "wo", "xh", "yi", "yo", "za", "zh", "zu"}
 
-var defaultEventsName = [...]string{"new-post", "new-process", "entity-updated", "process-ended", "process-results"}
-
 const (
-	defaultLang               = "en"
+	defaultLangTag            = "default"
 	defaultClickAction        = "FLUTTER_NOTIFICATION_CLICK"
-	defaultVoteTopic          = "_votes"
-	defaultNewsFeedTopic      = "_feed"
+	defaultTopicProcessNew    = "_process-new"
+	defaultTopicPostNew       = "_post-new"
 	defaultProcessTitle       = "New process created"
 	defaultNewsFeedTitle      = "New feed created"
 	defaultAppRouteNewProcess = "https://vocdoni.link/processes/"

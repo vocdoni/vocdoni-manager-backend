@@ -253,11 +253,10 @@ func (fa *FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *etheve
 	// get relevant data
 	dataMap := make(map[string]string)
 	dataMap["uri"] = fmt.Sprintf("%s/%s/%s", defaultAppRouteNewProcess, processTx.EntityID, processTx.ProcessID)
-	dataMap["event"] = defaultEventsName[1]
 	dataMap["click_action"] = defaultClickAction
 	// add notification fields
 	notification := &FirebasePushNotification{}
-	notification.FCM.Topic = processTx.EntityID + "_" + defaultLang + defaultVoteTopic
+	notification.FCM.Topic = processTx.EntityID + "_" + defaultLangTag + defaultTopicProcessNew
 	notification.FCM.Notification.Title = defaultProcessTitle
 	notification.FCM.Notification.Body = fmt.Sprintf("Entity %s created a new process", processTx.EntityID)
 	dataMap["message"] = notification.FCM.Notification.Body
@@ -276,11 +275,10 @@ func (fa *FirebaseAdmin) HandleIPFS() {
 		newFeed := <-fa.IPFS.UpdatedFilesQueue
 		dataMap := make(map[string]string)
 		dataMap["uri"] = fmt.Sprintf("%s/%s", defaultAppRouteNewPost, newFeed.eID)
-		dataMap["event"] = defaultEventsName[0]
 		dataMap["click_action"] = defaultClickAction
 		// add notification fields
 		notification := &FirebasePushNotification{}
-		notification.FCM.Topic = newFeed.eID + "_" + defaultLang + defaultNewsFeedTopic
+		notification.FCM.Topic = newFeed.eID + "_" + defaultLangTag + defaultTopicPostNew
 		notification.FCM.Notification.Title = defaultNewsFeedTitle
 		notification.FCM.Notification.Body = fmt.Sprintf("Entity %s created a new feed", newFeed.eID)
 		dataMap["message"] = notification.FCM.Notification.Body
