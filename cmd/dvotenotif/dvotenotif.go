@@ -37,7 +37,7 @@ func newConfig() (*config.Manager, config.Error) {
 		return nil, cfgError
 	}
 	// flags
-	flag.StringVar(&cfg.DataDir, "dataDir", home+"/.dvotemanager", "directory where data is stored")
+	flag.StringVar(&cfg.DataDir, "dataDir", home+"/.dvotenotif", "directory where data is stored")
 	cfg.Mode = *flag.String("mode", "all", fmt.Sprintf("operation mode: %s", func() (modes []string) {
 		for m := range config.Modes {
 			modes = append(modes, m)
@@ -93,9 +93,9 @@ func newConfig() (*config.Manager, config.Error) {
 	// setting up viper
 	viper := viper.New()
 	viper.AddConfigPath(cfg.DataDir)
-	viper.SetConfigName("dvotemanager")
+	viper.SetConfigName("dvotenotif")
 	viper.SetConfigType("yml")
-	viper.SetEnvPrefix("DVOTE")
+	viper.SetEnvPrefix("NOTIF")
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
@@ -145,7 +145,7 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("metrics.refreshInterval", flag.Lookup("metricsRefreshInterval"))
 
 	// check if config file exists
-	_, err = os.Stat(cfg.DataDir + "/dvotemanager.yml")
+	_, err = os.Stat(cfg.DataDir + "/dvotenotif.yml")
 	if os.IsNotExist(err) {
 		cfgError = config.Error{
 			Message: fmt.Sprintf("creating new config file in %s", cfg.DataDir),
