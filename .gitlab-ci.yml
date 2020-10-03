@@ -8,6 +8,8 @@ variables:
   DOCKER_DRIVER: overlay2
   MANAGER_BUILD_IMAGE: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}
   MANAGER_RELEASE_IMAGE: ${CI_REGISTRY_IMAGE}:latest
+  NOTIF_BUILD_IMAGE: ${CI_REGISTRY_IMAGE}:notif-${CI_COMMIT_REF_NAME}
+  NOTIF_RELEASE_IMAGE: ${CI_REGISTRY_IMAGE}:notif-latest
 
   GOPATH: ${CI_PROJECT_DIR}/.cache/gopath # to cache Go module downloads
   GOCACHE: ${CI_PROJECT_DIR}/.cache/gocache # to cache Go build archives
@@ -43,10 +45,10 @@ go-analyze:
     - branches
 
 compose-test:
-  image: docker/compose:1.25.5
+  image: docker/compose:1.27.4
   stage: test
   tags:
-    - hetzner
+    - vocdoni
   script:
     # Avoid compose project collisions in parallel runs
     - export COMPOSE_PROJECT_NAME=${RANDOM}${RANDOM}_manager_test
@@ -65,14 +67,21 @@ docker-release:
   services:
     - docker:dind
   stage: release
+  tags:
+    - vocdoni
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
   script:
+    # dvotemanager
     - docker build -t ${MANAGER_BUILD_IMAGE} .
     - docker tag ${MANAGER_BUILD_IMAGE} ${MANAGER_RELEASE_IMAGE}
-    #- docker login -u gitlab-ci-token -p ${CI_BUILD_TOKEN} ${CI_REGISTRY}
     - docker push ${MANAGER_BUILD_IMAGE}
     - docker push ${MANAGER_RELEASE_IMAGE}
+    # dvotenotif
+    - docker build --target dvotenotif -t ${NOTIF_BUILD_IMAGE} .
+    - docker tag ${NOTIF_BUILD_IMAGE} ${NOTIF_RELEASE_IMAGE}
+    - docker push ${NOTIF_BUILD_IMAGE}
+    - docker push ${NOTIF_RELEASE_IMAGE}
   only:
     - master
     - /^release-.*$/

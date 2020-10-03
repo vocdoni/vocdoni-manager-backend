@@ -13,9 +13,23 @@ RUN go mod download
 # Build all the binaries at once, so that the final targets don't require having
 # Go installed to build each of them.
 COPY . .
-RUN go build -o=. -ldflags='-w -s' -mod=readonly ./cmd/dvotemanager ./cmd/managertest
+RUN go build -o=. -ldflags='-w -s' -mod=readonly ./cmd/dvotemanager ./cmd/managertest ./cmd/dvotenotif
 
-FROM debian:10.4-slim
+FROM debian:10-slim as managertest
+
+WORKDIR /app
+COPY --from=builder /src/managertest ./
+
+ENTRYPOINT ["/app/managertest"]
+
+FROM debian:10-slim as dvotenotif
+
+WORKDIR /app
+COPY --from=builder /src/dvotenotif ./
+
+ENTRYPOINT ["/app/dvotenotif"]
+
+FROM debian:10-slim
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 WORKDIR /app
