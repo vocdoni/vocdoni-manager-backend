@@ -26,6 +26,12 @@ type Database interface {
 	CountMembers(entityID []byte) (int, error)
 	ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error)
 	UpdateMember(entityID []byte, memberID *uuid.UUID, info *types.MemberInfo) error
+	AddTag(entityID []byte, tagName string) (int, error)
+	DeleteTag(entityID []byte, tagID int) error
+	Tag(entityID []byte, tagID int) (*types.Tag, error)
+	ListTags(entityID []byte) ([]types.Tag, error)
+	AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int) (int64, error)
+	RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int) (int64, error)
 	CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error
 	CreateNMembers(entityID []byte, n int) ([]uuid.UUID, error)
 	RegisterMember(entityID, pubKey []byte, token *uuid.UUID) error

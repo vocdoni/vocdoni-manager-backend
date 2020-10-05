@@ -21,6 +21,11 @@ var Migrations = migrate.MemoryMigrationSource{
 			Up:   []string{migration2up},
 			Down: []string{migration2down},
 		},
+		{
+			Id:   "3",
+			Up:   []string{migration3up},
+			Down: []string{migration3down},
+		},
 	},
 }
 
@@ -237,6 +242,30 @@ ALTER TABLE entities ADD COLUMN is_authorized boolean DEFAULT false NOT NULL;
 
 const migration2down = `
 ALTER TABLE entities DROP COLUMN is_authorized;
+`
+
+const migration3up = `
+CREATE EXTENSION IF NOT EXISTS intarray SCHEMA public;
+CREATE TABLE tags  (
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    id  SERIAL NOT NULL,
+    name TEXT NOT NULL,
+    entity_id bytea NOT NULL
+);
+ALTER TABLE ONLY tags
+    ADD CONSTRAINT tags_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY tags
+    ADD CONSTRAINT tags_name_entity_id_unique UNIQUE (name,entity_id);
+ALTER TABLE ONLY tags
+    ADD CONSTRAINT tags_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE;
+ALTER TABLE ONLY members ADD COLUMN tags int[] NOT NULL DEFAULT '{}';
+`
+
+const migration3down = `
+DROP TABLE tags;
+ALTER TABLE ONLY members DROP COLUMN tags;
+DROP EXTENSION IF EXISTS intarray;
 `
 
 func Migrator(action string, db database.Database) error {

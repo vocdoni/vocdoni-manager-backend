@@ -277,6 +277,27 @@ func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *type
 	return nil
 }
 
+func (d *Database) AddTag(entityID []byte, tagName string) (int, error) {
+	return 1, nil
+}
+func (d *Database) ListTags(entityID []byte) ([]types.Tag, error) {
+	return nil, nil
+}
+func (d *Database) DeleteTag(entityID []byte, tagID int) error {
+	return nil
+}
+func (d *Database) Tag(entityID []byte, tagID int) (*types.Tag, error) {
+	return nil, nil
+}
+
+func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int) (int64, error) {
+	return 1, nil
+}
+
+func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int) (int64, error) {
+	return 1, nil
+}
+
 func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error {
 	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {

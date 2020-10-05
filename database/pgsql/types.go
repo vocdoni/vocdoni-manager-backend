@@ -84,7 +84,8 @@ func StringToOriginArray(s []string) ([]types.Origin, error) {
 
 type PGMember struct {
 	types.Member
-	CustomFields pgtype.JSONB `json:"customFields" db:"pg_custom_fields"`
+	CustomFields pgtype.JSONB     `json:"customFields" db:"pg_custom_fields"`
+	Tags         pgtype.Int4Array `json:"tags" db:"pg_tags"`
 }
 
 func ToPGMember(x *types.Member) (*PGMember, error) {
@@ -99,6 +100,10 @@ func ToPGMember(x *types.Member) (*PGMember, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = y.Tags.Set(x.MemberInfo.Tags)
+	if err != nil {
+		return nil, err
+	}
 	// y.CustomFields = pgtype.JSONB{Bytes: x.MemberInfo.CustomFields, Status: pgtype.Present}
 	return y, nil
 }
@@ -107,6 +112,7 @@ func ToMember(x *PGMember) *types.Member {
 	y := x.Member
 	// y.MemberInfo.CustomFields = x.CustomFields.Bytes
 	x.CustomFields.AssignTo(y.MemberInfo.CustomFields)
+	x.Tags.AssignTo(&y.MemberInfo.Tags)
 	return &y
 }
 

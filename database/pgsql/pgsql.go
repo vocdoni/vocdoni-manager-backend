@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -712,6 +713,254 @@ func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *type
 	return nil
 }
 
+func (d *Database) AddTag(entityID []byte, tagName string) (int, error) {
+	if tagName == "" {
+		log.Debugf("entity %x tried to creat tag with empty name", entityID)
+		return 0, fmt.Errorf("invalid tag name")
+	}
+	tag := types.Tag{
+		CreatedUpdated: types.CreatedUpdated{
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		},
+		EntityID: entityID,
+		Name:     tagName,
+	}
+	insert := `INSERT INTO tags
+				(entity_id, name, created_at, updated_at)
+				VALUES (:entity_id, :name, :created_at, :updated_at)
+				RETURNING id`
+	result, err := d.db.NamedQuery(insert, tag)
+	if err != nil {
+		log.Errorf("error inserting tag: (%v)", err)
+		return 0, err
+	}
+	if !result.Next() {
+		log.Errorf("result has no rows, posible violation of db constraints")
+		return 0, fmt.Errorf("result has no rows, posible violation of db constraints")
+	}
+	var id int
+	err = result.Scan(&id)
+	if err != nil {
+		log.Errorf("error inserting tag: (%v)", err)
+		return 0, err
+	}
+	return id, nil
+
+}
+
+func (d *Database) ListTags(entityID []byte) ([]types.Tag, error) {
+	if len(entityID) == 0 {
+		log.Debugf("cannot retrieve tags for empty entityID")
+		return nil, fmt.Errorf("invalid entity ID")
+	}
+	selectQuery := `SELECT id, name,  
+					FROM tags
+					WHERE entity_id=$1`
+	var tags []types.Tag
+	if err := d.db.Select(&tags, selectQuery, entityID); err != nil {
+		log.Errorf("error retrieving tags for %x", entityID)
+		return nil, err
+	}
+	return tags, nil
+}
+
+func (d *Database) DeleteTag(entityID []byte, tagID int) error {
+	if len(entityID) == 0 {
+		log.Debug("tried to delete tag for empty entityID")
+		return fmt.Errorf("invalid entity ID")
+	}
+
+	// Check that tag exists
+	_, err := d.Tag(entityID, tagID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Debug("removing not existing tag %d for entity %x", tagID, entityID)
+			return err
+		}
+		log.Errorf("DeleteTag: error retrieving tag %d for %x : (%v)", tagID, entityID, err)
+		return err
+	}
+
+	// Delete tag from members
+	tx, err := d.db.Beginx()
+	if err != nil {
+		log.Errorf("DeleteTag: cannot initialize postgres transaction: %v", err)
+		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
+	}
+	queryData := struct {
+		EntityID []byte `db:"entity_id"`
+		TagID    int    `db:"tag_id"`
+	}{
+		EntityID: entityID,
+		TagID:    tagID,
+	}
+	// WARNING: Here tag is passed directly as to the SQL query since we are sure
+	// that a tag with this ID exists
+	update := `UPDATE members m SET 
+					tags = array_remove(tags, :tag_id)
+			    WHERE m.entity_id = :entity_id AND (m.tags && intset(:tag_id))`
+
+	result, err := tx.NamedExec(update, queryData)
+	if err != nil {
+		log.Errorf("DeleteTag: error adding  tag %d  to members of %x: (%v)", tagID, entityID, err)
+		return err
+	}
+
+	if rows, err := result.RowsAffected(); err != nil {
+		log.Errorf("DeleteTag: cannot get affected rows: %v", err)
+		return fmt.Errorf("cannot get affected rows: %v", err)
+	} else { // Nothing to update?
+		log.Debugf("DeleteTag: removed tag from %d members", rows)
+	}
+
+	// Delete tags
+	deleteQuery := `DELETE FROM tags WHERE id = $1 and entity_id =$2`
+	result, err = tx.Exec(deleteQuery, tagID, entityID)
+	if err != nil {
+		log.Errorf("DeleteTag: error deleting tags for entity %x: %v", entityID, err)
+		return err
+	}
+
+	if _, err := result.RowsAffected(); err != nil {
+		log.Errorf("DeleteTag: error deleting tag %d for %x : %v", tagID, entityID, err)
+		return err
+	}
+	if err = tx.Commit(); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			log.Errorf("DeleteTag: something is very wrong: error rolling back on deleting tag: %v\nafter final commit to DB: %v", rollErr, err)
+			return fmt.Errorf("something is very wrong: error rolling back on deleting tag: %v\nafter final commit to DB: %v", rollErr, err)
+		}
+		log.Errorf("DeleteTag: error commiting delete transactions to the DB: %v", err)
+		return fmt.Errorf("error commiting delete transactions to the DB: %v", err)
+	}
+	return nil
+}
+
+func (d *Database) Tag(entityID []byte, tagID int) (*types.Tag, error) {
+	if len(entityID) == 0 || tagID == 0 {
+		log.Debugf("Tag: invalid arguments: tag %d for entity %x", tagID, entityID)
+		return nil, fmt.Errorf("invalid arguments")
+	}
+	selectQuery := `SELECT id, name
+					FROM tags
+					WHERE entity_id=$1 AND id=$2`
+	var tag types.Tag
+	if err := d.db.Get(&tag, selectQuery, entityID, tagID); err != nil {
+		log.Errorf("error retrieving tag %d for entity %x : (%v)", tagID, entityID, err)
+		return nil, err
+	}
+	return &tag, nil
+}
+
+func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int) (int64, error) {
+	// Tags as text[] http://www.databasesoup.com/2015/01/tag-all-things.html
+	// Tags as intarray
+	var rows int64
+
+	if len(members) == 0 || len(entityID) == 0 {
+		log.Debugf("AddTagToMembers: invalid arguments: tag %d for entity %x", tagID, entityID)
+		return rows, fmt.Errorf("invalid arguments")
+	}
+	_, err := d.Tag(entityID, tagID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Debug("AddTagToMembers: trying to add not existing tag %d for entity %x", tagID, entityID)
+			return rows, err
+		}
+		log.Errorf("AddTagsToMembers: error retrieving tag %d for %x : (%v)", tagID, entityID, err)
+		return 0, err
+	}
+	type TagData struct {
+		MemberID string `db:"member_id"`
+		TagID    string `db:"tag_id"`
+	}
+	idTagsMap := make([]*TagData, len(members))
+	for i, memberID := range members {
+		idTagsMap[i] = &TagData{
+			MemberID: memberID.String(),
+			TagID:    strconv.Itoa(tagID),
+		}
+	}
+
+	// WARNING: Here tag is passed directly as to the SQL query since we are sure
+	// that a tag with this ID exists
+	update := fmt.Sprintf(`UPDATE members m SET 
+					tags = array_append(tags, CAST(u.tag_id AS int))
+				FROM (VALUES 
+					(:member_id, :tag_id)
+				)
+				AS u(member_id,tag_id)			
+		WHERE m.entity_id = decode('%x','hex') AND m.id = uuid(u.member_id) AND NOT (m.tags && intset(%d)) `, entityID, tagID)
+
+	result, err := d.db.NamedExec(update, idTagsMap)
+	if err != nil {
+		log.Errorf("AddTagToMembers: error adding  tag %d  to members of %x: (%v)", tagID, entityID, err)
+		return rows, err
+	}
+	if rows, err = result.RowsAffected(); err != nil {
+		log.Errorf("AddTagToMembers: cannot get affected rows: %v", err)
+		return rows, fmt.Errorf("cannot get affected rows: %v", err)
+	} else if rows != int64(len(members)) { /* Nothing to update? */
+		log.Errorf("AddTagToMembers: expected to update %d rows but updated %d", int64(len(members)), rows)
+		return rows, fmt.Errorf("expected to update %d rows but updated %d", int64(len(members)), rows)
+	}
+	return rows, nil
+}
+
+func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int) (int64, error) {
+	var rows int64
+	if len(members) == 0 || len(entityID) == 0 {
+		log.Debugf("RemoveTagFromMembers: invalid arguments: tag %d for entity %x", tagID, entityID)
+		return 0, fmt.Errorf("invalid arguments")
+	}
+	_, err := d.Tag(entityID, tagID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Debugf("RemoveTagFromMembers: non-existing tag %d for entity %x", tagID, entityID)
+			return rows, err
+		}
+		log.Errorf("RemoveTagFromMembers: error retrieving tag %d for %x : (%v)", tagID, entityID, err)
+		return 0, err
+	}
+	type TagData struct {
+		MemberID string `db:"member_id"`
+		TagID    string `db:"tag_id"`
+	}
+	idTagsMap := make([]*TagData, len(members))
+	for i, memberID := range members {
+		idTagsMap[i] = &TagData{
+			MemberID: memberID.String(),
+			TagID:    strconv.Itoa(tagID),
+		}
+	}
+
+	// WARNING: Here tag is passed directly as to the SQL query since we are sure
+	// that a tag with this ID exists
+	update := fmt.Sprintf(`UPDATE members m SET 
+					tags = array_remove(tags, CAST(u.tag_id AS int))
+				FROM (VALUES 
+					(:member_id, :tag_id)
+				)
+				AS u(member_id,tag_id)			
+				WHERE m.entity_id = decode('%x','hex') AND m.id = uuid(u.member_id)`, entityID)
+
+	result, err := d.db.NamedExec(update, idTagsMap)
+	if err != nil {
+		log.Errorf("error adding  tag %d  to members of %x: (%v)", tagID, entityID, err)
+		return rows, err
+	}
+
+	if rows, err = result.RowsAffected(); err != nil {
+		log.Errorf("RemoveTagFromMembers: cannot get affected rows: %v", err)
+		return rows, fmt.Errorf("cannot get affected rows: %v", err)
+	} else if rows != int64(len(members)) { /* Nothing to update? */
+		log.Errorf("RemoveTagFromMembers: expected to update %d rows but updated %d", int64(len(members)), rows)
+		return rows, fmt.Errorf("expected to update %d rows but updated %d", int64(len(members)), rows)
+	}
+	return rows, nil
+}
+
 // Register member to existing ID and generates corresponding user
 func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) error {
 	if token == nil {
@@ -797,7 +1046,7 @@ func (d *Database) Member(entityID []byte, memberID *uuid.UUID) (*types.Member, 
 	}
 	var pgMember PGMember
 	selectQuery := `SELECT
-	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented
+	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented, tags as "pg_tags"
 					FROM members WHERE id = $1 and entity_id =$2`
 	row := d.db.QueryRowx(selectQuery, memberID, entityID)
 	if err := row.StructScan(&pgMember); err != nil {
@@ -871,7 +1120,7 @@ func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]ty
 	// TODO: Replace limit offset with better strategy, can slow down DB
 	// would nee to now last value from previous query
 	selectQuery := `SELECT
-	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
+	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", tags as "pg_tags"
 					FROM members WHERE entity_id =$1
 					ORDER BY %s %s LIMIT $2 OFFSET $3`
 	// Define default values for arguments

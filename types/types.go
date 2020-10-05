@@ -72,6 +72,7 @@ type MemberInfo struct {
 	Verified      time.Time       `json:"verified,omitempty" db:"verified"`
 	Origin        Origin          `json:"origin,omitempty" db:"origin"`
 	CustomFields  json.RawMessage `json:"customFields,omitempty" db:"custom_fields"`
+	Tags          []int           `json:"tags,omitempty" db:"tags"`
 }
 
 // In case COPY FROM is adopted
@@ -191,4 +192,12 @@ type EntityMetadata struct {
 	BootEntities                 []interface{}       `json:"bootEntities,omitempty"`
 	TrustedEntities              []interface{}       `json:"trustedEntities,omitempty"`
 	CensusServiceManagedEntities []interface{}       `json:"censusServiceManagedEntities,omitempty"`
+}
+
+// A tag of a given entity for categorizing users
+type Tag struct {
+	CreatedUpdated
+	ID       int    `json:"id" db:"id"`
+	EntityID []byte `json:"entityId" db:"entity_id"`
+	Name     string `json:"name" db:"name"`
 }

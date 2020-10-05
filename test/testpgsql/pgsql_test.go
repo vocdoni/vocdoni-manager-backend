@@ -576,3 +576,103 @@ func TestCensus(t *testing.T) {
 	// Verify that the corresponding members are also deleted
 
 }
+
+func TestTags(t *testing.T) {
+	// create entity
+	_, entities := testcommon.CreateEntities(1)
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	// create members
+	// Test that members without keys are not counted
+	memberIDs, err := api.DB.CreateNMembers(entities[0].ID, 2)
+	if err != nil {
+		t.Fatalf("cannot generate random members (%v)", err)
+	}
+
+	// Add tag
+	tag_id, err := api.DB.AddTag(entities[0].ID, "TestTag")
+	if err != nil {
+		t.Fatalf("error creating tag:  (%v)", err)
+	}
+	tag, err := api.DB.Tag(entities[0].ID, tag_id)
+	if err != nil {
+		t.Fatalf("error retrieving newly created tag:  (%v)", err)
+	}
+	// Add tag to members
+	added, err := api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID)
+	if err != nil || added != int64(len(memberIDs)) {
+		t.Fatalf("unable to add member tags:  (%v)", err)
+	}
+	// verify tags were registered correctly
+	taggedMembers, err := api.DB.ListMembers(entities[0].ID, nil)
+	if err != nil {
+		t.Fatalf("error retrieving entity members:  (%v)", err)
+	}
+	for _, member := range taggedMembers {
+		// since it is the only tag of the elements it is enough to check array size
+		if len(member.Tags) != 1 || member.Tags[0] != tag.ID {
+			t.Fatalf("Did not update correctly member tags")
+		}
+	}
+
+	// verify that the same tag cannot be added twice
+	// Add tag to members
+	updated, err := api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID)
+	if err == nil || updated != 0 {
+		t.Fatalf("able to add the same member tag twice:  (%v)", err)
+	}
+
+	// delete added tag
+	deleted, err := api.DB.RemoveTagFromMembers(entities[0].ID, memberIDs, tag.ID)
+	if err != nil || deleted != int64(len(memberIDs)) {
+		t.Fatalf("unable to delete member tags:  (%v)", err)
+	}
+	// verify tags were removed correctly
+	taggedMembers, err = api.DB.ListMembers(entities[0].ID, nil)
+	if err != nil {
+		t.Fatalf("error retrieving entity members:  (%v)", err)
+	}
+	for _, member := range taggedMembers {
+		// since it is the only tag of the elements it is enough to check array size
+		if len(member.Tags) != 0 {
+			t.Fatalf("Did not delete correctly member tags")
+		}
+	}
+
+	// add again tag and delete the tag (removing it automatically from the members that have it)
+	added, err = api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID)
+	if err != nil || added != int64(len(memberIDs)) {
+		t.Fatalf("unable to add member tags:  (%v)", err)
+	}
+	if err = api.DB.DeleteTag(entities[0].ID, tag.ID); err != nil {
+		t.Fatalf("unable to delete tag that exists for members:  (%v)", err)
+	}
+	taggedMembers, err = api.DB.ListMembers(entities[0].ID, nil)
+	if err != nil {
+		t.Fatalf("error retrieving entity members:  (%v)", err)
+	}
+	for _, member := range taggedMembers {
+		// since it is the only tag of the elements it is enough to check array size
+		if len(member.Tags) != 0 {
+			t.Fatalf("Did not cascade delete correctly member tags")
+		}
+	}
+	if _, err := api.DB.Tag(entities[0].ID, tag.ID); err == nil || err != sql.ErrNoRows {
+		t.Fatalf("tag was not deleted correctly %v", err)
+	}
+
+	// add again tag and delete the tag
+	tag_id, err = api.DB.AddTag(entities[0].ID, "TestTag")
+	if err != nil {
+		t.Fatalf("error creating tag:  (%v)", err)
+	}
+	if err = api.DB.DeleteTag(entities[0].ID, tag_id); err != nil {
+		t.Fatalf("unable to delete tag that exists for members:  (%v)", err)
+	}
+	if _, err := api.DB.Tag(entities[0].ID, tag.ID); err == nil || err != sql.ErrNoRows {
+		t.Fatalf("tag was not deleted correctly %v", err)
+	}
+}
