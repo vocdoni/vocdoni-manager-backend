@@ -44,6 +44,24 @@ services:
       traefik.default.protocol: http
     <<: *log-config
 
+  manager-notif:
+    image: vocdoni/manager-backend:notif-latest
+    build:
+      context: ../../
+      target: dvotenotif
+    env_file:
+      - env
+    volumes:
+      - "notif-run:/app/run"
+    depends_on:
+      - db
+    labels:
+      traefik.enable: true
+      traefik.frontend.rule: "PathPrefix:/notifications"
+      traefik.default.port: 8000
+      traefik.default.protocol: http
+    <<: *log-config
+
   nginx:
     image: nginx
     volumes:
@@ -94,3 +112,4 @@ volumes:
   traefik:
   db:
   backend-run:
+  notif-run:
