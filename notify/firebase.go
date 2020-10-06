@@ -255,7 +255,11 @@ func (fa *FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *etheve
 	dataMap["uri"] = fmt.Sprintf("%s/%s/%s", defaultAppRouteNewProcess, processTx.EntityID, processTx.ProcessID)
 	dataMap["click_action"] = defaultClickAction
 	// add notification fields
-	notification := &FirebasePushNotification{}
+	fcm := &messaging.Message{
+		Notification: new(messaging.Notification),
+		Data:         make(map[string]string),
+	}
+	notification := &FirebasePushNotification{FCM: fcm}
 	notification.FCM.Topic = processTx.EntityID + "_" + defaultLangTag + defaultTopicProcessNew
 	notification.FCM.Notification.Title = defaultProcessTitle
 	notification.FCM.Notification.Body = fmt.Sprintf("Entity %s created a new process", processTx.EntityID)
@@ -277,7 +281,11 @@ func (fa *FirebaseAdmin) HandleIPFS() {
 		dataMap["uri"] = fmt.Sprintf("%s/%s", defaultAppRouteNewPost, newFeed.eID)
 		dataMap["click_action"] = defaultClickAction
 		// add notification fields
-		notification := &FirebasePushNotification{}
+		fcm := &messaging.Message{
+			Notification: new(messaging.Notification),
+			Data:         make(map[string]string),
+		}
+		notification := &FirebasePushNotification{FCM: fcm}
 		notification.FCM.Topic = newFeed.eID + "_" + defaultLangTag + defaultTopicPostNew
 		notification.FCM.Notification.Title = defaultNewsFeedTitle
 		notification.FCM.Notification.Body = fmt.Sprintf("Entity %s created a new feed", newFeed.eID)
