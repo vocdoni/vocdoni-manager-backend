@@ -43,25 +43,22 @@ func DecodeCensusID(id string, pubKey string) ([]byte, error) {
 		censusID = split[0]
 	case len(split) == 2: // "0x.../0x.... format"
 		// Check that the first component is the correct address
-		if !util.IsHex(util.TrimHex(split[0])) {
-			return nil, fmt.Errorf("invalid census ID format")
+		inputAddressBytes, err := hex.DecodeString(util.TrimHex(split[0]))
+		if err != nil {
+			return nil, fmt.Errorf("error decoding address: %v", err)
 		}
-		if address, err := ethereum.AddrFromPublicKey(pubKey); err != nil {
-			return nil, fmt.Errorf("cannot extract entity address %+v", err)
-		} else if address.String() != split[0] {
-			return nil, fmt.Errorf("invalid census id")
+		if recoveredAddress, err := ethereum.AddrFromPublicKey(pubKey); err != nil {
+			return nil, fmt.Errorf("cannot extract entity address %v", err)
+		} else if string(recoveredAddress.Bytes()) != string(inputAddressBytes) {
+			return nil, fmt.Errorf("invalid address in census id")
 		}
 		censusID = split[1]
 	default:
 		return nil, fmt.Errorf("invalid census id")
 	}
-	censusIDIn := util.TrimHex(censusID)
-	if !util.IsHex(censusIDIn) {
-		return nil, fmt.Errorf("invalid census ID format")
-	}
-	censusIDBytes, err := hex.DecodeString(censusIDIn)
+	censusIDBytes, err := hex.DecodeString(util.TrimHex(censusID))
 	if err != nil {
-		return nil, fmt.Errorf("cannot decode censusID: %+v", err)
+		return nil, fmt.Errorf("cannot decode censusID: %v", err)
 	}
 
 	return censusIDBytes, nil
