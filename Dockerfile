@@ -9,6 +9,7 @@ WORKDIR /src
 # COPY lines, since otherwise we do the equivalent of 'cp duktape-stub/* .'.
 COPY go.mod go.sum ./
 RUN go mod download
+RUN apt update && apt install -y ca-certificates 
 
 # Build all the binaries at once, so that the final targets don't require having
 # Go installed to build each of them.
@@ -24,6 +25,7 @@ ENTRYPOINT ["/app/managertest"]
 
 FROM debian:10-slim as dvotenotif
 
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 WORKDIR /app
 COPY --from=builder /src/dvotenotif ./
 
