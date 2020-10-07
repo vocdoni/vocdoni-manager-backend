@@ -88,6 +88,38 @@ func TestSignUp(t *testing.T) {
 	}
 }
 
+func TestGetEntity(t *testing.T) {
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// create entity
+	entitySigners, entities := testcommon.CreateEntities(2)
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	// create and make request
+	var req types.MetaRequest
+	req.Method = "getEntity"
+	resp := wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Fatalf("failed to get Entity: %+v", req)
+	}
+	if string(resp.Entity.ID) != string(entities[0].ID) {
+		t.Fatalf("retrieved wrong entity")
+	}
+
+	// fails for inexisting entity
+	resp = wsc.Request(req, entitySigners[1])
+	if resp.Ok {
+		t.Fatalf("managed to get inexisting Entity: %+v", req)
+	}
+}
+
 func TestUpdateEntity(t *testing.T) {
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)

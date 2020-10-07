@@ -53,6 +53,9 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("signUp", path+"/manager", m.signUp, false, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("getEntity", path+"/manager", m.getEntity, false, false); err != nil {
+		return err
+	}
 	if err := m.Router.AddHandler("updateEntity", path+"/manager", m.updateEntity, false, false); err != nil {
 		return err
 	}
@@ -178,6 +181,40 @@ func (m *Manager) signUp(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q signUp", request.SignaturePublicKey)
+	m.send(&request, &response)
+}
+
+func (m *Manager) getEntity(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Errorf("cannot recover %q entityID: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID")
+		return
+	}
+
+	if response.Entity, err = m.db.Entity(entityID); err != nil {
+		if err == sql.ErrNoRows {
+			log.Errorf("entity requesting its info with getEntity not found")
+			m.Router.SendError(request, "entity not found")
+			return
+		}
+		log.Errorf("cannot retrieve details of entity %x: (%v)", entityID, err)
+		m.Router.SendError(request, "cannot retrieve entity")
+		return
+	}
+
+	log.Infof("listing details of Entity %x", entityID)
 	m.send(&request, &response)
 }
 
