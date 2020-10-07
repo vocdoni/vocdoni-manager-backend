@@ -27,7 +27,7 @@ import (
 func newConfig() (*config.Manager, config.Error) {
 	var err error
 	var cfgError config.Error
-	cfg := config.NewConfig()
+	cfg := config.NewManagerConfig()
 	home, err := os.UserHomeDir()
 	if err != nil {
 		cfgError = config.Error{
@@ -200,7 +200,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	log.Debugf("initializing config %+v %+v %+v", *cfg, *cfg.API, *cfg.DB)
+	log.Debugf("initializing config: %s", cfg.String())
 	if !cfg.ValidMode() {
 		log.Fatalf("invalid mode %s", cfg.Mode)
 	}

@@ -24,10 +24,10 @@ import (
 	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
 )
 
-func newConfig() (*config.Manager, config.Error) {
+func newConfig() (*config.Notify, config.Error) {
 	var err error
 	var cfgError config.Error
-	cfg := config.NewConfig()
+	cfg := config.NewNotifyConfig()
 	home, err := os.UserHomeDir()
 	if err != nil {
 		cfgError = config.Error{
@@ -38,12 +38,6 @@ func newConfig() (*config.Manager, config.Error) {
 	}
 	// flags
 	flag.StringVar(&cfg.DataDir, "dataDir", home+"/.dvotenotif", "directory where data is stored")
-	cfg.Mode = *flag.String("mode", "all", fmt.Sprintf("operation mode: %s", func() (modes []string) {
-		for m := range config.Modes {
-			modes = append(modes, m)
-		}
-		return
-	}()))
 
 	// global
 	cfg.LogLevel = *flag.String("logLevel", "info", "Log level (debug, info, warn, error, fatal)")
@@ -61,7 +55,7 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.Notifications.Service = *flag.Int("pushNotificationsService", notify.Firebase, "push notifications service, 1: Firebase")
 	//ethereum node
 	cfg.Ethereum.SigningKey = *flag.String("ethSigningKey", "", "signing private Key (if not specified the Ethereum keystore will be used)")
-	cfg.Ethereum.ChainType = *flag.String("ethChain", "goerli", fmt.Sprintf("Ethereum blockchain to use: %s", chain.AvailableChains))
+	cfg.Ethereum.ChainType = *flag.String("ethChain", "sokol", fmt.Sprintf("Ethereum blockchain to use: %s", chain.AvailableChains))
 	cfg.Ethereum.LightMode = *flag.Bool("ethChainLightMode", false, "synchronize Ethereum blockchain in light mode")
 	cfg.Ethereum.NodePort = *flag.Int("ethNodePort", 30303, "Ethereum p2p node port to use")
 	cfg.Ethereum.BootNodes = *flag.StringArray("ethBootNodes", []string{}, "Ethereum p2p custom bootstrap nodes (enode://<pubKey>@<ip>[:port])")
@@ -69,8 +63,8 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.Ethereum.ProcessDomain = *flag.String("ethProcessDomain", "voting-process.vocdoni.eth", "voting contract ENS domain")
 	cfg.Ethereum.NoWaitSync = *flag.Bool("ethNoWaitSync", false, "do not wait for Ethereum to synchronize (for testing only)")
 	// ethereum events
-	cfg.EthereumEvents.CensusSync = *flag.Bool("ethCensusSync", true, "automatically import new census published on the smart contract")
-	cfg.EthereumEvents.SubscribeOnly = *flag.Bool("ethSubscribeOnly", true, "only subscribe to new ethereum events (do not read past log)")
+	cfg.EthereumEvents.CensusSync = *flag.Bool("ethCensusSync", false, "automatically import new census published on the smart contract")
+	cfg.EthereumEvents.SubscribeOnly = *flag.Bool("ethSubscribeOnly", false, "only subscribe to new ethereum events (do not read past log)")
 	// ethereum web3
 	cfg.Web3.W3External = *flag.String("w3External", "", "use an external web3 endpoint instead of the local one. Supported protocols: http(s)://, ws(s):// and IPC filepath")
 	cfg.Web3.Enabled = *flag.Bool("w3Enabled", true, "if true, a web3 public endpoint will be enabled")
@@ -81,8 +75,7 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.IPFS.NoInit = *flag.Bool("ipfsNoInit", false, "disables inter planetary file system support")
 	cfg.IPFS.SyncKey = *flag.String("ipfsSyncKey", "", "enable IPFS cluster synchronization using the given secret key")
 	cfg.IPFS.SyncPeers = *flag.StringArray("ipfsSyncPeers", []string{}, "use custom ipfsSync peers/bootnodes for accessing the DHT")
-	// db migrations
-	cfg.Migrate.Action = *flag.String("migrateAction", "", "Migration action (up,down,status)")
+
 	// metrics
 	cfg.Metrics.Enabled = *flag.Bool("metricsEnabled", true, "enable prometheus metrics")
 	cfg.Metrics.RefreshInterval = *flag.Int("metricsRefreshInterval", 10, "metrics refresh interval in seconds")
@@ -138,8 +131,7 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("ipfs.NoInit", flag.Lookup("ipfsNoInit"))
 	viper.BindPFlag("ipfs.SyncKey", flag.Lookup("ipfsSyncKey"))
 	viper.BindPFlag("ipfs.SyncPeers", flag.Lookup("ipfsSyncPeers"))
-	// db migrations
-	viper.BindPFlag("migrate.action", flag.Lookup("migrateAction"))
+
 	// metrics
 	viper.BindPFlag("metrics.enabled", flag.Lookup("metricsEnabled"))
 	viper.BindPFlag("metrics.refreshInterval", flag.Lookup("metricsRefreshInterval"))
@@ -206,10 +198,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	log.Debugf("initializing config %+v %+v %+v", *cfg, *cfg.API, *cfg.DB)
-	if !cfg.ValidMode() {
-		log.Fatalf("invalid mode %s", cfg.Mode)
-	}
+	log.Debugf("initializing config: %s", cfg.String())
 
 	// ethereum sign key
 	signer := ethereum.NewSignKeys()
@@ -218,7 +207,7 @@ func main() {
 	}
 
 	// create and init proxy
-	ep, err := endpoint.NewEndpoint(cfg, signer)
+	ep, err := endpoint.NewEndpoint(&config.Manager{API: cfg.API, Metrics: cfg.Metrics}, signer)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -252,20 +241,6 @@ func main() {
 	// postgres with sqlx
 	db, err = pgsql.New(cfg.DB)
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	// standalone Migrations
-	if cfg.Migrate.Action != "" {
-		if err := pgsql.Migrator(cfg.Migrate.Action, db); err != nil {
-			log.Fatal(err)
-		}
-		return
-	}
-
-	// check that all migrations are applied before proceeding
-	// and if not apply them
-	if err := pgsql.Migrator("upSync", db); err != nil {
 		log.Fatal(err)
 	}
 
@@ -325,12 +300,10 @@ func main() {
 	}
 
 	// start notifications API
-	if cfg.Mode == "notifications" || cfg.Mode == "all" {
-		log.Infof("enabling Notifications API methods")
-		notif := notify.NewAPI(ep.Router, fa, ep.MetricsAgent)
-		if err := notif.RegisterMethods(cfg.API.Route); err != nil {
-			log.Fatal(err)
-		}
+	log.Infof("enabling Notifications API methods")
+	notif := notify.NewAPI(ep.Router, fa, ep.MetricsAgent)
+	if err := notif.RegisterMethods(cfg.API.Route); err != nil {
+		log.Fatal(err)
 	}
 
 	// Only start routing once we have registered all methods. Otherwise we
