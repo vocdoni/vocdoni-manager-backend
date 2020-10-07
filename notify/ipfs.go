@@ -136,9 +136,13 @@ func (ft *IPFSFileTracker) refreshEntities(cErr chan<- error) {
 	if err != nil {
 		cErr <- err
 	}
+	updatedList := []string{}
 	for _, e := range eIDs {
+		updatedList = append(updatedList, e)
 		ft.FileContentList.LoadOrStore(e, nil)
 	}
+	log.Debugf("updated entity list: %+v", updatedList)
+
 }
 
 func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, wg *sync.WaitGroup, key string, cErr chan<- error) {
@@ -153,6 +157,7 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, wg *sync.Wait
 		// continue with the next key on range
 		return
 	}
+	log.Debugf("fetched entity %s metadata url %s", key, eURL)
 	// split
 	eURL = strings.Split(eURL, ",")[0]
 	ipfsHash := strings.TrimPrefix(eURL, "ipfs://")
@@ -169,6 +174,7 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, wg *sync.Wait
 		cErr <- err
 		return
 	}
+	log.Debugf("entity %s metadata is: %+v", key, entityMetadata)
 	// compare current and fetched hash
 	// load old content from FileContentList
 	oldContent, _ := ft.FileContentList.Load(key)
@@ -187,12 +193,14 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, wg *sync.Wait
 				// delete old feed
 				ft.FileContentList.Delete(key)
 				ft.FileContentList.Store(uFile.eID, *uFile.IPFSFile)
+				log.Debugf("entity %s metadata updated, hash: %s content: %+v", uFile.eID, uFile.Hash, *uFile.IPFSFile)
 			}
 		}
 		// if same hash, nothing to do
 	} else { // if not exists notify and store
 		ft.UpdatedFilesQueue <- uFile
 		ft.FileContentList.Store(uFile.eID, *uFile.IPFSFile)
+		log.Debugf("entity %s metadata stored for first time, hash: %s file: %+v", uFile.eID, uFile.Hash, *uFile.IPFSFile)
 	}
 
 }
@@ -224,6 +232,7 @@ func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context, done chan
 		rangeCount++
 		wg.Add(rangeCount)
 		// exec refresh goroutine for each file
+		log.Debugf("refresing entity %s metadata", key.(string))
 		go ft.refreshFileContent(ctx, wg, key.(string), cErr)
 		// iterate until end
 		return true
@@ -241,9 +250,14 @@ func (ft IPFSFileTracker) refreshLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			log.Debug("refresh loop has finished due to program exit")
 			return
 		case <-done:
+			log.Debug("refresh loop has finished, starting new iteration")
+			log.Debug("refresing entities ...")
 			ft.refreshEntities(refreshError)
+			log.Debug("entities updated")
+			log.Debugf("refreshing file content list ...")
 			go ft.refreshFileContentList(ctx, done, refreshError)
 		case err := <-refreshError:
 			if os.IsTimeout(err) {

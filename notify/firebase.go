@@ -201,8 +201,10 @@ func (fa *FirebaseAdmin) send(pn *FirebasePushNotification) error {
 	if err != nil {
 		return err
 	}
+	log.Debugf("sending notification: %+v", *pn.FCM)
 	res, err := client.Send(context.Background(), pn.FCM)
 	if err != nil {
+		log.Warnf("cannot send notification: %s", err)
 		return err
 	}
 	log.Debugf("sent notification: %s", res)
@@ -228,9 +230,10 @@ func (fa *FirebaseAdmin) HandleEthereum(event *ethtypes.Log, e *ethevents.Ethere
 	case HashLogProcessCreated.Hex():
 		notification, err = fa.handleEthereumNewProcess(event, e)
 		if err != nil {
+			log.Warnf("failed handling new process event: %s", err)
 			return err
 		}
-		log.Infof("notification: %+v sended", notification)
+		log.Infof("created notification: %+v", *notification)
 		return nil
 	// process results published
 	case HashLogResultsPublished.Hex():
@@ -277,6 +280,7 @@ func (fa *FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *etheve
 func (fa *FirebaseAdmin) HandleIPFS() {
 	for {
 		newFeed := <-fa.IPFS.UpdatedFilesQueue
+		log.Infof("found changes on entity metadata news feed, pushing notification for entity id: %+v", *newFeed)
 		dataMap := make(map[string]string)
 		dataMap["uri"] = fmt.Sprintf("%s/%s", defaultAppRouteNewPost, newFeed.eID)
 		dataMap["click_action"] = defaultClickAction
@@ -294,9 +298,8 @@ func (fa *FirebaseAdmin) HandleIPFS() {
 
 		// send notification
 		if err := fa.Send(notification); err != nil {
-			log.Warnf("cannot send notification, error: %s", err)
+			log.Warnf("failed handling IPFS notification sending: %s", err)
 		}
-		log.Infof("notification: %+v sended", notification)
 	}
 }
 
