@@ -262,7 +262,12 @@ func (fa *FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *etheve
 		Notification: new(messaging.Notification),
 		Data:         make(map[string]string),
 	}
-	notification := &FirebasePushNotification{FCM: fcm}
+	// TODO: @jordipainan
+	// select the platform and personalize the notification for each one
+	notification := &FirebasePushNotification{
+		Upstream: BasePushNotification{Platform: PlatformAll},
+		FCM:      fcm,
+	}
 	notification.FCM.Topic = processTx.EntityID + "_" + defaultLangTag + defaultTopicProcessNew
 	notification.FCM.Notification.Title = defaultProcessTitle
 	notification.FCM.Notification.Body = fmt.Sprintf("Entity %s created a new process", processTx.EntityID)
@@ -289,7 +294,12 @@ func (fa *FirebaseAdmin) HandleIPFS() {
 			Notification: new(messaging.Notification),
 			Data:         make(map[string]string),
 		}
-		notification := &FirebasePushNotification{FCM: fcm}
+		// TODO: @jordipainan
+		// select the platform and personalize the notification for each one
+		notification := &FirebasePushNotification{
+			Upstream: BasePushNotification{Platform: PlatformAll},
+			FCM:      fcm,
+		}
 		notification.FCM.Topic = newFeed.eID + "_" + defaultLangTag + defaultTopicPostNew
 		notification.FCM.Notification.Title = defaultNewsFeedTitle
 		notification.FCM.Notification.Body = fmt.Sprintf("Entity %s created a new feed", newFeed.eID)
