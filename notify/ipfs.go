@@ -247,15 +247,23 @@ func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context, done chan
 func (ft IPFSFileTracker) refreshLoop(ctx context.Context) {
 	refreshError := make(chan error)
 	done := make(chan bool)
+
+	// on init
+	log.Debug("getting entity list for first time")
+	go ft.refreshEntities(refreshError)
+	log.Debugf("fetching metadata for each entity on the list")
+	go ft.refreshFileContentList(ctx, done, refreshError)
+
 	for {
 		select {
 		case <-ctx.Done():
 			log.Debug("refresh loop has finished due to program exit")
 			return
 		case <-done:
+			time.Sleep(time.Second * 10)
 			log.Debug("refresh loop has finished, starting new iteration")
 			log.Debug("refresing entities ...")
-			ft.refreshEntities(refreshError)
+			go ft.refreshEntities(refreshError)
 			log.Debug("entities updated")
 			log.Debugf("refreshing file content list ...")
 			go ft.refreshFileContentList(ctx, done, refreshError)
