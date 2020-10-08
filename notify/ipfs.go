@@ -220,14 +220,14 @@ func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context, done chan
 	//	- success
 	// passing then to the next value of the FileContentList
 	ft.FileContentList.Range(func(key, value interface{}) bool {
-		isTracked, _ := ft.EntitiesTrackingStatus.Load(key)
+		isTracked, found := ft.EntitiesTrackingStatus.Load(key)
 		// if already refreshing
-		if !isTracked.(bool) {
-			ft.EntitiesTrackingStatus.Store(key, true)
-		} else {
-			// refresh is going to start
-			return true
+		if found {
+			if isTracked != nil && isTracked.(bool) {
+				return true
+			}
 		}
+		ft.EntitiesTrackingStatus.Store(key, true)
 		// add to wait group
 		rangeCount++
 		wg.Add(rangeCount)
