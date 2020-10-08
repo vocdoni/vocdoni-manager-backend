@@ -155,23 +155,20 @@ func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 
 // Entities returns all the entities
 func (d *Database) Entities() ([]*types.Entity, error) {
-	var entities []*types.Entity
+	var pgEntities []*PGEntity
 	entitiesQuery := `SELECT id, is_authorized, address, email, name, callback_url, callback_secret, census_managers_addresses as "pg_census_managers_addresses"  
 						FROM entities`
-	rows, err := d.db.Query(entitiesQuery)
+	err := d.db.Select(&pgEntities, entitiesQuery)
 	if err != nil {
 		return nil, err
 	}
-	entity := PGEntity{}
-	for rows.Next() {
-		if err := rows.Scan(entity); err != nil {
-			return nil, err
-		}
-		if e, err := ToEntity(&entity); err != nil {
+	entities := make([]*types.Entity, 0)
+	for _, e := range pgEntities {
+		te, err := ToEntity(e)
+		if err != nil {
 			return nil, fmt.Errorf("cannot convert postgres types to entity data types: %v", err)
-		} else {
-			entities = append(entities, e)
 		}
+		entities = append(entities, te)
 	}
 	return entities, nil
 }
