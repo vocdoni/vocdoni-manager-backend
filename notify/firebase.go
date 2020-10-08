@@ -67,7 +67,7 @@ func (fa *FirebaseAdmin) Init() (err error) {
 		return err
 	}
 	log.Info("initializing IPFS file tracking service")
-	if err := fa.IPFS.Start(); err != nil {
+	if err := fa.IPFS.Start(context.Background()); err != nil {
 		return err
 	}
 	// start ipfs handler

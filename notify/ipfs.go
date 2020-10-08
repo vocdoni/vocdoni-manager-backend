@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"reflect"
 	"strings"
@@ -75,7 +76,7 @@ func NewIPFSFileTracker(config *config.IPFSCfg, ma *metrics.Agent, db database.D
 }
 
 // Start initializes the file tracker IPFS node and starts the file tracker
-func (ft *IPFSFileTracker) Start() error {
+func (ft *IPFSFileTracker) Start(ctx context.Context) error {
 	// init IPFS node
 	storage, err := ft.initIPFS()
 	if err != nil {
@@ -83,7 +84,7 @@ func (ft *IPFSFileTracker) Start() error {
 	}
 	ft.IPFS = storage.(*data.IPFSHandle)
 	// init file tracker
-	go ft.refreshLoop(context.Background())
+	go ft.refreshLoop(ctx)
 	return err
 }
 
@@ -144,7 +145,6 @@ func (ft *IPFSFileTracker) refreshEntities(cErr chan<- error) {
 		ft.FileContentList.LoadOrStore(e, nil)
 	}
 	log.Debugf("updated entity list: %+v", updatedList)
-
 }
 
 func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, wg *sync.WaitGroup, key string, cErr chan<- error) {
@@ -159,16 +159,19 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, wg *sync.Wait
 		// continue with the next key on range
 		return
 	}
+	// check eURL
+	if len(eURL) < 2 {
+		cErr <- errors.New("invalid entity metadata URL length")
+		return
+	}
 	log.Debugf("fetched entity %s metadata url %s", key, eURL)
-	// split
-	eURL = strings.Split(eURL, ",")[0]
-	ipfsHash := strings.TrimPrefix(eURL, "ipfs://")
 	// get file
 	contentBytes, err := ft.IPFS.Retrieve(ctx, eURL)
 	if err != nil {
 		cErr <- err
 		return
 	}
+	ipfsHash := strings.TrimPrefix(strings.Split(eURL, ",")[0], "ipfs://")
 	// unmarshal retrived file
 	var entityMetadata types.EntityMetadata
 	err = json.Unmarshal(contentBytes, &entityMetadata)
@@ -211,7 +214,7 @@ func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context, done chan
 	// init waitgroup and counter
 	wg := new(sync.WaitGroup)
 	rangeCount := 0
-	ctx, cancel := context.WithTimeout(ctx, RetrieveTimeout)
+	timeout, cancel := context.WithTimeout(ctx, RetrieveTimeout)
 	defer cancel()
 	// iterate over the fileContentList
 	// skip if the file is already tracked by another goroutine
@@ -235,7 +238,7 @@ func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context, done chan
 		wg.Add(rangeCount)
 		// exec refresh goroutine for each file
 		log.Debugf("refresing entity %s metadata", key.(string))
-		go ft.refreshFileContent(ctx, wg, key.(string), cErr)
+		go ft.refreshFileContent(timeout, wg, key.(string), cErr)
 		// iterate until end
 		return true
 	})
@@ -271,6 +274,7 @@ func (ft IPFSFileTracker) refreshLoop(ctx context.Context) {
 			go ft.refreshFileContentList(ctx, done, refreshError)
 		case err := <-refreshError:
 			if os.IsTimeout(err) {
+				done <- true
 				log.Warnf("timeout retrieveing IPFS file, waiting until next iteration for retrieve")
 			} else {
 				log.Warnf("cannot refresh data, error: %s", err)
