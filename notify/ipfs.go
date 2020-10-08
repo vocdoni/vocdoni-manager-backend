@@ -60,7 +60,7 @@ type IPFSFileTracker struct {
 }
 
 // NewIPFSFileTracker creates a new IPFSFileTracker
-func NewIPFSFileTracker(config *config.IPFSCfg, ma *metrics.Agent, db database.Database) *IPFSFileTracker {
+func NewIPFSFileTracker(config *config.IPFSCfg, ma *metrics.Agent, db database.Database, ensRegistry, w3endpoint string) *IPFSFileTracker {
 	return &IPFSFileTracker{
 		IPFS:                   new(data.IPFSHandle),
 		IPFSConfig:             config,
@@ -69,6 +69,8 @@ func NewIPFSFileTracker(config *config.IPFSCfg, ma *metrics.Agent, db database.D
 		EntitiesTrackingStatus: new(sync.Map),
 		metricsAgent:           ma,
 		database:               db,
+		ensRegistryAddress:     ensRegistry,
+		w3endpoint:             w3endpoint,
 	}
 }
 

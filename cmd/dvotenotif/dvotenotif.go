@@ -235,6 +235,11 @@ func main() {
 		}
 	}
 
+	chainSpecs, specErr := chain.SpecsFor(cfg.Ethereum.ChainType)
+	if err != nil {
+		log.Fatal("cannot get chain specifications with the ENS registry address: %s", specErr)
+	}
+
 	// db
 	var db database.Database
 
@@ -248,7 +253,7 @@ func main() {
 	var fa notify.PushNotifier
 	if len(cfg.Notifications.KeyFile) > 0 {
 		// create file tracker
-		ipfsFileTracker := notify.NewIPFSFileTracker(cfg.IPFS, ep.MetricsAgent, db)
+		ipfsFileTracker := notify.NewIPFSFileTracker(cfg.IPFS, ep.MetricsAgent, db, chainSpecs.ENSregistryAddr, cfg.Web3.W3External)
 		switch cfg.Notifications.Service {
 		case notify.Firebase:
 			fa = notify.NewFirebaseAdmin(cfg.Notifications.KeyFile, ipfsFileTracker)
@@ -287,8 +292,7 @@ func main() {
 	var initBlock *int64
 	if !cfg.EthereumEvents.SubscribeOnly {
 		initBlock = new(int64)
-		chainSpecs, err := chain.SpecsFor(cfg.Ethereum.ChainType)
-		if err != nil {
+		if specErr != nil {
 			log.Warn("cannot get chain block to start looking for events, using 0")
 			*initBlock = 0
 		} else {
