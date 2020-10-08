@@ -285,8 +285,9 @@ func (fa *FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *etheve
 func (fa *FirebaseAdmin) HandleIPFS() {
 	for {
 		newFeed := <-fa.IPFS.UpdatedFilesQueue
-		log.Infof("found changes on entity metadata news feed, pushing notification for entity id: %+v", *newFeed)
+		log.Infof("found changes on entity metadata news feed: %+v", *newFeed)
 		dataMap := make(map[string]string)
+		// TODO: @jordipainan add timestamp of the file
 		dataMap["uri"] = fmt.Sprintf("%s/%s", defaultAppRouteNewPost, newFeed.eID)
 		dataMap["click_action"] = defaultClickAction
 		// add notification fields
@@ -310,6 +311,7 @@ func (fa *FirebaseAdmin) HandleIPFS() {
 		if err := fa.Send(notification); err != nil {
 			log.Warnf("failed handling IPFS notification sending: %s", err)
 		}
+		log.Debugf("sent new feed push notification for entity id: %s with content: %+v", newFeed.eID, newFeed.Content)
 	}
 }
 

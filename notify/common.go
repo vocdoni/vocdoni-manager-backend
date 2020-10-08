@@ -30,8 +30,8 @@ const (
 	defaultTopicPostNew       = "_post-new"
 	defaultProcessTitle       = "New process created"
 	defaultNewsFeedTitle      = "New feed created"
-	defaultAppRouteNewProcess = "https://vocdoni.link/processes/"
-	defaultAppRouteNewPost    = "https://app.vocdoni.net/posts/view/#/"
+	defaultAppRouteNewProcess = "https://vocdoni.link/processes"
+	defaultAppRouteNewPost    = "https://vocdoni.link/posts/view"
 )
 
 // supported Push notifications service

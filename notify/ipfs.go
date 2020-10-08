@@ -183,7 +183,7 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, wg *sync.Wait
 	// compare current and fetched hash
 	// load old content from FileContentList
 	oldContent, _ := ft.FileContentList.Load(key)
-	uFile := &UpdatedFile{eID: eURL, IPFSFile: &IPFSFile{Hash: ipfsHash, Content: entityMetadata.NewsFeed}}
+	uFile := &UpdatedFile{eID: key, IPFSFile: &IPFSFile{Hash: ipfsHash, Content: entityMetadata.NewsFeed}}
 	// if old content exists
 	if oldContent != nil {
 		oldContentStruct := oldContent.(IPFSFile)
