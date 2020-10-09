@@ -213,7 +213,6 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, wg *sync.Wait
 func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context, done chan<- bool, cErr chan<- error) {
 	// init waitgroup and counter
 	wg := new(sync.WaitGroup)
-	rangeCount := 0
 	timeout, cancel := context.WithTimeout(ctx, RetrieveTimeout)
 	defer cancel()
 	// iterate over the fileContentList
@@ -234,8 +233,7 @@ func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context, done chan
 		}
 		ft.EntitiesTrackingStatus.Store(key, true)
 		// add to wait group
-		rangeCount++
-		wg.Add(rangeCount)
+		wg.Add(1)
 		// exec refresh goroutine for each file
 		log.Debugf("refresing entity %s metadata", key.(string))
 		go ft.refreshFileContent(timeout, wg, key.(string), cErr)
