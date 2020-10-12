@@ -237,6 +237,7 @@ func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context) []error {
 				errorList = append(errorList, err)
 				errListMu.Unlock()
 			}
+			wg.Done()
 		}()
 		// iterate until end
 		return true
