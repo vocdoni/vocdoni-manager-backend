@@ -45,7 +45,7 @@ func New(dbc *config.DB) (*Database, error) {
 	for i := 0; i < connectionRetries; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
-		log.Infof("trying to connecto to postgress")
+		log.Infof("trying to connect to postgres")
 		if _, err = db.Conn(ctx); err == nil {
 			break
 		}

@@ -270,7 +270,7 @@ func (fa *FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *etheve
 	}
 	notification.FCM.Topic = processTx.EntityID + "_" + defaultLangTag + defaultTopicProcessNew
 	notification.FCM.Notification.Title = defaultProcessTitle
-	notification.FCM.Notification.Body = fmt.Sprintf("Entity %s created a new process", processTx.EntityID)
+	notification.FCM.Notification.Body = fmt.Sprintf("entity %s created a new process", processTx.EntityID)
 	dataMap["message"] = notification.FCM.Notification.Body
 	notification.FCM.Data = dataMap
 
@@ -285,7 +285,7 @@ func (fa *FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *etheve
 func (fa *FirebaseAdmin) HandleIPFS() {
 	for {
 		newFeed := <-fa.IPFS.UpdatedFilesQueue
-		log.Infof("found changes on entity metadata news feed: %+v", *newFeed)
+		log.Infof("found changes on entity metadata news feed: %v : %+v", newFeed.Hash, *newFeed.IPFSFile)
 		dataMap := make(map[string]string)
 		// TODO: @jordipainan add timestamp of the file
 		dataMap["uri"] = fmt.Sprintf("%s/%s", defaultAppRouteNewPost, newFeed.eID)
@@ -303,7 +303,7 @@ func (fa *FirebaseAdmin) HandleIPFS() {
 		}
 		notification.FCM.Topic = newFeed.eID + "_" + defaultLangTag + defaultTopicPostNew
 		notification.FCM.Notification.Title = defaultNewsFeedTitle
-		notification.FCM.Notification.Body = fmt.Sprintf("Entity %s created a new feed", newFeed.eID)
+		notification.FCM.Notification.Body = fmt.Sprintf("entity %s created a new feed", newFeed.eID)
 		dataMap["message"] = notification.FCM.Notification.Body
 		notification.FCM.Data = dataMap
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -172,6 +173,7 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, key string) e
 	if err != nil {
 		return err
 	}
+
 	log.Debugf("entity %s metadata is: %+v", key, entityMetadata)
 	// compare current and fetched hash
 	// load old content from FileContentList
@@ -230,11 +232,12 @@ func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context) []error {
 		// add to wait group
 		wg.Add(1)
 		// exec refresh goroutine for each file
-		log.Debugf("refresing entity %s metadata", key.(string))
+		stringKey := key.(string)
+		log.Debugf("refresing entity %s metadata", stringKey)
 		go func() {
-			if err := ft.refreshFileContent(timeout, key.(string)); err != nil {
+			if err := ft.refreshFileContent(timeout, stringKey); err != nil {
 				errListMu.Lock()
-				errorList = append(errorList, err)
+				errorList = append(errorList, fmt.Errorf("entity: %s with error %v", stringKey, err))
 				errListMu.Unlock()
 			}
 			wg.Done()
