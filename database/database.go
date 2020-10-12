@@ -11,7 +11,7 @@ type Database interface {
 	Close() error
 	AddEntity(entityID []byte, info *types.EntityInfo) error
 	Entity(entityID []byte) (*types.Entity, error)
-	Entities() ([]*types.Entity, error)
+	EntitiesID() ([]string, error)
 	AuthorizeEntity(entityID []byte) error
 	UpdateEntity(entityID []byte, info *types.EntityInfo) error
 	EntityOrigins(entityID []byte) ([]types.Origin, error)

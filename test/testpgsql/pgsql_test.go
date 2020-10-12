@@ -133,7 +133,8 @@ func TestEntity(t *testing.T) {
 		t.Fatalf("error while trying to reauthorize entity: (%v)", err)
 	}
 
-	entities, err := api.DB.Entities()
+	entities, err := api.DB.EntitiesID()
+	t.Logf("entities: %+v", entities)
 	if err != nil {
 		t.Fatalf("cannot get entities from the Postgres DB (pgsql.go:Entities): %s", err)
 	}

@@ -72,7 +72,7 @@ func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	return &entity, nil
 }
 
-func (d *Database) Entities() ([]*types.Entity, error) {
+func (d *Database) EntitiesID() ([]string, error) {
 	return nil, nil
 }
 

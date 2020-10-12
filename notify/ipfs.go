@@ -2,7 +2,6 @@ package notify
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"os"
@@ -118,15 +117,11 @@ func (ft *IPFSFileTracker) initIPFS() (data.Storage, error) {
 }
 
 func (ft *IPFSFileTracker) getEntities() ([]string, error) {
-	entities, err := ft.database.Entities()
+	entities, err := ft.database.EntitiesID()
 	if err != nil {
 		return nil, err
 	}
-	var entitiesID []string
-	for _, e := range entities {
-		entitiesID = append(entitiesID, hex.EncodeToString(e.ID))
-	}
-	return entitiesID, nil
+	return entities, nil
 }
 
 func (ft *IPFSFileTracker) getEntityMetadataURL(eID string) (string, error) {
