@@ -128,11 +128,13 @@ func (ft *IPFSFileTracker) getEntityMetadataURL(eID string) (string, error) {
 	return chain.ResolveEntityMetadataURL(ft.ensRegistryAddress, eID, ft.w3endpoint)
 }
 
-func (ft *IPFSFileTracker) refreshEntities(cErr chan<- error) {
+func (ft *IPFSFileTracker) refreshEntities(ctx context.Context) error {
+	_, cancel := context.WithTimeout(ctx, RetrieveTimeout)
+	defer cancel()
 	// get entities to track
 	eIDs, err := ft.getEntities()
 	if err != nil {
-		cErr <- err
+		return err
 	}
 	updatedList := []string{}
 	for _, e := range eIDs {
@@ -140,39 +142,35 @@ func (ft *IPFSFileTracker) refreshEntities(cErr chan<- error) {
 		ft.FileContentList.LoadOrStore(e, nil)
 	}
 	log.Debugf("updated entity list: %+v", updatedList)
+	return nil
 }
 
-func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, wg *sync.WaitGroup, key string, cErr chan<- error) {
-	defer wg.Done()
+func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, key string) error {
 	defer ft.EntitiesTrackingStatus.Store(key, false)
 	// retrieve new metadata URL
 	eURL, err := ft.getEntityMetadataURL(key)
 	if err != nil {
 		// return error
-		cErr <- err
+		return err
 		// tracking status false
 		// continue with the next key on range
-		return
 	}
 	// check eURL
 	if len(eURL) < 2 {
-		cErr <- errors.New("invalid entity metadata URL length")
-		return
+		return errors.New("invalid entity metadata URL length")
 	}
 	log.Debugf("fetched entity %s metadata url %s", key, eURL)
 	// get file
 	contentBytes, err := ft.IPFS.Retrieve(ctx, eURL)
 	if err != nil {
-		cErr <- err
-		return
+		return err
 	}
 	ipfsHash := strings.TrimPrefix(strings.Split(eURL, ",")[0], "ipfs://")
 	// unmarshal retrived file
 	var entityMetadata types.EntityMetadata
 	err = json.Unmarshal(contentBytes, &entityMetadata)
 	if err != nil {
-		cErr <- err
-		return
+		return err
 	}
 	log.Debugf("entity %s metadata is: %+v", key, entityMetadata)
 	// compare current and fetched hash
@@ -202,12 +200,14 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, wg *sync.Wait
 		ft.FileContentList.Store(uFile.eID, *uFile.IPFSFile)
 		log.Debugf("entity %s metadata stored for first time, hash: %s file: %+v", uFile.eID, uFile.Hash, *uFile.IPFSFile)
 	}
-
+	return nil
 }
 
-func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context, done chan<- bool, cErr chan<- error) {
+func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context) []error {
 	// init waitgroup and counter
 	wg := new(sync.WaitGroup)
+	errorList := []error{}
+	var errListMu sync.Mutex
 	timeout, cancel := context.WithTimeout(ctx, RetrieveTimeout)
 	defer cancel()
 	// iterate over the fileContentList
@@ -231,7 +231,13 @@ func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context, done chan
 		wg.Add(1)
 		// exec refresh goroutine for each file
 		log.Debugf("refresing entity %s metadata", key.(string))
-		go ft.refreshFileContent(timeout, wg, key.(string), cErr)
+		go func() {
+			if err := ft.refreshFileContent(timeout, key.(string)); err != nil {
+				errListMu.Lock()
+				errorList = append(errorList, err)
+				errListMu.Unlock()
+			}
+		}()
 		// iterate until end
 		return true
 	})
@@ -239,39 +245,25 @@ func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context, done chan
 	// the RetrieveTimeout is reached or executed successfully.
 	wg.Wait()
 	// finish tracking round
-	done <- true
+	return errorList
 }
 
 func (ft IPFSFileTracker) refreshLoop(ctx context.Context) {
-	refreshError := make(chan error)
-	done := make(chan bool)
-
-	// on init
-	log.Debug("getting entity list for first time")
-	go ft.refreshEntities(refreshError)
-	log.Debugf("fetching metadata for each entity on the list")
-	go ft.refreshFileContentList(ctx, done, refreshError)
-
-	for {
-		select {
-		case <-ctx.Done():
-			log.Debug("refresh loop has finished due to program exit")
-			return
-		case <-done:
-			time.Sleep(time.Second * 10)
-			log.Debug("refresh loop has finished, starting new iteration")
-			log.Debug("refresing entities ...")
-			go ft.refreshEntities(refreshError)
-			log.Debug("entities updated")
-			log.Debugf("refreshing file content list ...")
-			go ft.refreshFileContentList(ctx, done, refreshError)
-		case err := <-refreshError:
-			if os.IsTimeout(err) {
-				done <- true
-				log.Warnf("timeout retrieveing IPFS file, waiting until next iteration for retrieve")
-			} else {
-				log.Warnf("cannot refresh data, error: %s", err)
-			}
+	for ctx.Err() == nil {
+		log.Debug("refresh loop has finished, starting new iteration")
+		log.Info("refreshing entities ...")
+		if err := ft.refreshEntities(ctx); err != nil {
+			log.Infof("cannot refresh entities, error: %v", err)
+		} else {
+			log.Info("entities updated")
 		}
+		log.Info("refreshing file content list ...")
+		refreshFilesErrs := ft.refreshFileContentList(ctx)
+		if len(refreshFilesErrs) > 0 {
+			log.Infof("entities files refresh error list: %+v", refreshFilesErrs)
+		} else {
+			log.Info("all files updated successfully")
+		}
+		time.Sleep(time.Second * 10)
 	}
 }
