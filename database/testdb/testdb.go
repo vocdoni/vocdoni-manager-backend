@@ -277,24 +277,24 @@ func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *type
 	return nil
 }
 
-func (d *Database) AddTag(entityID []byte, tagName string) (int, error) {
+func (d *Database) AddTag(entityID []byte, tagName string) (int32, error) {
 	return 1, nil
 }
 func (d *Database) ListTags(entityID []byte) ([]types.Tag, error) {
 	return nil, nil
 }
-func (d *Database) DeleteTag(entityID []byte, tagID int) error {
+func (d *Database) DeleteTag(entityID []byte, tagID int32) error {
 	return nil
 }
-func (d *Database) Tag(entityID []byte, tagID int) (*types.Tag, error) {
+func (d *Database) Tag(entityID []byte, tagID int32) (*types.Tag, error) {
 	return nil, nil
 }
 
-func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int) (int64, error) {
+func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int32) (int64, error) {
 	return 1, nil
 }
 
-func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int) (int64, error) {
+func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int32) (int64, error) {
 	return 1, nil
 }
 

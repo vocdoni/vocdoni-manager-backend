@@ -24,6 +24,7 @@ type MetaRequest struct {
 	Filter      *Target      `json:"filter,omitempty"`
 	ListOptions *ListOptions `json:"listOptions,omitempty"`
 	MemberID    *uuid.UUID   `json:"memberId,omitempty"`
+	MemberIDs   []uuid.UUID  `json:"memberIds,omitempty"`
 	Member      *Member      `json:"member,omitempty"`
 	MemberInfo  *MemberInfo  `json:"memberInfo,omitempty"`
 	MembersInfo []MemberInfo `json:"membersInfo,omitempty"`
@@ -32,6 +33,8 @@ type MetaRequest struct {
 	Signature   string       `json:"signature,omitempty"`
 	Scope       string       `json:"scope,omitempty"`
 	Status      *Status      `json:"status,omitempty"`
+	TagID       int32        `json:"tagId,omitempty"`
+	TagName     string       `json:"tagName,omitempty"`
 	TargetID    *uuid.UUID   `json:"targetId,omitempty"`
 	Timestamp   int32        `json:"timestamp"`
 	Token       string       `json:"token,omitempty"`
@@ -63,6 +66,8 @@ type MetaResponse struct {
 	PublicKey     string       `json:"publicKey,omitempty"`
 	Request       string       `json:"request"`
 	Status        *Status      `json:"status,omitempty"`
+	Tag           *Tag         `json:"tag,omitempty"`
+	Tags          []Tag        `json:"tags,omitempty"`
 	Target        *Target      `json:"target,omitempty"`
 	Targets       []Target     `json:"targets,omitempty"`
 	Timestamp     int32        `json:"timestamp"`

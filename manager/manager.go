@@ -113,6 +113,21 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("sendValidationLink", path+"/manager", m.sendValidationLink, false, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("createTag", path+"/manager", m.createTag, false, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("listTags", path+"/manager", m.listTags, false, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("deleteTag", path+"/manager", m.deleteTag, false, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("addTag", path+"/manager", m.addTag, false, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("removeTag", path+"/manager", m.removeTag, false, false); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1005,6 +1020,186 @@ func (m *Manager) sendValidationLink(request router.RouterRequest) {
 
 	log.Infof("send validation link  member %q for Entity %x", member.ID, entityID)
 	var response types.MetaResponse
+	m.send(&request, &response)
+}
+
+func (m *Manager) createTag(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	if request.TagName == "" {
+		log.Debug("createTag with empty tag")
+		m.Router.SendError(request, "invalid tag name")
+		return
+	}
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Errorf("cannot recover %q entityID: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID")
+		return
+	}
+
+	response.Tag = &types.Tag{
+		Name: request.TagName,
+	}
+
+	if response.Tag.ID, err = m.db.AddTag(entityID, request.TagName); err != nil {
+		log.Errorf("cannot create tag '%s' for entity %x: (%v)", request.TagName, entityID, err)
+		m.Router.SendError(request, "cannot create tag ")
+		return
+	}
+
+	log.Infof("created tag with id %d and name '%s' for Entity %x", response.Tag.ID, response.Tag.Name, entityID)
+	m.send(&request, &response)
+}
+
+func (m *Manager) listTags(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Errorf("cannot recover %q entityID: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID")
+		return
+	}
+
+	// Query for members
+	if response.Tags, err = m.db.ListTags(entityID); err != nil {
+		if err == sql.ErrNoRows {
+			m.Router.SendError(request, "no tags found")
+			return
+		}
+		log.Errorf("cannot retrieve tags of %x: (%v)", entityID, err)
+		m.Router.SendError(request, "cannot retrieve tags")
+		return
+	}
+
+	log.Debugf("Entity: %x list %d tags", entityID, len(response.Tags))
+	m.send(&request, &response)
+}
+
+func (m *Manager) deleteTag(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	if request.TagID == 0 {
+		log.Debug("deleteTag with empty tag")
+		m.Router.SendError(request, "invalid tag id")
+		return
+	}
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Errorf("cannot recover %q entityID: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID")
+		return
+	}
+
+	if err = m.db.DeleteTag(entityID, request.TagID); err != nil {
+		log.Errorf("cannot delete tag %d for entity %x: (%v)", request.TagID, entityID, err)
+		m.Router.SendError(request, "cannot delete tag ")
+		return
+	}
+
+	log.Infof("delete tag with id %d for Entity %x", request.TagID, entityID)
+	m.send(&request, &response)
+}
+
+func (m *Manager) addTag(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	if request.TagID == 0 || len(request.MemberIDs) == 0 {
+		log.Debug("addTag invalid arguments")
+		m.Router.SendError(request, "invalid arguments")
+		return
+	}
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Errorf("cannot recover %q entityID: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID")
+		return
+	}
+
+	updated, err := m.db.AddTagToMembers(entityID, request.MemberIDs, request.TagID)
+	if err != nil {
+		log.Errorf("cannot add tag %d to members for entity %x: (%v)", request.TagID, entityID, err)
+		m.Router.SendError(request, "cannot add tag ")
+		return
+	}
+
+	log.Infof("added tag with id %d to %d members of Entity %x", request.TagID, updated, entityID)
+	m.send(&request, &response)
+}
+
+func (m *Manager) removeTag(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	if request.TagID == 0 || len(request.MemberIDs) == 0 {
+		log.Debug("removeTag invalid arguments")
+		m.Router.SendError(request, "invalid arguments")
+		return
+	}
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Errorf("cannot recover %q entityID: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID")
+		return
+	}
+
+	updated, err := m.db.RemoveTagFromMembers(entityID, request.MemberIDs, request.TagID)
+	if err != nil {
+		log.Errorf("cannot remove tag %d from members for entity %x: (%v)", request.TagID, entityID, err)
+		m.Router.SendError(request, "cannot remove tag ")
+		return
+	}
+
+	log.Infof("removed tag with id %d from %d members of Entity %x", request.TagID, updated, entityID)
 	m.send(&request, &response)
 }
 

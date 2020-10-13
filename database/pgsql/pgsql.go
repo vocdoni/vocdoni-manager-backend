@@ -693,13 +693,15 @@ func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *type
 				last_name = COALESCE(NULLIF(:last_name, ''), last_name),
 				email = COALESCE(NULLIF(:email, ''), email),
 				date_of_birth = COALESCE(NULLIF(:date_of_birth, date_of_birth), date_of_birth),
+				tags = COALESCE(:pg_tags, CAST(tags as int[])),
 				updated_at = now()
 				WHERE (id = :id AND entity_id = :entity_id)
 				AND  (:street_address IS DISTINCT FROM street_address OR
 				:first_name IS DISTINCT FROM first_name OR
 				:last_name IS DISTINCT FROM last_name OR
 				:email IS DISTINCT FROM email OR
-				:date_of_birth IS DISTINCT FROM date_of_birth)`
+				:date_of_birth IS DISTINCT FROM date_of_birth OR
+				:pg_tags  IS DISTINCT FROM tags)`
 	var result sql.Result
 	if result, err = d.db.NamedExec(update, pgmember); err != nil {
 		return fmt.Errorf("error updating member: %v", err)
@@ -713,7 +715,7 @@ func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *type
 	return nil
 }
 
-func (d *Database) AddTag(entityID []byte, tagName string) (int, error) {
+func (d *Database) AddTag(entityID []byte, tagName string) (int32, error) {
 	if tagName == "" {
 		log.Debugf("entity %x tried to creat tag with empty name", entityID)
 		return 0, fmt.Errorf("invalid tag name")
@@ -731,15 +733,11 @@ func (d *Database) AddTag(entityID []byte, tagName string) (int, error) {
 				VALUES (:entity_id, :name, :created_at, :updated_at)
 				RETURNING id`
 	result, err := d.db.NamedQuery(insert, tag)
-	if err != nil {
+	if err != nil || !result.Next() {
 		log.Errorf("error inserting tag: (%v)", err)
-		return 0, err
+		return 0, fmt.Errorf("error inserting tag: %v", err)
 	}
-	if !result.Next() {
-		log.Errorf("result has no rows, posible violation of db constraints")
-		return 0, fmt.Errorf("result has no rows, posible violation of db constraints")
-	}
-	var id int
+	var id int32
 	err = result.Scan(&id)
 	if err != nil {
 		log.Errorf("error inserting tag: (%v)", err)
@@ -754,7 +752,7 @@ func (d *Database) ListTags(entityID []byte) ([]types.Tag, error) {
 		log.Debugf("cannot retrieve tags for empty entityID")
 		return nil, fmt.Errorf("invalid entity ID")
 	}
-	selectQuery := `SELECT id, name,  
+	selectQuery := `SELECT id, name 
 					FROM tags
 					WHERE entity_id=$1`
 	var tags []types.Tag
@@ -765,7 +763,7 @@ func (d *Database) ListTags(entityID []byte) ([]types.Tag, error) {
 	return tags, nil
 }
 
-func (d *Database) DeleteTag(entityID []byte, tagID int) error {
+func (d *Database) DeleteTag(entityID []byte, tagID int32) error {
 	if len(entityID) == 0 {
 		log.Debug("tried to delete tag for empty entityID")
 		return fmt.Errorf("invalid entity ID")
@@ -775,7 +773,7 @@ func (d *Database) DeleteTag(entityID []byte, tagID int) error {
 	_, err := d.Tag(entityID, tagID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Debug("removing not existing tag %d for entity %x", tagID, entityID)
+			log.Debugf("removing not existing tag %d for entity %x", tagID, entityID)
 			return err
 		}
 		log.Errorf("DeleteTag: error retrieving tag %d for %x : (%v)", tagID, entityID, err)
@@ -790,7 +788,7 @@ func (d *Database) DeleteTag(entityID []byte, tagID int) error {
 	}
 	queryData := struct {
 		EntityID []byte `db:"entity_id"`
-		TagID    int    `db:"tag_id"`
+		TagID    int32  `db:"tag_id"`
 	}{
 		EntityID: entityID,
 		TagID:    tagID,
@@ -837,7 +835,7 @@ func (d *Database) DeleteTag(entityID []byte, tagID int) error {
 	return nil
 }
 
-func (d *Database) Tag(entityID []byte, tagID int) (*types.Tag, error) {
+func (d *Database) Tag(entityID []byte, tagID int32) (*types.Tag, error) {
 	if len(entityID) == 0 || tagID == 0 {
 		log.Debugf("Tag: invalid arguments: tag %d for entity %x", tagID, entityID)
 		return nil, fmt.Errorf("invalid arguments")
@@ -853,7 +851,7 @@ func (d *Database) Tag(entityID []byte, tagID int) (*types.Tag, error) {
 	return &tag, nil
 }
 
-func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int) (int64, error) {
+func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int32) (int64, error) {
 	// Tags as text[] http://www.databasesoup.com/2015/01/tag-all-things.html
 	// Tags as intarray
 	var rows int64
@@ -879,7 +877,7 @@ func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID i
 	for i, memberID := range members {
 		idTagsMap[i] = &TagData{
 			MemberID: memberID.String(),
-			TagID:    strconv.Itoa(tagID),
+			TagID:    strconv.FormatInt(int64(tagID), 10),
 		}
 	}
 
@@ -908,7 +906,7 @@ func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID i
 	return rows, nil
 }
 
-func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int) (int64, error) {
+func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int32) (int64, error) {
 	var rows int64
 	if len(members) == 0 || len(entityID) == 0 {
 		log.Debugf("RemoveTagFromMembers: invalid arguments: tag %d for entity %x", tagID, entityID)
@@ -931,7 +929,7 @@ func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, ta
 	for i, memberID := range members {
 		idTagsMap[i] = &TagData{
 			MemberID: memberID.String(),
-			TagID:    strconv.Itoa(tagID),
+			TagID:    strconv.FormatInt(int64(tagID), 10),
 		}
 	}
 

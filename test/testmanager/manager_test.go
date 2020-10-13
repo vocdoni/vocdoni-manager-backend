@@ -1156,3 +1156,381 @@ func TestSendValidationLink(t *testing.T) {
 	}
 
 }
+
+func TestCreateTag(t *testing.T) {
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// create entity
+	entitySigners, entities := testcommon.CreateEntities(1)
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	// add members
+	// create members
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 3)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
+	memInfo := make([]types.Member, len(members))
+	for idx, mem := range members {
+		memInfo[idx] = *mem
+	}
+	// add members
+	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+
+	name := "TestTag"
+
+	//Test simple add tag
+	var req types.MetaRequest
+	req.Method = "createTag"
+	req.TagName = name
+
+	resp := wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Fatalf("unable to create a test tag: %s", resp.Message)
+	}
+
+	//Verify that census exists
+	tag, err := api.DB.Tag(entities[0].ID, resp.Tag.ID)
+	if err != nil {
+		t.Fatalf("unable to recover created tag: %s", err)
+	}
+	if tag.Name != name {
+		t.Fatal("tag stored incorrectly")
+	}
+
+	//Test that empty tag Name fails
+	resp = wsc.Request(req, entitySigners[0])
+	if resp.Ok {
+		t.Fatalf("able to create a tag with duplicate name: %s", resp.Message)
+	}
+
+	//Test that empty tag Name fails
+	req.TagName = ""
+	resp = wsc.Request(req, entitySigners[0])
+	if resp.Ok {
+		t.Fatalf("able to create a tag with empty tag name: %s", resp.Message)
+	}
+
+}
+
+func TestListTags(t *testing.T) {
+	var req types.MetaRequest
+	var err error
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+
+	// create entity
+	entitySigners, entities := testcommon.CreateEntities(1)
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	//Test to  get 0 tags
+	req.Method = "listTags"
+	resp := wsc.Request(req, entitySigners[0])
+	if !resp.Ok || len(resp.Tags) != 0 {
+		t.Fatalf("error in requesting tags when no tag exists: %s", resp.Message)
+	}
+
+	tagID, err := api.DB.AddTag(entities[0].ID, "TestTag")
+	if err != nil {
+		t.Fatalf("error creating tag:  (%v)", err)
+	}
+
+	//Test to  get 1 tag
+	resp = wsc.Request(req, entitySigners[0])
+	if !resp.Ok || len(resp.Tags) != 1 || resp.Tags[0].ID != tagID {
+		t.Fatalf("error in requesting tags when 1 tag exists: %s", resp.Message)
+	}
+
+}
+
+func TestDeleteTag(t *testing.T) {
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// create entity
+	entitySigners, entities := testcommon.CreateEntities(2)
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	// add members
+	// create members
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 3)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
+	memInfo := make([]types.Member, len(members))
+	for idx, mem := range members {
+		memInfo[idx] = *mem
+	}
+	// add members
+	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+	listedMembers, err := api.DB.ListMembers(entities[0].ID, nil)
+	if err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+
+	tag := &types.Tag{
+		Name: "TestTag",
+	}
+	tag.ID, err = api.DB.AddTag(entities[0].ID, "TestTag")
+	if err != nil {
+		t.Fatalf("cannot add tag into database: %s", err)
+	}
+
+	// add tag to member
+	if n, err := api.DB.AddTagToMembers(entities[0].ID, []uuid.UUID{listedMembers[0].ID}, tag.ID); err != nil || n != 1 {
+		t.Fatalf("failed to add tag into member: %s", err)
+	}
+
+	// Test cannnot delete tag of another entity
+	var req types.MetaRequest
+	req.Method = "deleteTag"
+	req.TagID = tag.ID
+	resp := wsc.Request(req, entitySigners[1])
+	if resp.Ok {
+		t.Fatalf("able to delete test tag of another entity: %s", resp.Message)
+	}
+
+	//Test simple delete tag
+	resp = wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Fatalf("unable to delete test tag: %s", resp.Message)
+	}
+
+	//Verify that tag was deleted (also from meber info)
+	_, err = api.DB.Tag(entities[0].ID, tag.ID)
+	if err != sql.ErrNoRows {
+		t.Fatalf("able to recover deleted tag: %s", err)
+	}
+
+	if member, err := api.DB.Member(entities[0].ID, &(listedMembers[0].ID)); err != nil {
+		t.Fatalf("error retrieving existing member: (%v)", err)
+	} else if len(member.Tags) > 0 {
+		t.Fatal("deleteTag did not remove tag from member")
+	}
+
+	//Test that random tag id delete fails
+	req.TagID = int32(util.RandomInt(1, 100))
+	resp = wsc.Request(req, entitySigners[0])
+	if resp.Ok {
+		t.Fatalf("able to delete a random tag: %s", resp.Message)
+	}
+
+	//Test that tag id 0 fails
+	req.TagID = 0
+	resp = wsc.Request(req, entitySigners[0])
+	if resp.Ok {
+		t.Fatalf("no error return of tag ID 0: %s", resp.Message)
+	}
+
+}
+
+func TestAddTag(t *testing.T) {
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// create entity
+	entitySigners, entities := testcommon.CreateEntities(2)
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	// add members
+	// create members
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 3)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
+	memInfo := make([]types.Member, len(members))
+	for idx, mem := range members {
+		memInfo[idx] = *mem
+	}
+	// add members
+	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+	listedMembers, err := api.DB.ListMembers(entities[0].ID, nil)
+	if err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+	memberIDs := make([]uuid.UUID, len(listedMembers))
+	for i, member := range listedMembers {
+		memberIDs[i] = member.ID
+	}
+
+	tag := &types.Tag{
+		Name: "TestTag",
+	}
+	tag.ID, err = api.DB.AddTag(entities[0].ID, "TestTag")
+	if err != nil {
+		t.Fatalf("cannot add tag into database: %s", err)
+	}
+
+	// Test cannnot add tags to members
+	var req types.MetaRequest
+	req.Method = "addTag"
+	req.TagID = tag.ID
+	req.MemberIDs = memberIDs
+	resp := wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Fatalf("unable to add test tag to members: %s", resp.Message)
+	}
+
+	listedMembers, err = api.DB.ListMembers(entities[0].ID, nil)
+	if err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+	for _, member := range listedMembers {
+		if member.Tags[0] != tag.ID {
+			t.Fatalf("unable to update correctly tag to members")
+		}
+	}
+
+	//Test fails for wrong entity tag
+	resp = wsc.Request(req, entitySigners[1])
+	if resp.Ok {
+		t.Fatalf("able to add tag to another entity: %s", resp.Message)
+	}
+
+	//Test fails for random tag
+	req.TagID = int32(util.RandomInt(10, 100))
+	resp = wsc.Request(req, entitySigners[0])
+	if resp.Ok {
+		t.Fatalf("able to add non-existing tag: %s", resp.Message)
+	}
+
+	//Test fails for 0 tag
+	req.TagID = 0
+	resp = wsc.Request(req, entitySigners[0])
+	if resp.Ok {
+		t.Fatalf("able to add 0 tag: %s", resp.Message)
+	}
+}
+
+func TestRemoveTag(t *testing.T) {
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// create entity
+	entitySigners, entities := testcommon.CreateEntities(2)
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	// add members
+	// create members
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 3)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
+	memInfo := make([]types.Member, len(members))
+	for idx, mem := range members {
+		memInfo[idx] = *mem
+	}
+	// add members
+	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+	listedMembers, err := api.DB.ListMembers(entities[0].ID, nil)
+	if err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+	memberIDs := make([]uuid.UUID, len(listedMembers))
+	for i, member := range listedMembers {
+		memberIDs[i] = member.ID
+	}
+
+	tag := &types.Tag{
+		Name: "TestTag",
+	}
+	tag.ID, err = api.DB.AddTag(entities[0].ID, "TestTag")
+	if err != nil {
+		t.Fatalf("cannot add tag into database: %s", err)
+	}
+	// add tag to members
+	if n, err := api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID); err != nil || n != int64(len(memberIDs)) {
+		t.Fatalf("failed to add tag to members: %s", err)
+	}
+
+	var req types.MetaRequest
+	req.Method = "removeTag"
+	req.TagID = tag.ID
+	req.MemberIDs = memberIDs
+	//Test fails for wrong entity tag
+	resp := wsc.Request(req, entitySigners[1])
+	if resp.Ok {
+		t.Fatalf("able to remove tag to another entity: %s", resp.Message)
+	}
+
+	//Test fails for random tag
+	req.TagID = int32(util.RandomInt(10, 100))
+	resp = wsc.Request(req, entitySigners[0])
+	if resp.Ok {
+		t.Fatalf("able to remove non-existing tag: %s", resp.Message)
+	}
+
+	//Test fails for 0 tag
+	req.TagID = 0
+	resp = wsc.Request(req, entitySigners[0])
+	if resp.Ok {
+		t.Fatalf("able to remove 0 tag: %s", resp.Message)
+	}
+
+	//Test fails for empty memberlist
+	req.TagID = tag.ID
+	req.MemberIDs = nil
+	resp = wsc.Request(req, entitySigners[0])
+	if resp.Ok {
+		t.Fatalf("able to remove non-existing tag: %s", resp.Message)
+	}
+
+	// Test succeeds
+	req.TagID = tag.ID
+	req.MemberIDs = memberIDs
+	resp = wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Fatalf("unable to remove test tag test members: %s", resp.Message)
+	}
+
+	listedMembers, err = api.DB.ListMembers(entities[0].ID, nil)
+	if err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+	for _, member := range listedMembers {
+		if len(member.Tags) > 0 {
+			t.Fatalf("unable to remove correctly tag from members")
+		}
+	}
+
+}

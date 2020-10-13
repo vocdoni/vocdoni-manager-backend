@@ -592,15 +592,36 @@ func TestTags(t *testing.T) {
 		t.Fatalf("cannot generate random members (%v)", err)
 	}
 
+	tags, err := api.DB.ListTags(entities[0].ID)
+	if err != nil {
+		t.Fatalf("error retrieving entity members:  (%v)", err)
+	}
+	if len(tags) != 0 {
+		t.Fatalf("found %d tags while waiting 0", len(tags))
+	}
+
 	// Add tag
-	tag_id, err := api.DB.AddTag(entities[0].ID, "TestTag")
+	tagID, err := api.DB.AddTag(entities[0].ID, "TestTag")
 	if err != nil {
 		t.Fatalf("error creating tag:  (%v)", err)
 	}
-	tag, err := api.DB.Tag(entities[0].ID, tag_id)
+	tag, err := api.DB.Tag(entities[0].ID, tagID)
 	if err != nil {
 		t.Fatalf("error retrieving newly created tag:  (%v)", err)
 	}
+
+	// list tags
+	tags, err = api.DB.ListTags(entities[0].ID)
+	if err != nil {
+		t.Fatalf("error retrieving entity members:  (%v)", err)
+	}
+	if len(tags) != 1 {
+		t.Fatalf("found %d tags while waiting 0", len(tags))
+	}
+	if tags[0].ID != tagID {
+		t.Fatalf("listTags returns different tags than expected")
+	}
+
 	// Add tag to members
 	added, err := api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID)
 	if err != nil || added != int64(len(memberIDs)) {
@@ -616,6 +637,12 @@ func TestTags(t *testing.T) {
 		if len(member.Tags) != 1 || member.Tags[0] != tag.ID {
 			t.Fatalf("Did not update correctly member tags")
 		}
+	}
+
+	// test that duplicate tag names for the same entity are not allowed
+	_, err = api.DB.AddTag(entities[0].ID, "TestTag")
+	if err == nil {
+		t.Fatalf("error creating tag duplicated name:  (%v)", err)
 	}
 
 	// verify that the same tag cannot be added twice
@@ -664,12 +691,12 @@ func TestTags(t *testing.T) {
 		t.Fatalf("tag was not deleted correctly %v", err)
 	}
 
-	// add again tag and delete the tag
-	tag_id, err = api.DB.AddTag(entities[0].ID, "TestTag")
+	// add again tag and delete the tag without members using it
+	tagID, err = api.DB.AddTag(entities[0].ID, "TestTag")
 	if err != nil {
 		t.Fatalf("error creating tag:  (%v)", err)
 	}
-	if err = api.DB.DeleteTag(entities[0].ID, tag_id); err != nil {
+	if err = api.DB.DeleteTag(entities[0].ID, tagID); err != nil {
 		t.Fatalf("unable to delete tag that exists for members:  (%v)", err)
 	}
 	if _, err := api.DB.Tag(entities[0].ID, tag.ID); err == nil || err != sql.ErrNoRows {

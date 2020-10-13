@@ -72,7 +72,7 @@ type MemberInfo struct {
 	Verified      time.Time       `json:"verified,omitempty" db:"verified"`
 	Origin        Origin          `json:"origin,omitempty" db:"origin"`
 	CustomFields  json.RawMessage `json:"customFields,omitempty" db:"custom_fields"`
-	Tags          []int           `json:"tags,omitempty" db:"tags"`
+	Tags          []int32         `json:"tags,omitempty" db:"tags"`
 }
 
 // In case COPY FROM is adopted
@@ -197,7 +197,7 @@ type EntityMetadata struct {
 // A tag of a given entity for categorizing users
 type Tag struct {
 	CreatedUpdated
-	ID       int    `json:"id" db:"id"`
-	EntityID []byte `json:"entityId" db:"entity_id"`
-	Name     string `json:"name" db:"name"`
+	ID       int32  `json:"id,omitempty" db:"id"`
+	EntityID []byte `json:"entityId,omitempty" db:"entity_id"`
+	Name     string `json:"name,omitempty" db:"name"`
 }
