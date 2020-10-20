@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/google/uuid"
 
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/util"
@@ -62,4 +63,17 @@ func DecodeCensusID(id string, pubKey string) ([]byte, error) {
 	}
 
 	return censusIDBytes, nil
+}
+
+func UniqueUUIDs(list []uuid.UUID) []uuid.UUID {
+	found := make(map[uuid.UUID]bool)
+	n := 0
+	for _, element := range list {
+		if !found[element] {
+			list[n] = element
+			found[element] = true
+			n++
+		}
+	}
+	return list[:n]
 }
