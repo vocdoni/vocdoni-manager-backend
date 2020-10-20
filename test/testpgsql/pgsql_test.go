@@ -385,6 +385,28 @@ func TestMember(t *testing.T) {
 		t.Fatalf("able to register member using existing token but to non-correspondig entity:  (%+v)", err)
 	}
 
+	// 5. Test delete members
+	members, err = api.DB.ListMembers(entities[0].ID, nil)
+	if err != nil {
+		t.Fatalf("cannot select all members from Postgres DB (pgsql.go:ListMembers): %s", err)
+	}
+	memberIDs := make([]uuid.UUID, len(members))
+	for i, member := range members {
+		memberIDs[i] = member.ID
+	}
+	rows, err := api.DB.DeleteMembers(entities[0].ID, memberIDs)
+	if err != nil {
+		t.Fatalf("cannot delete  members from Postgres DB (pgsql.go:DeleteMembers): %s", err)
+	}
+	if int(rows) != len(members) {
+		t.Fatalf("expected to delete %d members but deleted %d (pgsql.go:DeleteMembers)", int(rows), len(members))
+	}
+	if n, err = api.DB.CountMembers(entities[0].ID); err != nil {
+		t.Fatalf("cannot count  members from Postgres DB (pgsql.go:DeleteMembers): %s", err)
+	}
+	if n != 0 {
+		t.Fatalf("expected to find 0 members but found %d (pgsql.go:DeleteMembers)", n)
+	}
 }
 
 func TestTarget(t *testing.T) {

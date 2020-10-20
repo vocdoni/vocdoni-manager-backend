@@ -71,7 +71,7 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("updateMember", path+"/manager", m.updateMember, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("deleteMember", path+"/manager", m.deleteMember, false, false); err != nil {
+	if err := m.Router.AddHandler("deleteMembers", path+"/manager", m.deleteMembers, false, false); err != nil {
 		return err
 	}
 	if err := m.Router.AddHandler("generateTokens", path+"/manager", m.generateTokens, false, false); err != nil {
@@ -402,13 +402,13 @@ func (m *Manager) updateMember(request router.RouterRequest) {
 	m.send(&request, &response)
 }
 
-func (m *Manager) deleteMember(request router.RouterRequest) {
+func (m *Manager) deleteMembers(request router.RouterRequest) {
 	var entityID []byte
 	var err error
 	var response types.MetaResponse
 
-	if request.MemberID == nil || *request.MemberID == uuid.Nil {
-		m.Router.SendError(request, "invalid member ID")
+	if len(request.MemberIDs) == 0 {
+		m.Router.SendError(request, "invalid member list")
 		return
 	}
 
@@ -425,13 +425,14 @@ func (m *Manager) deleteMember(request router.RouterRequest) {
 		return
 	}
 
-	if err = m.db.DeleteMember(entityID, request.MemberID); err != nil {
-		log.Errorf("cannot delete member %q for entity %q: (%v)", request.MemberID, request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot delete member")
+	rows, err := m.db.DeleteMembers(entityID, request.MemberIDs)
+	if err != nil {
+		log.Errorf("error deleting members for entity %x: (%v)", entityID, err)
+		m.Router.SendError(request, "error deleting members")
 		return
 	}
 
-	log.Infof("deleted member %q for Entity with public Key %s", request.MemberID.String(), request.SignaturePublicKey)
+	log.Infof("deleted %d members for Entity with public Key %x", int(rows), entityID)
 	m.send(&request, &response)
 }
 

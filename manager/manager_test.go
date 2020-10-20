@@ -332,7 +332,7 @@ func TestUpdateMember(t *testing.T) {
 	}
 }
 
-func TestDeleteMember(t *testing.T) {
+func TestDeleteMembers(t *testing.T) {
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
@@ -343,9 +343,9 @@ func TestDeleteMember(t *testing.T) {
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
 	var req types.MetaRequest
-	req.Method = "deleteMember"
-	req.MemberID = new(uuid.UUID)
-	*req.MemberID = uuid.New()
+	req.Method = "deleteMembers"
+	req.MemberIDs = []uuid.UUID{uuid.New()}
+	// *req.MemberID = uuid.New()
 	// make request
 	resp := wsc.Request(req, s)
 	// check register went successful
@@ -357,14 +357,13 @@ func TestDeleteMember(t *testing.T) {
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
 	var req2 types.MetaRequest
-	req2.Method = "deleteMember"
-	req2.MemberID = new(uuid.UUID)
-	*req2.MemberID = uuid.New()
+	req2.Method = "deleteMembers"
+	req2.MemberIDs = []uuid.UUID{uuid.New()}
 	// make request
 	resp2 := wsc.Request(req2, s2)
 	// check register went successful
 	if !resp2.Ok {
-		t.Fatal("should success")
+		t.Fatal("should succeed")
 	}
 }
 

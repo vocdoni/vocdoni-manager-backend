@@ -404,7 +404,7 @@ func TestUpdateMember(t *testing.T) {
 
 }
 
-func TestDeleteMember(t *testing.T) {
+func TestDeleteMembers(t *testing.T) {
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
@@ -420,28 +420,81 @@ func TestDeleteMember(t *testing.T) {
 
 	// add members
 	// create members
-	_, members, err := testcommon.CreateMembers(entities[0].ID, 1)
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 4)
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
 
-	// add member
+	// add members
 	if members[0].ID, err = api.DB.AddMember(entities[0].ID, members[0].PubKey, &members[0].MemberInfo); err != nil {
 		t.Fatalf("cannot add member into database: %s", err)
 	}
-
-	// create and make request
-	var req types.MetaRequest
-	req.Method = "deleteMember"
-	req.MemberID = &members[0].ID
-	resp := wsc.Request(req, entitySigners[0])
-	t.Log(resp)
-	if !resp.Ok {
-		t.Fatalf("request failed: %+v", req)
+	if members[1].ID, err = api.DB.AddMember(entities[0].ID, members[1].PubKey, &members[1].MemberInfo); err != nil {
+		t.Fatalf("cannot add member into database: %s", err)
+	}
+	if members[2].ID, err = api.DB.AddMember(entities[0].ID, members[2].PubKey, &members[2].MemberInfo); err != nil {
+		t.Fatalf("cannot add member into database: %s", err)
+	}
+	if members[3].ID, err = api.DB.AddMember(entities[0].ID, members[3].PubKey, &members[3].MemberInfo); err != nil {
+		t.Fatalf("cannot add member into database: %s", err)
 	}
 
-	if _, err := api.DB.Member(entities[0].ID, &members[0].ID); err != sql.ErrNoRows {
+	// 1. request without uuids fails
+	var req types.MetaRequest
+	req.Method = "deleteMembers"
+	req.MemberIDs = []uuid.UUID{}
+	resp := wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if resp.Ok {
+		t.Fatalf("request succeeded with empty list: %v", req)
+	}
+
+	// 2. request with a random uuid fails and nothing changes in the DB
+	// req.MemberIDs = []uuid.UUID{members[0].ID, uuid.New()}
+	// resp = wsc.Request(req, entitySigners[0])
+	// t.Log(resp)
+	// if !resp.Ok {
+	// 	t.Fatalf("request succeeded with one random uuid: %v", req)
+	// }
+
+	// rows, err := api.DB.CountMembers(entities[0].ID)
+	// if err != nil {
+	// 	t.Fatalf("could retrieve deleted member from database: %s", err)
+	// }
+	// if rows != 3 {
+	// 	t.Fatalf("expected 3 rows but found %d", rows)
+	// }
+
+	// if given duplicate members find unique and remove it
+	req.MemberIDs = []uuid.UUID{members[0].ID, members[0].ID}
+	resp = wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if !resp.Ok {
+		t.Fatalf("request failed: %v", req)
+	}
+
+	rows, err := api.DB.CountMembers(entities[0].ID)
+	if err != nil {
 		t.Fatalf("could retrieve deleted member from database: %s", err)
+	}
+	if rows != 3 {
+		t.Fatalf("expected 3 rows but found %d", rows)
+	}
+
+	// Remove members
+	req.MemberIDs = []uuid.UUID{members[1].ID, members[2].ID, members[3].ID}
+	resp = wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if !resp.Ok {
+		t.Fatalf("request failed: %v", req)
+	}
+
+	rows, err = api.DB.CountMembers(entities[0].ID)
+	if err != nil {
+		t.Fatalf("could retrieve deleted member from database: %s", err)
+	}
+	if rows != 0 {
+		t.Fatalf("expected 0 rows but found %d", rows)
 	}
 
 }

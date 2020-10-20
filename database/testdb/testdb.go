@@ -249,6 +249,14 @@ func (d *Database) DeleteMember(entityID []byte, memberID *uuid.UUID) error {
 	return nil
 }
 
+func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int64, error) {
+	failEid := hex.EncodeToString(entityID)
+	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+		return 0, fmt.Errorf("error deleting members of entity: %s", failEid)
+	}
+	return 0, nil
+}
+
 func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberInfo) error {
 	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {

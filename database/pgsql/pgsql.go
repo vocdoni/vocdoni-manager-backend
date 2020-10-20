@@ -22,6 +22,7 @@ import (
 
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
+	"gitlab.com/vocdoni/manager/manager-backend/util"
 )
 
 const connectionRetries = 5
@@ -1071,6 +1072,45 @@ func (d *Database) DeleteMember(entityID []byte, memberID *uuid.UUID) error {
 		return fmt.Errorf("error deleting member: %v", err)
 	}
 	return nil
+}
+
+func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int64, error) {
+	var rows int64
+	if len(members) == 0 || len(entityID) == 0 {
+		return rows, fmt.Errorf("invalid arguments")
+	}
+	uniqueMembers := util.UniqueUUIDs(members)
+	type MemberData struct {
+		MemberID string `db:"member_id"`
+	}
+	membersMap := make([]*MemberData, len(uniqueMembers))
+	for i, memberID := range uniqueMembers {
+		membersMap[i] = &MemberData{
+			MemberID: memberID.String(),
+		}
+	}
+
+	// WARNING: Here tag is passed directly as to the SQL query since we are sure
+	// that a tag with this ID exists
+	update := fmt.Sprintf(`DELETE FROM members 
+					WHERE entity_id =  decode('%x','hex') AND id IN (
+						SELECT CAST(member_id AS uuid) FROM (VALUES 
+							(:member_id)
+						)
+						AS u(member_id)	
+					)`, entityID)
+
+	result, err := d.db.NamedExec(update, membersMap)
+	if err != nil {
+		log.Errorf("error removing  members of %x: (%v)", entityID, err)
+		return rows, err
+	}
+
+	if rows, err = result.RowsAffected(); err != nil {
+		log.Errorf("DeleteMembers: cannot get affected rows: %v", err)
+		return rows, fmt.Errorf("cannot get affected rows: %v", err)
+	}
+	return rows, nil
 }
 
 func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) {
