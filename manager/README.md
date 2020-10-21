@@ -261,14 +261,17 @@ Retrieve a list of members with the given constraints.
 ```
 
 
-### deleteMember
+### deleteMembers
+The calls fails if no `memberIDs` are provided. Duplcate member IDs are ignored. 
+The following constriant applies `length(memberIDs) = count+length(invalidIDs)+duplicates`. The duplicates are not provided by the response but they can be calculated from the above constraint.
+
 - Request
 ```json
 {
     "id": "req-12345678",
     "request": {
-        "method": "deleteMember",
-        "id": "1234..."
+        "method": "deleteMembers",
+        "memberIDs":  ["1234...","4567...."],
     },
     "signature": "0x12345"
 }
@@ -278,7 +281,10 @@ Retrieve a list of members with the given constraints.
 {
     "id": "req-12345678",
     "response": {
-        "ok": true
+        "ok": true,
+        "count": 2, // number of members deleted
+        "invalidIDs":, // number of non-existing IDs that where included in the request
+
     },
      "signature": "0x123456"
 }
@@ -367,6 +373,7 @@ Adds N new empty member entries, filled with the corresponding ID/token only.
 ```
 
 ### exportTokens
+The response contains a set of `{"email":"...","token":"..."}` for each member of the Entity,  that has no public key registered.
 - Request
 ```json
 {
@@ -791,7 +798,9 @@ Returns requested census with the corresponding target
 }
 ```
 ### addTag
-Add tag to members
+Adds Tag to a list of Members. The calls fails if no `memberIDs` are provided. Duplcate member IDs are ignored.
+The following constriant applies `length(memberIDs) = count+length(invalidIDs)+duplicates`. The duplicates are not provided by the response but they can be calculated from the above constraint.
+
 - Request
 ```json
 {
@@ -808,21 +817,25 @@ Add tag to members
 {
     "id": "req-12345678",
     "response": {
-        "ok": true
+        "ok": true,
+        "count": 2, // number of members updated
+        "invalidIDs":, // number of non-existing IDs that where included in the request
     },
      "signature": "0x123456"
 }
 ```
 
 ### removeTag
-Remove Tag from Members
+The calls fails if no `memberIDs` are provided. Duplcate member IDs are ignored. 
+The following constriant applies `length(memberIDs) = count+length(invalidIDs)+duplicates`. The duplicates are not provided by the response but they can be calculated from the above constraint.
+
 - Request
 ```json
 {
     "id": "req-12345678",
     "request": {
-        method: "removeTag"
-        memberIds: [uuid]
+        "method": "removeTag",
+        "memberIds": ["1234...","5678....."]
     },
     "signature": "0x12345"
 }
@@ -832,7 +845,9 @@ Remove Tag from Members
 {
     "id": "req-12345678",
     "response": {
-        "ok": true
+        "ok": true,
+        "count": 2, // number of members updated
+        "invalidIDs":, // number of non-existing IDs that where included in the request
     },
      "signature": "0x123456"
 }
