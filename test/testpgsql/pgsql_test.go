@@ -62,7 +62,12 @@ func TestEntity(t *testing.T) {
 		Origins:                 []types.Origin{types.Token},
 	}
 
-	err := api.DB.AddEntity(entityID, info)
+	startEntities, err := api.DB.EntitiesID()
+	if err != nil {
+		t.Fatalf("cannot get entities from the Postgres DB (pgsql.go:Entities): %s", err)
+	}
+
+	err = api.DB.AddEntity(entityID, info)
 	if err != nil {
 		t.Fatalf("cannot add entity to the Postgres DB (pgsql.go:addEntity): %s", err)
 	}
@@ -133,13 +138,12 @@ func TestEntity(t *testing.T) {
 		t.Fatalf("error while trying to reauthorize entity: (%v)", err)
 	}
 
-	entities, err := api.DB.EntitiesID()
-	t.Logf("entities: %+v", entities)
+	finalEntities, err := api.DB.EntitiesID()
 	if err != nil {
 		t.Fatalf("cannot get entities from the Postgres DB (pgsql.go:Entities): %s", err)
 	}
-	if len(entities) != 1 {
-		t.Fatalf("expected one entity, got %d", len(entities))
+	if len(finalEntities)-len(startEntities) != +1 {
+		t.Fatalf("expected to have created 1 new entity but created %d", len(finalEntities)-len(startEntities))
 	}
 }
 
