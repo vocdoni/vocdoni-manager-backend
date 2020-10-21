@@ -22,7 +22,7 @@ type Database interface {
 	AddMemberBulk(entityID []byte, members []types.Member) error
 	Member(entityID []byte, memberID *uuid.UUID) (*types.Member, error)
 	DeleteMember(entityID []byte, memberID *uuid.UUID) error
-	DeleteMembers(entityID []byte, members []uuid.UUID) (int64, error)
+	DeleteMembers(entityID []byte, members []uuid.UUID) (int, []uuid.UUID, error)
 	MemberPubKey(entityID, pubKey []byte) (*types.Member, error)
 	CountMembers(entityID []byte) (int, error)
 	ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error)
@@ -31,8 +31,8 @@ type Database interface {
 	DeleteTag(entityID []byte, tagID int32) error
 	Tag(entityID []byte, tagID int32) (*types.Tag, error)
 	ListTags(entityID []byte) ([]types.Tag, error)
-	AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int32) (int64, error)
-	RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int32) (int64, error)
+	AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int32) (int, []uuid.UUID, error)
+	RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int32) (int, []uuid.UUID, error)
 	CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error
 	CreateNMembers(entityID []byte, n int) ([]uuid.UUID, error)
 	RegisterMember(entityID, pubKey []byte, token *uuid.UUID) error

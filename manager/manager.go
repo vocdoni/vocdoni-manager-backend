@@ -425,14 +425,14 @@ func (m *Manager) deleteMembers(request router.RouterRequest) {
 		return
 	}
 
-	rows, err := m.db.DeleteMembers(entityID, request.MemberIDs)
+	response.Count, response.InvalidIDs, err = m.db.DeleteMembers(entityID, request.MemberIDs)
 	if err != nil {
 		log.Errorf("error deleting members for entity %x: (%v)", entityID, err)
 		m.Router.SendError(request, "error deleting members")
 		return
 	}
 
-	log.Infof("deleted %d members for Entity with public Key %x", int(rows), entityID)
+	log.Infof("deleted %d members, found %d invalid tokens, for Entity with public Key %x", response.Count, len(response.InvalidIDs), entityID)
 	m.send(&request, &response)
 }
 
@@ -1157,14 +1157,14 @@ func (m *Manager) addTag(request router.RouterRequest) {
 		return
 	}
 
-	updated, err := m.db.AddTagToMembers(entityID, request.MemberIDs, request.TagID)
+	response.Count, response.InvalidIDs, err = m.db.AddTagToMembers(entityID, request.MemberIDs, request.TagID)
 	if err != nil {
 		log.Errorf("cannot add tag %d to members for entity %x: (%v)", request.TagID, entityID, err)
 		m.Router.SendError(request, "cannot add tag ")
 		return
 	}
 
-	log.Infof("added tag with id %d to %d members of Entity %x", request.TagID, updated, entityID)
+	log.Infof("added tag with id %d to %d, with %d invalid IDs, members of Entity %x", request.TagID, response.Count, len(response.InvalidIDs), entityID)
 	m.send(&request, &response)
 }
 
@@ -1193,14 +1193,14 @@ func (m *Manager) removeTag(request router.RouterRequest) {
 		return
 	}
 
-	updated, err := m.db.RemoveTagFromMembers(entityID, request.MemberIDs, request.TagID)
+	response.Count, response.InvalidIDs, err = m.db.RemoveTagFromMembers(entityID, request.MemberIDs, request.TagID)
 	if err != nil {
 		log.Errorf("cannot remove tag %d from members for entity %x: (%v)", request.TagID, entityID, err)
 		m.Router.SendError(request, "cannot remove tag ")
 		return
 	}
 
-	log.Infof("removed tag with id %d from %d members of Entity %x", request.TagID, updated, entityID)
+	log.Infof("removed tag with id %d from %d members, with %d invalid IDs, of Entity %x", request.TagID, response.Count, len(response.InvalidIDs), entityID)
 	m.send(&request, &response)
 }
 

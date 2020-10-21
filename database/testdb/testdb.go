@@ -249,12 +249,12 @@ func (d *Database) DeleteMember(entityID []byte, memberID *uuid.UUID) error {
 	return nil
 }
 
-func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int64, error) {
+func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int, []uuid.UUID, error) {
 	failEid := hex.EncodeToString(entityID)
 	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
-		return 0, fmt.Errorf("error deleting members of entity: %s", failEid)
+		return 0, nil, fmt.Errorf("error deleting members of entity: %s", failEid)
 	}
-	return 0, nil
+	return len(members), []uuid.UUID{}, nil
 }
 
 func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberInfo) error {
@@ -298,12 +298,12 @@ func (d *Database) Tag(entityID []byte, tagID int32) (*types.Tag, error) {
 	return nil, nil
 }
 
-func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int32) (int64, error) {
-	return 1, nil
+func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int32) (int, []uuid.UUID, error) {
+	return len(members), []uuid.UUID{}, nil
 }
 
-func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int32) (int64, error) {
-	return 1, nil
+func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int32) (int, []uuid.UUID, error) {
+	return len(members), []uuid.UUID{}, nil
 }
 
 func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error {

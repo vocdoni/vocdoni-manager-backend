@@ -385,27 +385,46 @@ func TestMember(t *testing.T) {
 		t.Fatalf("able to register member using existing token but to non-correspondig entity:  (%+v)", err)
 	}
 
-	// 5. Test delete members
 	members, err = api.DB.ListMembers(entities[0].ID, nil)
 	if err != nil {
 		t.Fatalf("cannot select all members from Postgres DB (pgsql.go:ListMembers): %s", err)
 	}
+	// 5. Test delete  duplicate members
+	updatedCount, _, err := api.DB.DeleteMembers(entities[0].ID, []uuid.UUID{members[0].ID, members[0].ID})
+	if err != nil {
+		t.Fatalf("cannot delete  members from Postgres DB (pgsql.go:DeleteMembers): %s", err)
+	}
+	if updatedCount != 1 {
+		t.Fatalf("expected to delete %d but deleted %d members", 1, updatedCount)
+	}
+	members = members[1:]
 	memberIDs := make([]uuid.UUID, len(members))
 	for i, member := range members {
 		memberIDs[i] = member.ID
 	}
-	rows, err := api.DB.DeleteMembers(entities[0].ID, memberIDs)
+
+	// Test delete members
+	updatedCount, _, err = api.DB.DeleteMembers(entities[0].ID, memberIDs)
 	if err != nil {
 		t.Fatalf("cannot delete  members from Postgres DB (pgsql.go:DeleteMembers): %s", err)
 	}
-	if int(rows) != len(members) {
-		t.Fatalf("expected to delete %d members but deleted %d (pgsql.go:DeleteMembers)", int(rows), len(members))
+	if updatedCount != len(memberIDs) {
+		t.Fatalf("expected to delete %d but deleted %d members", len(memberIDs), updatedCount)
 	}
 	if n, err = api.DB.CountMembers(entities[0].ID); err != nil {
 		t.Fatalf("cannot count  members from Postgres DB (pgsql.go:DeleteMembers): %s", err)
 	}
 	if n != 0 {
 		t.Fatalf("expected to find 0 members but found %d (pgsql.go:DeleteMembers)", n)
+	}
+	// Test delete non existing
+	tempUUID := uuid.New()
+	updatedCount, invalidIDs, err := api.DB.DeleteMembers(entities[0].ID, []uuid.UUID{tempUUID})
+	if err != nil {
+		t.Fatalf("error deleting random member from Postgres DB (pgsql.go:DeleteMembers): %s", err)
+	}
+	if len(invalidIDs) != 1 || invalidIDs[0] != tempUUID || updatedCount != 0 {
+		t.Fatal("recieved not expected invalid token (pgsql.go:DeleteMembers)")
 	}
 }
 
@@ -645,8 +664,8 @@ func TestTags(t *testing.T) {
 	}
 
 	// Add tag to members
-	added, err := api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID)
-	if err != nil || added != int64(len(memberIDs)) {
+	added, invalidIDs, err := api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID)
+	if err != nil || added != len(memberIDs) || len(invalidIDs) != 0 {
 		t.Fatalf("unable to add member tags:  (%v)", err)
 	}
 	// verify tags were registered correctly
@@ -664,20 +683,46 @@ func TestTags(t *testing.T) {
 	// test that duplicate tag names for the same entity are not allowed
 	_, err = api.DB.AddTag(entities[0].ID, "TestTag")
 	if err == nil {
-		t.Fatalf("error creating tag duplicated name:  (%v)", err)
+		t.Fatal("able to create tag with duplicate name")
 	}
 
 	// verify that the same tag cannot be added twice
 	// Add tag to members
-	updated, err := api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID)
-	if err == nil || updated != 0 {
-		t.Fatalf("able to add the same member tag twice:  (%v)", err)
+	updated, invalidIDs, err := api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID)
+	if err != nil {
+		t.Fatalf("error adding tag to members:  (%v)", err)
+	}
+	if updated != 0 || len(invalidIDs) != len(memberIDs) {
+		t.Fatal("able to add the same member tag twice")
 	}
 
-	// delete added tag
-	deleted, err := api.DB.RemoveTagFromMembers(entities[0].ID, memberIDs, tag.ID)
-	if err != nil || deleted != int64(len(memberIDs)) {
-		t.Fatalf("unable to delete member tags:  (%v)", err)
+	// verify that wrong IDs are returned as invalidIDs
+	tempUUID := uuid.New()
+	updated, invalidIDs, err = api.DB.AddTagToMembers(entities[0].ID, []uuid.UUID{tempUUID}, tag.ID)
+	if err != nil {
+		t.Fatalf("error adding tag to members:  (%v)", err)
+	}
+	if updated != 0 || len(invalidIDs) != 1 || invalidIDs[0] != tempUUID {
+		t.Fatal("able to add tag to random member")
+	}
+
+	// verify that wrong IDs are returned as invalidIDs from RemoveTagFromMembers
+	deleted, invalidIDs, err := api.DB.RemoveTagFromMembers(entities[0].ID, []uuid.UUID{tempUUID}, tag.ID)
+	if err != nil {
+		t.Fatalf("error removing tag from members:  (%v)", err)
+	}
+	if deleted != 0 || len(invalidIDs) != 1 || invalidIDs[0] != tempUUID {
+		t.Fatal("able to delete tag from random member")
+	}
+
+	// delete added tag (with duplicates)
+	memberIDs = append(memberIDs, memberIDs[0])
+	deleted, invalidIDs, err = api.DB.RemoveTagFromMembers(entities[0].ID, memberIDs, tag.ID)
+	if err != nil {
+		t.Fatalf("error removing tag from members:  (%v)", err)
+	}
+	if deleted != len(memberIDs)-1 || len(invalidIDs) != 0 {
+		t.Fatal("unexpected result removing tag from members")
 	}
 	// verify tags were removed correctly
 	taggedMembers, err = api.DB.ListMembers(entities[0].ID, nil)
@@ -691,10 +736,13 @@ func TestTags(t *testing.T) {
 		}
 	}
 
-	// add again tag and delete the tag (removing it automatically from the members that have it)
-	added, err = api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID)
-	if err != nil || added != int64(len(memberIDs)) {
+	// add again tag (ignoring duplicates) and delete the tag (removing it automatically from the members that have it)
+	added, invalidIDs, err = api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID)
+	if err != nil {
 		t.Fatalf("unable to add member tags:  (%v)", err)
+	}
+	if added != len(memberIDs)-1 || len(invalidIDs) != 0 {
+		t.Fatalf("unexpexted result adding member tags:  (%v)", err)
 	}
 	if err = api.DB.DeleteTag(entities[0].ID, tag.ID); err != nil {
 		t.Fatalf("unable to delete tag that exists for members:  (%v)", err)

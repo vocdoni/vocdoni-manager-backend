@@ -22,7 +22,6 @@ import (
 
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
-	"gitlab.com/vocdoni/manager/manager-backend/util"
 )
 
 const connectionRetries = 5
@@ -852,31 +851,34 @@ func (d *Database) Tag(entityID []byte, tagID int32) (*types.Tag, error) {
 	return &tag, nil
 }
 
-func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int32) (int64, error) {
+func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int32) (int, []uuid.UUID, error) {
 	// Tags as text[] http://www.databasesoup.com/2015/01/tag-all-things.html
 	// Tags as intarray
-	var rows int64
+	var invalidTokens []uuid.UUID
+	var updated int
 
-	if len(members) == 0 || len(entityID) == 0 {
-		log.Debugf("AddTagToMembers: invalid arguments: tag %d for entity %x", tagID, entityID)
-		return rows, fmt.Errorf("invalid arguments")
+	if len(entityID) == 0 {
+		return updated, invalidTokens, fmt.Errorf("invalid arguments")
+	}
+	if len(members) == 0 {
+		return updated, invalidTokens, nil
 	}
 	_, err := d.Tag(entityID, tagID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Debug("AddTagToMembers: trying to add not existing tag %d for entity %x", tagID, entityID)
-			return rows, err
+			return updated, invalidTokens, fmt.Errorf("tag does not exist")
 		}
 		log.Errorf("AddTagsToMembers: error retrieving tag %d for %x : (%v)", tagID, entityID, err)
-		return 0, err
+		return updated, invalidTokens, err
 	}
 	type TagData struct {
 		MemberID string `db:"member_id"`
 		TagID    string `db:"tag_id"`
 	}
-	idTagsMap := make([]*TagData, len(members))
+	idTagsList := make([]*TagData, len(members))
 	for i, memberID := range members {
-		idTagsMap[i] = &TagData{
+		idTagsList[i] = &TagData{
 			MemberID: memberID.String(),
 			TagID:    strconv.FormatInt(int64(tagID), 10),
 		}
@@ -890,37 +892,55 @@ func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID i
 					(:member_id, :tag_id)
 				)
 				AS u(member_id,tag_id)			
-		WHERE m.entity_id = decode('%x','hex') AND m.id = uuid(u.member_id) AND NOT (m.tags && intset(%d)) `, entityID, tagID)
+		WHERE m.entity_id = decode('%x','hex') AND m.id = uuid(u.member_id) AND NOT (m.tags && intset(%d)) 
+		RETURNING m.id`, entityID, tagID)
 
-	result, err := d.db.NamedExec(update, idTagsMap)
+	result, err := d.db.NamedQuery(update, idTagsList)
 	if err != nil {
 		log.Errorf("AddTagToMembers: error adding  tag %d  to members of %x: (%v)", tagID, entityID, err)
-		return rows, err
+		return updated, invalidTokens, err
 	}
-	if rows, err = result.RowsAffected(); err != nil {
-		log.Errorf("AddTagToMembers: cannot get affected rows: %v", err)
-		return rows, fmt.Errorf("cannot get affected rows: %v", err)
-	} else if rows != int64(len(members)) { /* Nothing to update? */
-		log.Errorf("AddTagToMembers: expected to update %d rows but updated %d", int64(len(members)), rows)
-		return rows, fmt.Errorf("expected to update %d rows but updated %d", int64(len(members)), rows)
+	var id uuid.UUID
+	invalidTokensMap := make(map[uuid.UUID]bool)
+	for _, token := range members {
+		invalidTokensMap[token] = true
 	}
-	return rows, nil
+	for result.Next() {
+		if err := result.Scan(&id); err != nil {
+			log.Errorf("AddTagToMembers: error parsing query result: %v", err)
+			return updated, invalidTokens, fmt.Errorf("error parsing query result: %v", err)
+		}
+		updated++
+
+		delete(invalidTokensMap, id)
+	}
+	invalidTokens = make([]uuid.UUID, len(invalidTokensMap))
+	i := 0
+	for k := range invalidTokensMap {
+		invalidTokens[i] = k
+		i++
+	}
+	return updated, invalidTokens, nil
 }
 
-func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int32) (int64, error) {
-	var rows int64
-	if len(members) == 0 || len(entityID) == 0 {
-		log.Debugf("RemoveTagFromMembers: invalid arguments: tag %d for entity %x", tagID, entityID)
-		return 0, fmt.Errorf("invalid arguments")
+func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int32) (int, []uuid.UUID, error) {
+	var invalidTokens []uuid.UUID
+	var updated int
+
+	if len(entityID) == 0 {
+		return updated, invalidTokens, fmt.Errorf("invalid arguments")
 	}
-	_, err := d.Tag(entityID, tagID)
+	if len(members) == 0 {
+		return updated, invalidTokens, nil
+	}
+	tag, err := d.Tag(entityID, tagID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Debugf("RemoveTagFromMembers: non-existing tag %d for entity %x", tagID, entityID)
-			return rows, err
+			return updated, invalidTokens, err
 		}
 		log.Errorf("RemoveTagFromMembers: error retrieving tag %d for %x : (%v)", tagID, entityID, err)
-		return 0, err
+		return updated, invalidTokens, err
 	}
 	type TagData struct {
 		MemberID string `db:"member_id"`
@@ -942,22 +962,36 @@ func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, ta
 					(:member_id, :tag_id)
 				)
 				AS u(member_id,tag_id)			
-				WHERE m.entity_id = decode('%x','hex') AND m.id = uuid(u.member_id)`, entityID)
+				WHERE m.entity_id = decode('%x','hex') AND m.id = uuid(u.member_id) AND (m.tags && intset(%d)) 
+				RETURNING m.id`, entityID, tag.ID)
 
-	result, err := d.db.NamedExec(update, idTagsMap)
+	result, err := d.db.NamedQuery(update, idTagsMap)
 	if err != nil {
-		log.Errorf("error adding  tag %d  to members of %x: (%v)", tagID, entityID, err)
-		return rows, err
+		log.Errorf("error removing  tag %d  to members of %x: (%v)", tagID, entityID, err)
+		return updated, invalidTokens, err
 	}
 
-	if rows, err = result.RowsAffected(); err != nil {
-		log.Errorf("RemoveTagFromMembers: cannot get affected rows: %v", err)
-		return rows, fmt.Errorf("cannot get affected rows: %v", err)
-	} else if rows != int64(len(members)) { /* Nothing to update? */
-		log.Errorf("RemoveTagFromMembers: expected to update %d rows but updated %d", int64(len(members)), rows)
-		return rows, fmt.Errorf("expected to update %d rows but updated %d", int64(len(members)), rows)
+	var id uuid.UUID
+	invalidTokensMap := make(map[uuid.UUID]bool)
+	for _, token := range members {
+		invalidTokensMap[token] = true
 	}
-	return rows, nil
+	for result.Next() {
+		if err := result.Scan(&id); err != nil {
+			log.Errorf("RemoveTagFromMembers: error parsing query result: %v", err)
+			return updated, invalidTokens, fmt.Errorf("error parsing query result: %v", err)
+		}
+		updated++
+
+		delete(invalidTokensMap, id)
+	}
+	invalidTokens = make([]uuid.UUID, len(invalidTokensMap))
+	i := 0
+	for k := range invalidTokensMap {
+		invalidTokens[i] = k
+		i++
+	}
+	return updated, invalidTokens, nil
 }
 
 // Register member to existing ID and generates corresponding user
@@ -1074,43 +1108,68 @@ func (d *Database) DeleteMember(entityID []byte, memberID *uuid.UUID) error {
 	return nil
 }
 
-func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int64, error) {
-	var rows int64
-	if len(members) == 0 || len(entityID) == 0 {
-		return rows, fmt.Errorf("invalid arguments")
+func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int, []uuid.UUID, error) {
+	var invalidTokens []uuid.UUID
+	var updated int
+	if len(entityID) == 0 {
+		return updated, invalidTokens, fmt.Errorf("invalid arguments")
 	}
-	uniqueMembers := util.UniqueUUIDs(members)
+	if len(members) == 0 {
+		return updated, invalidTokens, nil
+	}
+	// uniqueMembers := util.UniqueUUIDs(members)
 	type MemberData struct {
 		MemberID string `db:"member_id"`
 	}
-	membersMap := make([]*MemberData, len(uniqueMembers))
-	for i, memberID := range uniqueMembers {
-		membersMap[i] = &MemberData{
+
+	membersList := make([]*MemberData, len(members))
+	for i, memberID := range members {
+		membersList[i] = &MemberData{
 			MemberID: memberID.String(),
 		}
 	}
 
-	// WARNING: Here tag is passed directly as to the SQL query since we are sure
-	// that a tag with this ID exists
 	update := fmt.Sprintf(`DELETE FROM members 
 					WHERE entity_id =  decode('%x','hex') AND id IN (
 						SELECT CAST(member_id AS uuid) FROM (VALUES 
 							(:member_id)
 						)
 						AS u(member_id)	
-					)`, entityID)
+					)
+					RETURNING id`, entityID)
 
-	result, err := d.db.NamedExec(update, membersMap)
+	result, err := d.db.NamedQuery(update, membersList)
 	if err != nil {
-		log.Errorf("error removing  members of %x: (%v)", entityID, err)
-		return rows, err
+		log.Errorf("error removing members of %x: (%v)", entityID, err)
+		return updated, invalidTokens, err
 	}
 
-	if rows, err = result.RowsAffected(); err != nil {
-		log.Errorf("DeleteMembers: cannot get affected rows: %v", err)
-		return rows, fmt.Errorf("cannot get affected rows: %v", err)
+	// if err = result.Scan(&invalidTokens); err != nil {
+	// 	log.Errorf("DeleteMembers: cannot parse query result: %v", err)
+	// 	return invalidTokens, fmt.Errorf("cannot parse query result: %v", err)
+	// }
+
+	var id uuid.UUID
+	invalidTokensMap := make(map[uuid.UUID]bool)
+	for _, token := range members {
+		invalidTokensMap[token] = true
 	}
-	return rows, nil
+	for result.Next() {
+		if err := result.Scan(&id); err != nil {
+			log.Errorf("DeleteMembers: error parsing query result: %v", err)
+			return updated, invalidTokens, fmt.Errorf("error parsing query result: %v", err)
+		}
+		updated++
+
+		delete(invalidTokensMap, id)
+	}
+	invalidTokens = make([]uuid.UUID, len(invalidTokensMap))
+	i := 0
+	for k := range invalidTokensMap {
+		invalidTokens[i] = k
+		i++
+	}
+	return updated, invalidTokens, nil
 }
 
 func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) {

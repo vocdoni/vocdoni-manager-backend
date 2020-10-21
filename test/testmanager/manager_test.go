@@ -449,21 +449,25 @@ func TestDeleteMembers(t *testing.T) {
 		t.Fatalf("request succeeded with empty list: %v", req)
 	}
 
-	// 2. request with a random uuid fails and nothing changes in the DB
-	// req.MemberIDs = []uuid.UUID{members[0].ID, uuid.New()}
-	// resp = wsc.Request(req, entitySigners[0])
-	// t.Log(resp)
-	// if !resp.Ok {
-	// 	t.Fatalf("request succeeded with one random uuid: %v", req)
-	// }
+	//2. request with a random uuid succeeds but returns invalidID and nothing changes in the DB
+	tempUUID := uuid.New()
+	req.MemberIDs = []uuid.UUID{members[0].ID, tempUUID}
+	resp = wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if !resp.Ok {
+		t.Fatalf("request succeeded with one random uuid: %v", req)
+	}
+	if len(resp.InvalidIDs) != 1 || resp.InvalidIDs[0] != tempUUID {
+		t.Fatal("invalidID was not returned correctly")
+	}
 
-	// rows, err := api.DB.CountMembers(entities[0].ID)
-	// if err != nil {
-	// 	t.Fatalf("could retrieve deleted member from database: %s", err)
-	// }
-	// if rows != 3 {
-	// 	t.Fatalf("expected 3 rows but found %d", rows)
-	// }
+	rows, err := api.DB.CountMembers(entities[0].ID)
+	if err != nil {
+		t.Fatalf("could retrieve deleted member from database: %s", err)
+	}
+	if rows != 3 {
+		t.Fatalf("expected 3 rows but found %d", rows)
+	}
 
 	// if given duplicate members find unique and remove it
 	req.MemberIDs = []uuid.UUID{members[0].ID, members[0].ID}
@@ -473,7 +477,7 @@ func TestDeleteMembers(t *testing.T) {
 		t.Fatalf("request failed: %v", req)
 	}
 
-	rows, err := api.DB.CountMembers(entities[0].ID)
+	rows, err = api.DB.CountMembers(entities[0].ID)
 	if err != nil {
 		t.Fatalf("could retrieve deleted member from database: %s", err)
 	}
@@ -1354,7 +1358,8 @@ func TestDeleteTag(t *testing.T) {
 	}
 
 	// add tag to member
-	if n, err := api.DB.AddTagToMembers(entities[0].ID, []uuid.UUID{listedMembers[0].ID}, tag.ID); err != nil || n != 1 {
+	n, _, err := api.DB.AddTagToMembers(entities[0].ID, []uuid.UUID{listedMembers[0].ID}, tag.ID)
+	if err != nil || n != 1 {
 		t.Fatalf("failed to add tag into member: %s", err)
 	}
 
@@ -1446,7 +1451,7 @@ func TestAddTag(t *testing.T) {
 		t.Fatalf("cannot add tag into database: %s", err)
 	}
 
-	// Test cannnot add tags to members
+	// Test add tags to members
 	var req types.MetaRequest
 	req.Method = "addTag"
 	req.TagID = tag.ID
@@ -1454,6 +1459,10 @@ func TestAddTag(t *testing.T) {
 	resp := wsc.Request(req, entitySigners[0])
 	if !resp.Ok {
 		t.Fatalf("unable to add test tag to members: %s", resp.Message)
+	}
+
+	if resp.Count != len(memberIDs) || len(resp.InvalidIDs) != 0 {
+		t.Fatalf("expected to receive an updated count of %d but received %d", len(memberIDs), resp.Count)
 	}
 
 	listedMembers, err = api.DB.ListMembers(entities[0].ID, nil)
@@ -1464,6 +1473,15 @@ func TestAddTag(t *testing.T) {
 		if member.Tags[0] != tag.ID {
 			t.Fatalf("unable to update correctly tag to members")
 		}
+	}
+
+	// Test that addning same members twice returns them as invalidIDs
+	resp = wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Fatalf("unable to add test tag test members: %s", resp.Message)
+	}
+	if resp.Count != 0 || len(resp.InvalidIDs) != len(memberIDs) {
+		t.Fatal("unexpected response for adding for second time  tag from memberIDs")
 	}
 
 	//Test fails for wrong entity tag
@@ -1485,6 +1503,19 @@ func TestAddTag(t *testing.T) {
 	if resp.Ok {
 		t.Fatalf("able to add 0 tag: %s", resp.Message)
 	}
+
+	//Test returns the invalidIDs
+	tempUUID := uuid.New()
+	req.TagID = tag.ID
+	req.MemberIDs = []uuid.UUID{tempUUID}
+	resp = wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Fatalf("unable to add test tag to members: %s", resp.Message)
+	}
+	if len(resp.InvalidIDs) != 1 || resp.InvalidIDs[0] != tempUUID {
+		t.Fatal("returns incorrectly the InvalidIDs")
+	}
+
 }
 
 func TestRemoveTag(t *testing.T) {
@@ -1532,7 +1563,7 @@ func TestRemoveTag(t *testing.T) {
 		t.Fatalf("cannot add tag into database: %s", err)
 	}
 	// add tag to members
-	if n, err := api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID); err != nil || n != int64(len(memberIDs)) {
+	if n, _, err := api.DB.AddTagToMembers(entities[0].ID, memberIDs, tag.ID); err != nil || n != len(memberIDs) {
 		t.Fatalf("failed to add tag to members: %s", err)
 	}
 
@@ -1565,10 +1596,23 @@ func TestRemoveTag(t *testing.T) {
 	req.MemberIDs = nil
 	resp = wsc.Request(req, entitySigners[0])
 	if resp.Ok {
-		t.Fatalf("able to remove non-existing tag: %s", resp.Message)
+		t.Fatalf("able to remove tag for nil member list: %s", resp.Message)
 	}
 
-	// Test succeeds
+	// Test fails if non-existing ID is not returned as invalidID
+	tempUUID := uuid.New()
+	req.MemberIDs = []uuid.UUID{tempUUID}
+	resp = wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Fatalf("unable to remove test tag test members: %s", resp.Message)
+	}
+
+	if resp.Count != 0 || len(resp.InvalidIDs) != 1 || resp.InvalidIDs[0] != tempUUID {
+		t.Fatal("unexpected response for non existing memberID")
+	}
+
+	// Test succeeds (with duplicates)
+	memberIDs = append(memberIDs, memberIDs[0])
 	req.TagID = tag.ID
 	req.MemberIDs = memberIDs
 	resp = wsc.Request(req, entitySigners[0])
@@ -1576,14 +1620,27 @@ func TestRemoveTag(t *testing.T) {
 		t.Fatalf("unable to remove test tag test members: %s", resp.Message)
 	}
 
+	if resp.Count != len(memberIDs)-1 || len(resp.InvalidIDs) != 0 {
+		t.Fatal("unexpected response for removing tag from memberIDs with duplicate id")
+	}
+
 	listedMembers, err = api.DB.ListMembers(entities[0].ID, nil)
 	if err != nil {
-		t.Fatalf("cannot add members into database: %s", err)
+		t.Fatalf("cannot list members from database: %s", err)
 	}
 	for _, member := range listedMembers {
 		if len(member.Tags) > 0 {
 			t.Fatalf("unable to remove correctly tag from members")
 		}
+	}
+
+	// Test that removing same members twice returns them as invalidIDs
+	resp = wsc.Request(req, entitySigners[0])
+	if !resp.Ok {
+		t.Fatalf("unable to remove test tag test members: %s", resp.Message)
+	}
+	if resp.Count != 0 || len(resp.InvalidIDs) != len(memberIDs)-1 {
+		t.Fatal("unexpected response for removing for second time  tag from memberIDs")
 	}
 
 }
