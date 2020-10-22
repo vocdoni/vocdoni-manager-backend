@@ -298,6 +298,29 @@ func TestMember(t *testing.T) {
 		t.Fatalf("cannot select all members from Postgres DB (pgsql.go:ListMembers): %s", err)
 	}
 
+	// Query multiple members by []UUID
+	members, invalidIDs, err := api.DB.Members(entities[0].ID, []uuid.UUID{allMembers[0].ID, allMembers[1].ID})
+	if err != nil {
+		t.Fatal("error retrieving members by uuid (pgsql.go:Members)")
+	}
+	if len(members) != 2 || len(invalidIDs) != 0 {
+		t.Fatal("received unexpected results retrieving members by uuid (pgsql.go:Members)")
+	}
+	for _, member := range members {
+		if member.ID != allMembers[0].ID && member.ID != allMembers[1].ID {
+			t.Fatalf("retrieved member with ID %s while expected (%s || %s) (pgsql.go:Members)", member.ID.String(), id.String(), id2.String())
+		}
+	}
+
+	tempUUID := uuid.New()
+	members, invalidIDs, err = api.DB.Members(entities[0].ID, []uuid.UUID{allMembers[0].ID, allMembers[1].ID, tempUUID})
+	if err != nil {
+		t.Fatal("error retrieving members by uuid (pgsql.go:Members)")
+	}
+	if len(members) != 2 || len(invalidIDs) != 1 || invalidIDs[0] != tempUUID {
+		t.Fatal("received unexpected results retrieving members by uuid (pgsql.go:Members)")
+	}
+
 	// Test Selecting filtered members
 	limit := 5
 	filter := &types.ListOptions{
@@ -306,7 +329,7 @@ func TestMember(t *testing.T) {
 		SortBy: "lastName",
 		Order:  "descend",
 	}
-	members, err := api.DB.ListMembers(entities[0].ID, filter)
+	members, err = api.DB.ListMembers(entities[0].ID, filter)
 	if err != nil {
 		t.Fatalf("cannot select all members from Postgres DB (pgsql.go:ListMembers): %s", err)
 	}
@@ -422,8 +445,8 @@ func TestMember(t *testing.T) {
 		t.Fatalf("expected to find 0 members but found %d (pgsql.go:DeleteMembers)", n)
 	}
 	// Test delete non existing
-	tempUUID := uuid.New()
-	updatedCount, invalidIDs, err := api.DB.DeleteMembers(entities[0].ID, []uuid.UUID{tempUUID})
+	tempUUID = uuid.New()
+	updatedCount, invalidIDs, err = api.DB.DeleteMembers(entities[0].ID, []uuid.UUID{tempUUID})
 	if err != nil {
 		t.Fatalf("error deleting random member from Postgres DB (pgsql.go:DeleteMembers): %s", err)
 	}

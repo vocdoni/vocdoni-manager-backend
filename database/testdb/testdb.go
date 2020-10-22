@@ -133,6 +133,10 @@ func (d *Database) Member(entityID []byte, memberID *uuid.UUID) (*types.Member, 
 	return &member, nil
 }
 
+func (d *Database) Members(entityID []byte, memberIDs []uuid.UUID) ([]types.Member, []uuid.UUID, error) {
+	return nil, nil, nil
+}
+
 func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) {
 	failPub := hex.EncodeToString(pubKey)
 	if failPub == Signers[3].Pub {

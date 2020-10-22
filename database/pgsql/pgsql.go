@@ -1089,6 +1089,65 @@ func (d *Database) Member(entityID []byte, memberID *uuid.UUID) (*types.Member, 
 	return member, nil
 }
 
+func (d *Database) Members(entityID []byte, memberIDs []uuid.UUID) ([]types.Member, []uuid.UUID, error) {
+	var invalidTokens []uuid.UUID
+	var members []types.Member
+	if len(entityID) == 0 {
+		return members, invalidTokens, fmt.Errorf("invalid arguments")
+	}
+	if len(memberIDs) == 0 {
+		return members, invalidTokens, nil
+	}
+	// uniqueMembers := util.UniqueUUIDs(members)
+	type MemberData struct {
+		MemberID string `db:"member_id"`
+	}
+
+	membersList := make([]*MemberData, len(memberIDs))
+	for i, memberID := range memberIDs {
+		membersList[i] = &MemberData{
+			MemberID: memberID.String(),
+		}
+	}
+
+	update := `SELECT id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented, tags as "pg_tags"
+				FROM members 
+				WHERE id IN (
+					SELECT CAST(member_id AS uuid) FROM (VALUES 
+							(:member_id)
+						)
+						AS u(member_id)	
+					)`
+
+	result, err := d.db.NamedQuery(update, membersList)
+	if err != nil {
+		log.Errorf("error retrieving members of %x: (%v)", entityID, err)
+		return members, invalidTokens, err
+	}
+
+	var pgmember PGMember
+	invalidTokensMap := make(map[uuid.UUID]bool)
+	for _, token := range memberIDs {
+		invalidTokensMap[token] = true
+	}
+	for result.Next() {
+		if err := result.StructScan(&pgmember); err != nil {
+			log.Errorf("Members: error parsing query result: %v", err)
+			return members, invalidTokens, fmt.Errorf("error parsing query result: %v", err)
+		}
+		members = append(members, *ToMember(&pgmember))
+
+		delete(invalidTokensMap, pgmember.ID)
+	}
+	invalidTokens = make([]uuid.UUID, len(invalidTokensMap))
+	i := 0
+	for k := range invalidTokensMap {
+		invalidTokens[i] = k
+		i++
+	}
+	return members, invalidTokens, nil
+}
+
 func (d *Database) DeleteMember(entityID []byte, memberID *uuid.UUID) error {
 	if memberID == nil {
 		return fmt.Errorf("memberID is nil")
