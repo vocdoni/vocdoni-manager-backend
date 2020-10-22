@@ -262,8 +262,8 @@ Retrieve a list of members with the given constraints.
 
 
 ### deleteMembers
-The calls fails if no `memberIDs` are provided. Duplcate member IDs are ignored. 
-The following constriant applies `length(memberIDs) = count+length(invalidIDs)+duplicates`. The duplicates are not provided by the response but they can be calculated from the above constraint.
+The calls fails if no `memberIds` are provided. Duplcate member IDs are ignored. 
+The following constriant applies `length(memberIds) = count+length(invalidIds)+duplicates`. The duplicates are not provided by the response but they can be calculated from the above constraint.
 
 - Request
 ```json
@@ -271,7 +271,7 @@ The following constriant applies `length(memberIDs) = count+length(invalidIDs)+d
     "id": "req-12345678",
     "request": {
         "method": "deleteMembers",
-        "memberIDs":  ["1234...","4567...."],
+        "memberIds":  ["1234...","4567...."],
     },
     "signature": "0x12345"
 }
@@ -283,7 +283,7 @@ The following constriant applies `length(memberIDs) = count+length(invalidIDs)+d
     "response": {
         "ok": true,
         "count": 2, // number of members deleted
-        "invalidIDs":, // number of non-existing IDs that where included in the request
+        "invalidIds":["7890-cdefg-..."]:, // number of non-existing IDs that where included in the request
 
     },
      "signature": "0x123456"
@@ -798,8 +798,8 @@ Returns requested census with the corresponding target
 }
 ```
 ### addTag
-Adds Tag to a list of Members. The calls fails if no `memberIDs` are provided. Duplcate member IDs are ignored.
-The following constriant applies `length(memberIDs) = count+length(invalidIDs)+duplicates`. The duplicates are not provided by the response but they can be calculated from the above constraint.
+Adds Tag to a list of Members. The calls fails if no `memberIds` are provided. Duplcate member IDs are ignored.
+The following constriant applies `length(memberIds) = count+length(invalidIds)+duplicates`. The duplicates are not provided by the response but they can be calculated from the above constraint.
 
 - Request
 ```json
@@ -819,15 +819,15 @@ The following constriant applies `length(memberIDs) = count+length(invalidIDs)+d
     "response": {
         "ok": true,
         "count": 2, // number of members updated
-        "invalidIDs":, // number of non-existing IDs that where included in the request
+        "invalidIds":["7890-cdefg-..."], // number of non-existing IDs that where included in the request
     },
      "signature": "0x123456"
 }
 ```
 
 ### removeTag
-The calls fails if no `memberIDs` are provided. Duplcate member IDs are ignored. 
-The following constriant applies `length(memberIDs) = count+length(invalidIDs)+duplicates`. The duplicates are not provided by the response but they can be calculated from the above constraint.
+The calls fails if no `memberIds` are provided. Duplcate member IDs are ignored. 
+The following constriant applies `length(memberIds) = count+length(invalidIDs)+duplicates`. The duplicates are not provided by the response but they can be calculated from the above constraint.
 
 - Request
 ```json
@@ -847,7 +847,7 @@ The following constriant applies `length(memberIDs) = count+length(invalidIDs)+d
     "response": {
         "ok": true,
         "count": 2, // number of members updated
-        "invalidIDs":, // number of non-existing IDs that where included in the request
+        "invalidIds":["7890-cdefg-..."], // number of non-existing IDs that where included in the request
     },
      "signature": "0x123456"
 }

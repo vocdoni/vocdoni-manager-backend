@@ -58,7 +58,7 @@ type MetaResponse struct {
 	Claims        [][]byte     `json:"claims,omitempty"`
 	Count         int          `json:"count,omitempty"`
 	Entity        *Entity      `json:"entity,omitempty"`
-	InvalidIDs    []uuid.UUID  `json:"invalidIDs,omitempty"`
+	InvalidIDs    []uuid.UUID  `json:"invalidIds,omitempty"`
 	Member        *Member      `json:"member,omitempty"`
 	Members       []Member     `json:"members,omitempty"`
 	MembersTokens []TokenEmail `json:"membersTokens,omitempty"`
