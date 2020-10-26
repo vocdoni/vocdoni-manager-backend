@@ -198,7 +198,6 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, key string) e
 		}
 		// if same hash, nothing to do
 	} else { // if not exists notify and store
-		ft.UpdatedFilesQueue <- uFile
 		ft.FileContentList.Store(uFile.eID, *uFile.IPFSFile)
 		log.Debugf("entity %s metadata stored for first time, hash: %s file: %+v", uFile.eID, uFile.Hash, *uFile.IPFSFile)
 	}
