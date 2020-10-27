@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"sync"
-	"sync/atomic"
 
 	"fmt"
 	"reflect"
@@ -1010,33 +1009,40 @@ func (m *Manager) sendValidationLinks(request router.RouterRequest) {
 		response.Count = 0
 		m.send(&request, &response)
 	}
-	var count uint32
+	// send concurrently emails
 	var wg sync.WaitGroup
 	wg.Add(len(members))
-	c := make(chan error, len(members))
+	ec := make(chan error, len(members))
+	sc := make(chan uuid.UUID, len(members))
 	for _, member := range members {
 		go func(member types.Member) {
 			if member.PubKey != nil {
 				log.Errorf("member %s is already validated at  %s", member.ID, member.Verified)
-				c <- fmt.Errorf("member %s is already validated at  %s", member.ID, member.Verified)
+				ec <- fmt.Errorf("member %s is already validated at  %s", member.ID, member.Verified)
 				wg.Done()
 				return
 			}
 			if err := m.smtp.SendValidationLink(&member, entity, true); err != nil {
 				log.Errorf("could not send validation link for member %q entity: (%v)", member.ID, err)
-				c <- fmt.Errorf("member %s error  %v", member.ID, err)
+				ec <- fmt.Errorf("member %s error  %v", member.ID, err)
 				wg.Done()
 				return
 			}
-			atomic.AddUint32(&count, 1)
+			sc <- member.ID
 			wg.Done()
 		}(member)
 	}
 	wg.Wait()
-	close(c)
+	close(ec)
+	close(sc)
+	// get results
+	var successUUIDs []uuid.UUID
+	for uid := range sc {
+		successUUIDs = append(successUUIDs, uid)
+	}
+	response.Count = int(len(successUUIDs))
 	var errors []error
-	response.Count = int(count)
-	for err := range c {
+	for err := range ec {
 		errors = append(errors, err)
 	}
 	if len(errors)+response.Count != len(members) {
@@ -1052,6 +1058,34 @@ func (m *Manager) sendValidationLinks(request router.RouterRequest) {
 		response.Message = fmt.Sprintf("%d where found:\n%v", len(errors), errors)
 	}
 	duplicates := len(request.MemberIDs) - len(members) - len(response.InvalidIDs)
+
+	// add tag PendingValidation to sucessful members
+	tagName := "PendingValidation"
+	tag, err := m.db.TagByName(entityID, tagName)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			tag = &types.Tag{}
+			tag.ID, err = m.db.AddTag(entityID, tagName)
+			if err != nil {
+				log.Infof("send validation links to %d members, skipped %d invalid IDs, %d duplicates and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), duplicates, len(errors), entityID, errors)
+				log.Errorf("error creating Pending tag:  %v", err)
+				m.Router.SendError(request, "sent emails but could not assign tag")
+				return
+			}
+		} else {
+			log.Infof("send validation links to %d members, skipped %d invalid IDs, %d duplicates and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), duplicates, len(errors), entityID, errors)
+			log.Errorf("error retreiving Pending tag:  %v", err)
+			m.Router.SendError(request, "sent emails but could not assign tag")
+			return
+		}
+	}
+	_, _, err = m.db.AddTagToMembers(entityID, successUUIDs, tag.ID)
+	if err != nil {
+		log.Infof("send validation links to %d members, skipped %d invalid IDs, %d duplicates and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), duplicates, len(errors), entityID, errors)
+		log.Errorf("error assinging Pending tag:  %v", err)
+		m.Router.SendError(request, "sent emails but could not assign tag")
+	}
+
 	log.Infof("send validation links to %d members, skipped %d invalid IDs, %d duplicates and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), duplicates, len(errors), entityID, errors)
 	m.send(&request, &response)
 }

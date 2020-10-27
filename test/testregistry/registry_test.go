@@ -182,7 +182,14 @@ func TestValidateToken(t *testing.T) {
 	// create signing keys
 	membersSigners, _, err := testcommon.CreateMembers(entities[1].ID, 3)
 	if err != nil {
-		t.Fatalf("cannot create member signer: %s", err)
+		t.Fatalf("cannot create member signer: %v", err)
+	}
+	tagID, err := api.DB.AddTag(entities[0].ID, "PendingValidation")
+	if err != nil {
+		t.Fatalf("cannot create PendingValidation tag: %v", err)
+	}
+	if _, _, err := api.DB.AddTagToMembers(entities[0].ID, []uuid.UUID{tokens[0]}, tagID); err != nil {
+		t.Fatalf("cannot add PendingValidation tag to member: %v", err)
 	}
 
 	// connect to endpoint
@@ -207,6 +214,9 @@ func TestValidateToken(t *testing.T) {
 	member, err := api.DB.Member(entities[0].ID, &tokens[0])
 	if err != nil {
 		t.Fatalf("cannot fetch validated member from the database: %s", err)
+	}
+	if len(member.Tags) > 0 {
+		t.Fatal("PendingValidation tag was not removed from member")
 	}
 	// 2. check user added and member is linked with pubkey
 	_, err = api.DB.User(member.PubKey)

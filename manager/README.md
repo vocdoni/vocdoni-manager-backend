@@ -324,8 +324,9 @@ Imports the given array of members with their info into the database.
 ### sendValidationLink
 Uses the `SMTP` module to send an email to the  selected member, containing the necesary info to register his public key.  Members already verified are ingored (a corresponding message is returned). `ok:false` is returned only in the case that there memberIDs contains valid members, but no mail was succesfully sent for any of these IDs (either because they are already validated or because email sending failed). In contrast with other calls, a `message` can be present in the response also in the case of `ok:true`, the IDs to which an email was not sent and the corresponfing error.
 
-
 Duplcate member IDs are ignored. The following constraint applies `length(memberIds) = count+length(invalidIds)+duplicates+length(errors)`.
+
+An automated tag called "PendingValidation" is added to the members to which the emails were sent.
 
 See also `validateToken`
 - Request

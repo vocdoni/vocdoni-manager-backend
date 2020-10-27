@@ -1197,6 +1197,19 @@ func TestSendValidationLinks(t *testing.T) {
 		t.Fatalf("failed to send validation link to unverified member: \n%v\n%v", req, resp)
 	}
 
+	//  verify member tag was added correctly
+	memberUnverified, err := api.DB.Member(entities[0].ID, &memberIDUnverified)
+	if err != nil {
+		t.Fatalf("could not retrieve DB member: %v", err)
+	}
+	tag, err := api.DB.TagByName(entities[0].ID, "PendingValidation")
+	if err != nil {
+		t.Fatalf("error retrieving tag: (%v)", err)
+	}
+	if memberUnverified.Tags[0] != tag.ID {
+		t.Fatalf("member tags were not updated correctly. Expected to find %d inside %v", tag.ID, memberUnverified.Tags)
+	}
+
 	// Unverified member request by wrong entity should fail
 	resp = wsc.Request(req, entitySigners[1])
 	t.Log(resp)

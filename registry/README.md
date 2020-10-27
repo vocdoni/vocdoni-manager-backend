@@ -49,6 +49,9 @@ Available by default under `/registry`
 
 - Request
 
+The automated tag called "PendingValidation" is removed (if exists) from the member.
+
+
 ```json
 {
   "id": "req-12345678",

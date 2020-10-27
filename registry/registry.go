@@ -241,6 +241,20 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		log.Debugf("no callback URL defined for (%x)", entityID)
 	}
 
+	// remove pedning tag if exists
+	tagName := "PendingValidation"
+	tag, err := r.db.TagByName(entityID, tagName)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.Errorf("error retrieving PendingValidationTag: (%v)", err)
+		}
+	}
+	if tag != nil {
+		if _, _, err := r.db.RemoveTagFromMembers(entityID, []uuid.UUID{member.ID}, tag.ID); err != nil {
+			log.Errorf("error removing pendingValidationTag from member %s : (%v)", member.ID.String(), err)
+		}
+	}
+
 	log.Infof("token %s validated for Entity %x", request.Token, entityID)
 	r.send(&request, &response)
 
