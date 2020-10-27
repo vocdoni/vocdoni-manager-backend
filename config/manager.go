@@ -65,6 +65,7 @@ type SMTP struct {
 	User          string
 	Password      string
 	PoolSize      int
+	Timeout       int
 	ValidationURL string
 	Sender        string
 	SenderName    string

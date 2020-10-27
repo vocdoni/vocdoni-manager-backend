@@ -71,8 +71,14 @@ func (t *TestAPI) Start(dbc *config.DB, route string) error {
 			Port:          587,
 			ValidationURL: "https://vocdoni.link/validation",
 			Sender:        "coby.rippin@ethereal.email",
+			Timeout:       7,
+			PoolSize:      4,
 		}
 		s := smtpclient.New(smtpConfig)
+		if err := s.StartPool(); err != nil {
+			log.Fatal(err)
+		}
+		// defer s.ClosePool()
 		mgr := manager.NewManager(t.EP.Router, t.DB, s)
 		if err := mgr.RegisterMethods(route); err != nil {
 			log.Fatal(err)

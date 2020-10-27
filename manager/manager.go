@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"sync"
+	"sync/atomic"
 
 	"fmt"
 	"reflect"
@@ -110,7 +112,7 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("deleteCensus", path+"/manager", m.deleteCensus, false, false); err != nil {
 		return err
 	}
-	if err := m.Router.AddHandler("sendValidationLink", path+"/manager", m.sendValidationLink, false, false); err != nil {
+	if err := m.Router.AddHandler("sendValidationLinks", path+"/manager", m.sendValidationLinks, false, false); err != nil {
 		return err
 	}
 	if err := m.Router.AddHandler("createTag", path+"/manager", m.createTag, false, false); err != nil {
@@ -966,11 +968,10 @@ func (m *Manager) deleteCensus(request router.RouterRequest) {
 	m.send(&request, &response)
 }
 
-func (m *Manager) sendValidationLink(request router.RouterRequest) {
+func (m *Manager) sendValidationLinks(request router.RouterRequest) {
 
-	if request.MemberID == nil {
-		log.Warnf("memberID is nil on getMember")
-		m.Router.SendError(request, "invalid memberId")
+	if len(request.MemberID) == 0 {
+		m.Router.SendError(request, "invalid arguments")
 		return
 	}
 
@@ -996,31 +997,62 @@ func (m *Manager) sendValidationLink(request router.RouterRequest) {
 		return
 	}
 
-	member, err := m.db.Member(entityID, request.MemberID)
+	var response types.MetaResponse
+	var members []types.Member
+	members, response.InvalidIDs, err = m.db.Members(entityID, request.MemberIDs)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			log.Warn("member not found")
-			m.Router.SendError(request, "member not found")
-			return
-		}
-		log.Errorf("cannot retrieve member %q for entity %q: (%v)", request.MemberID, request.SignaturePublicKey, err)
+		log.Errorf("cannot retrieve members for entity %x: (%v)", entityID, err)
 		m.Router.SendError(request, "cannot retrieve member")
 		return
 	}
 
-	if !member.Verified.IsZero() {
-		log.Errorf("member %s is already validated at  %s", member.ID, member.Verified)
-		m.Router.SendError(request, "member already validated")
+	if len(members) == 0 {
+		response.Count = 0
+		m.send(&request, &response)
+	}
+	var count uint32
+	var wg sync.WaitGroup
+	wg.Add(len(members))
+	c := make(chan error, len(members))
+	for _, member := range members {
+		go func(member types.Member) {
+			if member.PubKey != nil {
+				log.Errorf("member %s is already validated at  %s", member.ID, member.Verified)
+				c <- fmt.Errorf("member %s is already validated at  %s", member.ID, member.Verified)
+				wg.Done()
+				return
+			}
+			if err := m.smtp.SendValidationLink(&member, entity, true); err != nil {
+				log.Errorf("could not send validation link for member %q entity: (%v)", member.ID, err)
+				c <- fmt.Errorf("member %s error  %v", member.ID, err)
+				wg.Done()
+				return
+			}
+			atomic.AddUint32(&count, 1)
+			wg.Done()
+		}(member)
+	}
+	wg.Wait()
+	close(c)
+	var errors []error
+	response.Count = int(count)
+	for err := range c {
+		errors = append(errors, err)
+	}
+	if len(errors)+response.Count != len(members) {
+		log.Errorf("inconsistency in number of sent emails and errors")
+		m.Router.SendError(request, "inconsistency in number of sent emails and errors")
+	}
+	if len(errors) == len(members) {
+		log.Errorf("no validation email was sent %v", errors)
+		m.Router.SendError(request, "could not send emails")
 		return
 	}
-	if err := m.smtp.SendValidationLink(member, entity); err != nil {
-		log.Errorf("could not send validation link for member %q entity: (%v)", member.ID, err)
-		m.Router.SendError(request, "could not send validation link")
-		return
+	if len(errors) > 0 {
+		response.Message = fmt.Sprintf("%d where found:\n%v", len(errors), errors)
 	}
-
-	log.Infof("send validation link  member %q for Entity %x", member.ID, entityID)
-	var response types.MetaResponse
+	duplicates := len(request.MemberIDs) - len(members) - len(response.InvalidIDs)
+	log.Infof("send validation links to %d members, skipped %d invalid IDs, %d duplicates and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), duplicates, len(errors), entityID, errors)
 	m.send(&request, &response)
 }
 

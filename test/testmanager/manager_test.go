@@ -1148,7 +1148,7 @@ func TestDeleteCensus(t *testing.T) {
 	//TODO test that if census had members in census_members they were removed
 }
 
-func TestSendValidationLink(t *testing.T) {
+func TestSendValidationLinks(t *testing.T) {
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
@@ -1167,29 +1167,37 @@ func TestSendValidationLink(t *testing.T) {
 		t.Fatalf("cannot create members: %s", err)
 	}
 
-	// add unverified and verified member
-	memberIDUnverified, err := api.DB.AddMember(entities[0].ID, members[0].PubKey, &members[0].MemberInfo)
-	if err != nil {
-		t.Fatalf("cannot add member into database: %s", err)
+	memInfo := make([]types.MemberInfo, len(members))
+	for idx, mem := range members {
+		memInfo[idx] = mem.MemberInfo
 	}
-	members[1].Verified = time.Now()
-	memberIDVerified, err := api.DB.AddMember(entities[0].ID, members[1].PubKey, &members[1].MemberInfo)
-	if err != nil {
-		t.Fatalf("cannot add member into database: %s", err)
+	// add members
+	if err := api.DB.ImportMembers(entities[0].ID, memInfo); err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
 	}
+
+	dbMembers, err := api.DB.ListMembers(entities[0].ID, nil)
+	if err != nil {
+		t.Fatalf("coulld not retrieve DB members: %v", err)
+	}
+
+	if err := api.DB.RegisterMember(entities[0].ID, members[0].PubKey, &dbMembers[0].ID); err != nil {
+		t.Fatalf("coulld not register member: %v", err)
+	}
+	memberIDVerified := dbMembers[0].ID
+	memberIDUnverified := dbMembers[1].ID
 
 	// Valid request for unverified member should succeed
 	var req types.MetaRequest
-	req.Method = "sendValidationLink"
-	req.MemberID = &memberIDUnverified
+	req.Method = "sendValidationLinks"
+	req.MemberIDs = []uuid.UUID{memberIDUnverified}
 	resp := wsc.Request(req, entitySigners[0])
 	t.Log(resp)
-	if !resp.Ok {
+	if !resp.Ok || resp.Count != 1 {
 		t.Fatalf("failed to send validation link to unverified member: \n%v\n%v", req, resp)
 	}
 
-	// Verified member request should fail
-	req.MemberID = &memberIDUnverified
+	// Unverified member request by wrong entity should fail
 	resp = wsc.Request(req, entitySigners[1])
 	t.Log(resp)
 	if resp.Ok {
@@ -1197,18 +1205,18 @@ func TestSendValidationLink(t *testing.T) {
 	}
 
 	// Verified member request should fail
-	req.MemberID = &memberIDVerified
+	req.MemberIDs = []uuid.UUID{memberIDVerified}
 	resp = wsc.Request(req, entitySigners[0])
 	t.Log(resp)
-	if resp.Ok {
+	if !resp.Ok && resp.Count != 0 {
 		t.Fatalf("did not fail to send validation link to verified member : \n%v\n%v", req, resp)
 	}
 
 	// Verified member request should fail
-	*req.MemberID = uuid.New()
+	req.MemberIDs = []uuid.UUID{uuid.New()}
 	resp = wsc.Request(req, entitySigners[0])
 	t.Log(resp)
-	if resp.Ok {
+	if !resp.Ok && resp.Count != 0 {
 		t.Fatalf("did not fail to send validation link to non-existing member : \n%v\n%v", req, resp)
 	}
 

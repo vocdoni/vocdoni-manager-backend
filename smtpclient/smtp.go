@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	txtTemplate "text/template"
+	"time"
 
 	"github.com/jordan-wright/email"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
@@ -40,9 +41,9 @@ func New(smtpc *config.SMTP) *SMTP {
 // StartPool ooens a new STMP pool using the config values
 func (s *SMTP) StartPool() error {
 	var err error
-	s.pool, err = email.NewPool(net.JoinHostPort(s.config.Host, string(s.config.Port)), s.config.PoolSize, s.auth, s.tlsConfig)
+	s.pool, err = email.NewPool(net.JoinHostPort(s.config.Host, strconv.Itoa(s.config.Port)), s.config.PoolSize, s.auth, s.tlsConfig)
 	if err != nil {
-		return fmt.Errorf("error initializing smpt pool: %v", err)
+		return fmt.Errorf("error initializing smtp pool: %v", err)
 	}
 	return err
 }
@@ -53,16 +54,27 @@ func (s *SMTP) ClosePool() {
 }
 
 // SendMail Sends one email over StartTLS (without pool)
-func (s *SMTP) SendMail(email *email.Email) error {
+func (s *SMTP) SendMail(email *email.Email, usePool bool) error {
 	// email.Headers = textproto.MIMEHeader{}
 	email.Headers.Add("X-Mailgun-Require-TLS", "true")
 	email.Headers.Add("X-Mailgun-Skip-Verification", "false")
+	if usePool {
+		if s.pool == nil {
+			return fmt.Errorf("requested pool is not initialized")
+		}
+		timeout, err := time.ParseDuration(fmt.Sprintf("%ds", s.config.Timeout))
+		if err != nil {
+			return fmt.Errorf("error calulating timeout: %v", err)
+		}
+		return s.pool.Send(email, timeout)
+	}
 	address := net.JoinHostPort(s.config.Host, strconv.Itoa(s.config.Port))
 	return email.SendWithStartTLS(address, s.auth, s.tlsConfig)
+
 }
 
 // SendValidationLink sends a unique validation link to the member m
-func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity) error {
+func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity, usePool bool) error {
 	if member.Email == "" {
 		return fmt.Errorf("invalid member email")
 	}
@@ -107,7 +119,7 @@ func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity) er
 		return fmt.Errorf("error adding data to mail subject: %v", err)
 	}
 
-	e := &email.Email{
+	e := email.Email{
 		From:    fmt.Sprintf("%s <%s>", s.config.SenderName, s.config.Sender),
 		Sender:  s.config.Sender,
 		To:      []string{fmt.Sprintf("%q %q <%s>", member.FirstName, member.LastName, member.Email)},
@@ -125,5 +137,5 @@ func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity) er
 	}
 	attachment.HTMLRelated = true
 
-	return s.SendMail(e)
+	return s.SendMail(&e, usePool)
 }

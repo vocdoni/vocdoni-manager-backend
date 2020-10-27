@@ -65,6 +65,7 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.SMTP.User = *flag.String("smtpUser", "user", "SMTP Username")
 	cfg.SMTP.Password = *flag.String("smtpPassword", "password", "SMTP password")
 	cfg.SMTP.PoolSize = *flag.Int("smtpPoolSize", 4, "SMTP connection pool size")
+	cfg.SMTP.Timeout = *flag.Int("smtpTimeout", 30, "SMTP send timout in seconds")
 	cfg.SMTP.ValidationURL = *flag.String("smtpValidationURL", "https://vocdoni.link/validation", "URL prefix of the token validation service")
 	cfg.SMTP.Sender = *flag.String("smtpSender", "validation@bender.vocdoni.io", "SMTP Sender address")
 	cfg.SMTP.SenderName = *flag.String("smtpSenderName", "Vocdoni", "Name that appears as sender identity in emails")
@@ -111,6 +112,7 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("smtp.user", flag.Lookup("smtpUser"))
 	viper.BindPFlag("smtp.password", flag.Lookup("smtpPassword"))
 	viper.BindPFlag("smtp.poolSize", flag.Lookup("smtpPoolSize"))
+	viper.BindPFlag("smtp.timeOut", flag.Lookup("smtpTimeout"))
 	viper.BindPFlag("smtp.validationURL", flag.Lookup("smtpValidationURL"))
 	viper.BindPFlag("smtp.sender", flag.Lookup("smtpSender"))
 	viper.BindPFlag("smtp.senderName", flag.Lookup("smtpSenderName"))
@@ -244,6 +246,10 @@ func main() {
 
 	// Generate SMTP config object
 	smtp := smtpclient.New(cfg.SMTP)
+	if err := smtp.StartPool(); err != nil {
+		log.Fatal(err)
+	}
+	defer smtp.ClosePool()
 
 	// User registry
 	if cfg.Mode == "registry" || cfg.Mode == "all" {

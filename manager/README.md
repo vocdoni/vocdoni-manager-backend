@@ -322,14 +322,19 @@ Imports the given array of members with their info into the database.
 ```
 
 ### sendValidationLink
-Uses the `SMTP` module to send an email to the  selected member, containing the necesary info to register his public key. See also `validateToken`
+Uses the `SMTP` module to send an email to the  selected member, containing the necesary info to register his public key.  Members already verified are ingored (a corresponding message is returned). `ok:false` is returned only in the case that there memberIDs contains valid members, but no mail was succesfully sent for any of these IDs (either because they are already validated or because email sending failed). In contrast with other calls, a `message` can be present in the response also in the case of `ok:true`, the IDs to which an email was not sent and the corresponfing error.
+
+
+Duplcate member IDs are ignored. The following constraint applies `length(memberIds) = count+length(invalidIds)+duplicates+length(errors)`.
+
+See also `validateToken`
 - Request
 ```json
 {
     "id": "req-12345678",
     "request": {
         "method": "sendValidationLink",
-        "memberId": "1234-asdgc-...."
+        "memberIds": ["1234...","4567....","7890-cdefg-...","98769-adsdb-..."],
     },
     "signature": "0x12345"
 }
@@ -339,7 +344,10 @@ Uses the `SMTP` module to send an email to the  selected member, containing the 
 {
     "id": "req-12345678",
     "response": {
-        "ok": true
+        "ok": true,
+        "count": 2, // number of emails sent
+        "invalidIds":["7890-cdefg-..."], // set of non-existing IDs that where included in the request
+        "message": "... errors were found:\n [Error1, Error2]", // errors messages for emains not sent
     },
      "signature": "0x123456"
 }
