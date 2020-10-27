@@ -302,6 +302,10 @@ func (d *Database) Tag(entityID []byte, tagID int32) (*types.Tag, error) {
 	return nil, nil
 }
 
+func (d *Database) TagByName(entityID []byte, tagName string) (*types.Tag, error) {
+	return nil, nil
+}
+
 func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int32) (int, []uuid.UUID, error) {
 	return len(members), []uuid.UUID{}, nil
 }

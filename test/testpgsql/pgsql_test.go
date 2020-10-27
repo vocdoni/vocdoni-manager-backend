@@ -678,6 +678,19 @@ func TestTags(t *testing.T) {
 		t.Fatalf("error retrieving newly created tag:  (%v)", err)
 	}
 
+	tagByName, err := api.DB.TagByName(entities[0].ID, "TestTag")
+	if err != nil {
+		t.Fatalf("error retrieving newly created tag:  (%v)", err)
+	}
+	if tagByName.ID != tag.ID {
+		t.Fatal("getting Tag and TagByName returns a different result")
+	}
+	// non existing tag should return sql.ErrNoRows
+	_, err = api.DB.TagByName(entities[0].ID, "NonExistingTag")
+	if err != sql.ErrNoRows {
+		t.Fatalf("unexpected response for retrieving non-existing tag:  (%v)", err)
+	}
+
 	// list tags
 	tags, err = api.DB.ListTags(entities[0].ID)
 	if err != nil {

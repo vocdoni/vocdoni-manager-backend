@@ -31,6 +31,7 @@ type Database interface {
 	AddTag(entityID []byte, tagName string) (int32, error)
 	DeleteTag(entityID []byte, tagID int32) error
 	Tag(entityID []byte, tagID int32) (*types.Tag, error)
+	TagByName(entityID []byte, tagName string) (*types.Tag, error)
 	ListTags(entityID []byte) ([]types.Tag, error)
 	AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int32) (int, []uuid.UUID, error)
 	RemoveTagFromMembers(entityID []byte, members []uuid.UUID, tagID int32) (int, []uuid.UUID, error)

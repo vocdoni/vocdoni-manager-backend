@@ -851,6 +851,22 @@ func (d *Database) Tag(entityID []byte, tagID int32) (*types.Tag, error) {
 	return &tag, nil
 }
 
+func (d *Database) TagByName(entityID []byte, tagName string) (*types.Tag, error) {
+	if len(entityID) == 0 || len(tagName) == 0 {
+		log.Debugf("Tag: invalid arguments: tag %s for entity %x", tagName, entityID)
+		return nil, fmt.Errorf("invalid arguments")
+	}
+	selectQuery := `SELECT id, name
+					FROM tags
+					WHERE entity_id=$1 AND name=$2`
+	var tag types.Tag
+	if err := d.db.Get(&tag, selectQuery, entityID, tagName); err != nil {
+		log.Errorf("error retrieving tag %s for entity %x : (%v)", tagName, entityID, err)
+		return nil, err
+	}
+	return &tag, nil
+}
+
 func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID int32) (int, []uuid.UUID, error) {
 	// Tags as text[] http://www.databasesoup.com/2015/01/tag-all-things.html
 	// Tags as intarray
