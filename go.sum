@@ -1654,8 +1654,8 @@ github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/zenazn/goji v0.9.0/go.mod h1:7S9M489iMyHBNxwZnk9/EHS098H4/F6TATF2mIxtB1Q=
 github.com/ziutek/mymysql v1.5.4 h1:GB0qdRGsTwQSBVYuVShFBKaXSnSnYYC2d9knnE1LHFs=
 github.com/ziutek/mymysql v1.5.4/go.mod h1:LMSpPZ6DbqWFxNCHW77HeMg9I646SAhApZ/wKdgO/C0=
-gitlab.com/vocdoni/go-dvote v0.6.1-0.20201009163905-60d45cde762f h1:zE5kwGojTUqGlaLJadH9Iofyg+CBzOt3R5fQiI9GcQ4=
-gitlab.com/vocdoni/go-dvote v0.6.1-0.20201009163905-60d45cde762f/go.mod h1:wIeoXaIHjIf9f2+bHxUhvzqYdIyefxTHqJ68sfsxm4U=
+gitlab.com/vocdoni/go-dvote v0.6.1-0.20201028114253-45ff5cd395d8 h1:AG1iUhleC//FUshMkfqRqJjsBMdtjfS7BZvT+ThKFGo=
+gitlab.com/vocdoni/go-dvote v0.6.1-0.20201028114253-45ff5cd395d8/go.mod h1:wIeoXaIHjIf9f2+bHxUhvzqYdIyefxTHqJ68sfsxm4U=
 gitlab.com/vocdoni/go-external-ip v0.0.0-20190919225616-59cf485d00da h1:qEKse/C/gOACneRkXQQZLgXjXEe8aaxzcuS60KwUX78=
 gitlab.com/vocdoni/go-external-ip v0.0.0-20190919225616-59cf485d00da/go.mod h1:IRX9TEuQAK5j8yDceSak55G0gu8S52aeK++NJuAyYSY=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=

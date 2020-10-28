@@ -125,8 +125,8 @@ func (ft *IPFSFileTracker) getEntities() ([]string, error) {
 	return entities, nil
 }
 
-func (ft *IPFSFileTracker) getEntityMetadataURL(eID string) (string, error) {
-	return chain.ResolveEntityMetadataURL(ft.ensRegistryAddress, eID, ft.w3endpoint)
+func (ft *IPFSFileTracker) getEntityMetadataURL(ctx context.Context, eID string) (string, error) {
+	return chain.ResolveEntityMetadataURL(ctx, ft.ensRegistryAddress, eID, ft.w3endpoint)
 }
 
 func (ft *IPFSFileTracker) refreshEntities(ctx context.Context) error {
@@ -149,7 +149,9 @@ func (ft *IPFSFileTracker) refreshEntities(ctx context.Context) error {
 func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, key string) error {
 	defer ft.EntitiesTrackingStatus.Store(key, false)
 	// retrieve new metadata URL
-	eURL, err := ft.getEntityMetadataURL(key)
+	timeout, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	eURL, err := ft.getEntityMetadataURL(timeout, key)
 	if err != nil {
 		// return error
 		return err

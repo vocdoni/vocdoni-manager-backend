@@ -1,6 +1,7 @@
 package notify
 
 import (
+	"context"
 	"time"
 
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -71,7 +72,7 @@ type PushNotifier interface {
 	Check(notification Notification) bool
 	Send(notification Notification) error
 	// ethereum
-	HandleEthereum(event *ethtypes.Log, e *ethevents.EthereumEvents) error
+	HandleEthereum(ctx context.Context, event *ethtypes.Log, e *ethevents.EthereumEvents) error
 	// ipfs
 	HandleIPFS()
 	// user management

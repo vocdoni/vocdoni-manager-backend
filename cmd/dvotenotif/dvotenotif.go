@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -286,6 +287,7 @@ func main() {
 		log.Fatal("web3 external must be websocket or IPC for event subscription")
 	}
 
+	ctx := context.Background()
 	// Handle ethereum events and notify
 	evh = append(evh, fa.HandleEthereum)
 
@@ -299,7 +301,7 @@ func main() {
 			*initBlock = chainSpecs.StartingBlock
 		}
 	}
-	if err := service.EthEvents(cfg.Ethereum.ProcessDomain, w3uri, cfg.Ethereum.ChainType, initBlock, nil, signer, nil, evh); err != nil {
+	if err := service.EthEvents(ctx, cfg.Ethereum.ProcessDomain, w3uri, cfg.Ethereum.ChainType, initBlock, nil, signer, nil, evh); err != nil {
 		log.Fatal(err)
 	}
 

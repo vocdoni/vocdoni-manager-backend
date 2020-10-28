@@ -20,7 +20,7 @@ require (
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
-	gitlab.com/vocdoni/go-dvote v0.6.1-0.20201009163905-60d45cde762f
+	gitlab.com/vocdoni/go-dvote v0.6.1-0.20201028114253-45ff5cd395d8
 	golang.org/x/mod v0.3.0 // indirect
 	golang.org/x/tools v0.0.0-20200617042924-7f3f4b10a808 // indirect
 	google.golang.org/api v0.17.0

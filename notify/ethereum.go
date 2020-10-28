@@ -1,6 +1,8 @@
 package notify
 
 import (
+	"context"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/crypto"
 	"gitlab.com/vocdoni/go-dvote/chain"
@@ -32,13 +34,13 @@ var (
 )
 
 // ProcessMeta returns the info of a newly created process from the event raised and ethereum storage
-func ProcessMeta(contractABI *abi.ABI, eventData []byte, ph *chain.ProcessHandle) (*types.NewProcessTx, error) {
+func ProcessMeta(ctx context.Context, contractABI *abi.ABI, eventData []byte, ph *chain.ProcessHandle) (*types.NewProcessTx, error) {
 	var eventProcessCreated eventProcessCreated
 	err := contractABI.Unpack(&eventProcessCreated, "ProcessCreated", eventData)
 	if err != nil {
 		return nil, err
 	}
-	return ph.ProcessTxArgs(eventProcessCreated.ProcessId)
+	return ph.ProcessTxArgs(ctx, eventProcessCreated.ProcessId)
 }
 
 // @jordipainan TODO: func ResultsMeta()

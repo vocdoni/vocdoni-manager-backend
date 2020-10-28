@@ -222,13 +222,15 @@ func (fa *FirebaseAdmin) Check(notification Notification) bool {
 // handlers
 
 // HandleEthereum handles an Ethereum event
-func (fa *FirebaseAdmin) HandleEthereum(event *ethtypes.Log, e *ethevents.EthereumEvents) error {
+func (fa *FirebaseAdmin) HandleEthereum(ctx context.Context, event *ethtypes.Log, e *ethevents.EthereumEvents) error {
 	var err error
 	var notification *FirebasePushNotification
+	timeout, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
 	switch event.Topics[0].Hex() {
 	// new process
 	case HashLogProcessCreated.Hex():
-		notification, err = fa.handleEthereumNewProcess(event, e)
+		notification, err = fa.handleEthereumNewProcess(timeout, event, e)
 		if err != nil {
 			log.Warnf("failed handling new process event: %s", err)
 			return err
@@ -244,9 +246,9 @@ func (fa *FirebaseAdmin) HandleEthereum(event *ethtypes.Log, e *ethevents.Ethere
 	return nil
 }
 
-func (fa *FirebaseAdmin) handleEthereumNewProcess(event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
+func (fa *FirebaseAdmin) handleEthereumNewProcess(ctx context.Context, event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
 	// get process metadata
-	processTx, err := ProcessMeta(&e.ContractABI, event.Data, e.ProcessHandle)
+	processTx, err := ProcessMeta(ctx, &e.ContractABI, event.Data, e.ProcessHandle)
 	if err != nil {
 		return nil, err
 	}
