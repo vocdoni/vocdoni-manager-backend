@@ -51,6 +51,11 @@ func newConfig() (*config.Notify, config.Error) {
 	cfg.DB.Password = *flag.String("dbPassword", "vocdoni", "DB password")
 	cfg.DB.Dbname = *flag.String("dbName", "vocdoni", "DB database name")
 	cfg.DB.Sslmode = *flag.String("dbSslmode", "prefer", "DB postgres sslmode")
+	// api
+	cfg.API.Route = *flag.String("apiRoute", "/api", "dvote API route")
+	cfg.API.ListenHost = *flag.String("apiListenHost", "127.0.0.1", "API endpoint listen address")
+	cfg.API.ListenPort = *flag.Int("apiListenPort", 8000, "API endpoint http port")
+	cfg.API.Ssl.Domain = *flag.String("sslDomain", "", "enable TLS secure domain with LetsEncrypt auto-generated certificate")
 	// notifications
 	cfg.Notifications.KeyFile = *flag.String("pushNotificationsKeyFile", "", "path to notifications service private key file")
 	cfg.Notifications.Service = *flag.Int("pushNotificationsService", notify.Firebase, "push notifications service, 1: Firebase")
@@ -65,7 +70,7 @@ func newConfig() (*config.Notify, config.Error) {
 	cfg.Ethereum.NoWaitSync = *flag.Bool("ethNoWaitSync", false, "do not wait for Ethereum to synchronize (for testing only)")
 	// ethereum events
 	cfg.EthereumEvents.CensusSync = *flag.Bool("ethCensusSync", false, "automatically import new census published on the smart contract")
-	cfg.EthereumEvents.SubscribeOnly = *flag.Bool("ethSubscribeOnly", false, "only subscribe to new ethereum events (do not read past log)")
+	cfg.EthereumEvents.SubscribeOnly = *flag.Bool("ethSubscribeOnly", true, "only subscribe to new ethereum events (do not read past log)")
 	// ethereum web3
 	cfg.Web3.W3External = *flag.String("w3External", "", "use an external web3 endpoint instead of the local one. Supported protocols: http(s)://, ws(s):// and IPC filepath")
 	cfg.Web3.Enabled = *flag.Bool("w3Enabled", true, "if true, a web3 public endpoint will be enabled")
@@ -106,6 +111,12 @@ func newConfig() (*config.Notify, config.Error) {
 	viper.BindPFlag("db.password", flag.Lookup("dbPassword"))
 	viper.BindPFlag("db.dbName", flag.Lookup("dbName"))
 	viper.BindPFlag("db.sslMode", flag.Lookup("dbSslmode"))
+	// api
+	viper.BindPFlag("api.route", flag.Lookup("apiRoute"))
+	viper.BindPFlag("api.listenHost", flag.Lookup("apiListenHost"))
+	viper.BindPFlag("api.listenPort", flag.Lookup("apiListenPort"))
+	viper.Set("api.ssl.dirCert", cfg.DataDir+"/tls")
+	viper.BindPFlag("api.ssl.domain", flag.Lookup("sslDomain"))
 	// notifications
 	viper.BindPFlag("notifications.KeyFile", flag.Lookup("pushNotificationsKeyFile"))
 	viper.BindPFlag("notifications.Service", flag.Lookup("pushNotificationsService"))
@@ -216,24 +227,27 @@ func main() {
 	// ethereum service
 	var node *chain.EthChainContext
 	if cfg.Web3.W3External == "" {
+		log.Infof("starting a local ethereum node")
 		node, err = service.Ethereum(cfg.Ethereum, cfg.Web3, ep.Proxy, signer, ep.MetricsAgent)
 		if err != nil {
 			log.Fatal(err)
 		}
-	}
-	// wait ethereum node to be ready if local node
-	if !cfg.Ethereum.NoWaitSync {
-		requiredPeers := 2
-		if len(cfg.Web3.W3External) > 0 {
-			requiredPeers = 1
-		}
-		for {
-			if info, err := node.SyncInfo(); err == nil && info.Synced && info.Peers >= requiredPeers && info.Height > 0 {
-				log.Infof("ethereum blockchain synchronized (%+v)", info)
-				break
+		// wait ethereum node to be ready if local node
+		if !cfg.Ethereum.NoWaitSync {
+			requiredPeers := 2
+			if len(cfg.Web3.W3External) > 0 {
+				requiredPeers = 1
 			}
-			time.Sleep(time.Second * 5)
+			for {
+				if info, err := node.SyncInfo(); err == nil && info.Synced && info.Peers >= requiredPeers && info.Height > 0 {
+					log.Infof("ethereum blockchain synchronized (%+v)", info)
+					break
+				}
+				time.Sleep(time.Second * 5)
+			}
 		}
+	} else {
+		log.Infof("using an external ethereum endpoint: %s", cfg.Web3.W3External)
 	}
 
 	chainSpecs, specErr := chain.SpecsFor(cfg.Ethereum.ChainType)

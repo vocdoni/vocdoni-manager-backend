@@ -164,6 +164,10 @@ go run cmd/dvotenotif/dvotenotif.go
   --dbPort int                        DB server port (default 5432)
   --dbSslmode string                  DB postgres sslmode (default "prefer")
   --dbUser string                     DB Username (default "vocdoni")
+  --apiRoute string                   API route (default "/api")
+  --apiListenHost string              API host to listen on (default "127.0.0.1") 
+  --apiListenPort int                 API port to listen on (default 8000)
+  --sslDomain string                  API SSL domain (default "")
   --ethBootNodes stringArray          Ethereum p2p custom bootstrap nodes (enode://<pubKey>@<ip>[:port])
   --ethCensusSync                     automatically import new census published on the smart contract
   --ethChain string                   Ethereum blockchain to use: [mainnet goerli xdai xdaistage sokol] (default "sokol")
