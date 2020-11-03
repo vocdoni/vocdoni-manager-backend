@@ -212,12 +212,12 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, key string) e
 				// Remember that the comparation of the news feed with
 				// the old content (volatile memory) can be done at a hash
 				// level on the entity metadata itself so it isn't required to keep the news feed content.
-				ft.FileContentList.Store(uFile.eID, &UpdatedFile{eID: uFile.eID, IPFSFile: &IPFSFile{Hash: uFile.Hash, OuterMap: entityMetadata.NewsFeed}})
+				ft.FileContentList.Store(uFile.eID, &IPFSFile{Hash: uFile.Hash, OuterMap: entityMetadata.NewsFeed})
 				log.Debugf("entity %s metadata updated, hash: %s content: %+v", uFile.eID, uFile.Hash, *uFile.IPFSFile)
 			}
 		}
 		// if same hash, nothing to do
-	} else { // if not exists notify and store
+	} else { // if not exists store
 		ft.FileContentList.Store(uFile.eID, *uFile.IPFSFile)
 		log.Debugf("entity %s metadata stored for first time, hash: %s file: %+v", uFile.eID, uFile.Hash, *uFile.IPFSFile)
 	}
