@@ -25,6 +25,8 @@ type Notify struct {
 	SaveConfig bool
 	// SigningKey is the ECDSA hexString private key for signing messages
 	SigningKey string
+	// Env {dev, stage, default: main}
+	Env string
 	// Notifications
 	Notifications *Notifications
 	// Ethereum node config

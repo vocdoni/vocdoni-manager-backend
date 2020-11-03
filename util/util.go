@@ -77,3 +77,10 @@ func UniqueUUIDs(list []uuid.UUID) []uuid.UUID {
 	}
 	return list[:n]
 }
+
+func HexPrefixed(s string) string {
+	if !strings.HasPrefix(s, "0x") {
+		return fmt.Sprintf("0x%s", s)
+	}
+	return s
+}

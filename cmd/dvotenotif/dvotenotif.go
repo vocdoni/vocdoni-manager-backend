@@ -45,6 +45,8 @@ func newConfig() (*config.Notify, config.Error) {
 	cfg.LogOutput = *flag.String("logOutput", "stdout", "Log output (stdout, stderr or filepath)")
 	cfg.LogErrorFile = *flag.String("logErrorFile", "", "Log errors and warnings to a file")
 	cfg.SaveConfig = *flag.Bool("saveConfig", false, "overwrites an existing config file with the CLI provided flags")
+	// TODO: @jordipainan modify other components, currently just notify service
+	cfg.Env = *flag.String("env", "", "environment to run on: dev or stage, main otherwise")
 	cfg.DB.Host = *flag.String("dbHost", "127.0.0.1", "DB server address")
 	cfg.DB.Port = *flag.Int("dbPort", 5432, "DB server port")
 	cfg.DB.User = *flag.String("dbUser", "vocdoni", "DB Username")
@@ -81,7 +83,6 @@ func newConfig() (*config.Notify, config.Error) {
 	cfg.IPFS.NoInit = *flag.Bool("ipfsNoInit", false, "disables inter planetary file system support")
 	cfg.IPFS.SyncKey = *flag.String("ipfsSyncKey", "", "enable IPFS cluster synchronization using the given secret key")
 	cfg.IPFS.SyncPeers = *flag.StringArray("ipfsSyncPeers", []string{}, "use custom ipfsSync peers/bootnodes for accessing the DHT")
-
 	// metrics
 	cfg.Metrics.Enabled = *flag.Bool("metricsEnabled", true, "enable prometheus metrics")
 	cfg.Metrics.RefreshInterval = *flag.Int("metricsRefreshInterval", 10, "metrics refresh interval in seconds")
@@ -105,6 +106,7 @@ func newConfig() (*config.Notify, config.Error) {
 	viper.BindPFlag("logLevel", flag.Lookup("logLevel"))
 	viper.BindPFlag("logErrorFile", flag.Lookup("logErrorFile"))
 	viper.BindPFlag("logOutput", flag.Lookup("logOutput"))
+	viper.BindPFlag("env", flag.Lookup("env"))
 	viper.BindPFlag("db.host", flag.Lookup("dbHost"))
 	viper.BindPFlag("db.port", flag.Lookup("dbPort"))
 	viper.BindPFlag("db.user", flag.Lookup("dbUser"))
@@ -271,7 +273,7 @@ func main() {
 		ipfsFileTracker := notify.NewIPFSFileTracker(cfg.IPFS, ep.MetricsAgent, db, chainSpecs.ENSregistryAddr, cfg.Web3.W3External)
 		switch cfg.Notifications.Service {
 		case notify.Firebase:
-			fa = notify.NewFirebaseAdmin(cfg.Notifications.KeyFile, ipfsFileTracker)
+			fa = notify.NewFirebaseAdmin(cfg.Notifications.KeyFile, cfg.Env, ipfsFileTracker)
 			log.Info("initilizing Firebase push notifications service")
 		default:
 			log.Fatal("unsuported push notifications service")

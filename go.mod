@@ -7,6 +7,7 @@ require (
 	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/badoux/checkmail v0.0.0-20181210160741-9661bd69e9ad
 	github.com/ethereum/go-ethereum v1.9.20
+	github.com/gobuffalo/packr/v2 v2.7.1
 	github.com/google/uuid v1.1.1
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgtype v1.3.1-0.20200521144610-9d847241cb8f

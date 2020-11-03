@@ -10,8 +10,10 @@ import (
 	"firebase.google.com/go/v4/auth"
 	"firebase.google.com/go/v4/messaging"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/gobuffalo/packr/v2/file/resolver/encoding/hex"
 	"gitlab.com/vocdoni/go-dvote/chain/ethevents"
 	"gitlab.com/vocdoni/go-dvote/log"
+	"gitlab.com/vocdoni/manager/manager-backend/util"
 	"google.golang.org/api/option"
 )
 
@@ -28,11 +30,25 @@ type FirebaseAdmin struct {
 	Client *auth.Client
 	Key    string
 	IPFS   *IPFSFileTracker
+
+	Routes [2]string // routes for each env
 }
 
 // NewFirebaseAdmin returns a pointer to a fresh FirebaseAdmin
-func NewFirebaseAdmin(key string, ft *IPFSFileTracker) *FirebaseAdmin {
-	return &FirebaseAdmin{Key: key, IPFS: ft}
+func NewFirebaseAdmin(key, env string, ft *IPFSFileTracker) *FirebaseAdmin {
+	var routes [2]string
+	switch env {
+	case "dev":
+		routes[0] = fmt.Sprintf("dev.%s", defaultAppRouteNewProcess)
+		routes[1] = fmt.Sprintf("dev.%s", defaultAppRouteNewPost)
+	case "stage":
+		routes[0] = fmt.Sprintf("stg.%s", defaultAppRouteNewProcess)
+		routes[1] = fmt.Sprintf("stg.%s", defaultAppRouteNewPost)
+	default:
+		routes[0] = fmt.Sprintf("app.%s", defaultAppRouteNewProcess)
+		routes[1] = fmt.Sprintf("app.%s", defaultAppRouteNewPost)
+	}
+	return &FirebaseAdmin{Key: key, Routes: routes, IPFS: ft}
 }
 
 // FirebaseUser wraps a firebase user
@@ -257,7 +273,7 @@ func (fa *FirebaseAdmin) handleEthereumNewProcess(ctx context.Context, event *et
 	// create notification
 	// get relevant data
 	dataMap := make(map[string]string)
-	dataMap["uri"] = fmt.Sprintf("%s/%s/%s", defaultAppRouteNewProcess, processTx.EntityID, processTx.ProcessID)
+	dataMap["uri"] = fmt.Sprintf("%s%s%s/%s", httpsPrefix, fa.Routes[0], util.HexPrefixed(processTx.EntityID), util.HexPrefixed(processTx.ProcessID))
 	dataMap["click_action"] = defaultClickAction
 	// add notification fields
 	fcm := &messaging.Message{
@@ -270,9 +286,17 @@ func (fa *FirebaseAdmin) handleEthereumNewProcess(ctx context.Context, event *et
 		Upstream: BasePushNotification{Platform: PlatformAll},
 		FCM:      fcm,
 	}
-	notification.FCM.Topic = processTx.EntityID + "_" + defaultLangTag + defaultTopicProcessNew
+	notification.FCM.Topic = util.HexPrefixed(processTx.EntityID) + "_" + defaultLangTag + defaultTopicProcessNew
 	notification.FCM.Notification.Title = defaultProcessTitle
-	notification.FCM.Notification.Body = fmt.Sprintf("entity %s created a new process", processTx.EntityID)
+	eIDBytes, err := hex.DecodeString(processTx.EntityID)
+	if err != nil {
+		return nil, err
+	}
+	entity, err := fa.IPFS.database.Entity(eIDBytes)
+	if err != nil {
+		return nil, err
+	}
+	notification.FCM.Notification.Body = fmt.Sprintf("%s created a new voting process", entity.Name)
 	dataMap["message"] = notification.FCM.Notification.Body
 	notification.FCM.Data = dataMap
 
@@ -288,14 +312,15 @@ func (fa *FirebaseAdmin) HandleIPFS() {
 	for {
 		newFeed := <-fa.IPFS.UpdatedFilesQueue
 		log.Infof("found changes on entity metadata news feed: %v : %+v", newFeed.Hash, *newFeed.IPFSFile)
-		dataMap := make(map[string]string)
-		// TODO: @jordipainan add timestamp of the file
-		dataMap["uri"] = fmt.Sprintf("%s/%s", defaultAppRouteNewPost, newFeed.eID)
+		dataMap := make(map[string]string, 3)
+		// get last item list element (newest post)
+		recentPost := newFeed.NewsFeed.Items[len(newFeed.NewsFeed.Items)-1]
+		dataMap["uri"] = fmt.Sprintf("%s%s%s/%s", httpsPrefix, fa.Routes[1], util.HexPrefixed(newFeed.eID), recentPost.ID)
 		dataMap["click_action"] = defaultClickAction
 		// add notification fields
 		fcm := &messaging.Message{
 			Notification: new(messaging.Notification),
-			Data:         make(map[string]string),
+			Data:         make(map[string]string, 3),
 		}
 		// TODO: @jordipainan
 		// select the platform and personalize the notification for each one
@@ -303,9 +328,9 @@ func (fa *FirebaseAdmin) HandleIPFS() {
 			Upstream: BasePushNotification{Platform: PlatformAll},
 			FCM:      fcm,
 		}
-		notification.FCM.Topic = newFeed.eID + "_" + defaultLangTag + defaultTopicPostNew
+		notification.FCM.Topic = util.HexPrefixed(newFeed.eID) + "_" + defaultLangTag + defaultTopicPostNew
 		notification.FCM.Notification.Title = defaultNewsFeedTitle
-		notification.FCM.Notification.Body = fmt.Sprintf("entity %s created a new feed", newFeed.eID)
+		notification.FCM.Notification.Body = fmt.Sprintf("%s created a new post: %s", recentPost.Author.Name, recentPost.Title)
 		dataMap["message"] = notification.FCM.Notification.Body
 		notification.FCM.Data = dataMap
 
@@ -313,7 +338,7 @@ func (fa *FirebaseAdmin) HandleIPFS() {
 		if err := fa.Send(notification); err != nil {
 			log.Warnf("failed handling IPFS notification sending: %s", err)
 		}
-		log.Debugf("sent new feed push notification for entity id: %s with content: %+v", newFeed.eID, newFeed.Content)
+		log.Debugf("sent new feed push notification for entity id: %s", newFeed.eID)
 	}
 }
 

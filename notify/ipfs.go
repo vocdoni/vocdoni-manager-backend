@@ -37,8 +37,12 @@ const RetrieveTimeout = 1 * time.Minute
 
 // IPFSFile holds the ipfs hash of the entity metadata and the relevant content
 type IPFSFile struct {
-	Hash    string
-	Content map[string]string // TODO: @jordipainan Use struct once defined
+	Hash string
+	// used for fast comparation on the news feed
+	// NewsFeed:map[default:ipfs://<hash>]
+	OuterMap map[string]string
+	// the news feed pointed content
+	NewsFeed *types.NewsFeed
 }
 
 // UpdatedFile wraps the IPFS updated file and the creator entity
@@ -177,23 +181,38 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, key string) e
 	}
 
 	log.Debugf("entity %s metadata is: %+v", key, entityMetadata)
+	// load entity metadata news feed
+	timeoutNews, cancelNews := context.WithTimeout(ctx, 3*time.Second)
+	defer cancelNews()
+	newsFeed, err := ft.fetchNewsFeedContent(timeoutNews, entityMetadata.NewsFeed["default"])
+	if err != nil {
+		return fmt.Errorf("cannot fetch news feed content: %s", err)
+	}
 	// compare current and fetched hash
 	// load old content from FileContentList
 	oldContent, _ := ft.FileContentList.Load(key)
-	uFile := &UpdatedFile{eID: key, IPFSFile: &IPFSFile{Hash: ipfsHash, Content: entityMetadata.NewsFeed}}
+	uFile := &UpdatedFile{eID: key, IPFSFile: &IPFSFile{Hash: ipfsHash, OuterMap: entityMetadata.NewsFeed}}
 	// if old content exists
 	if oldContent != nil {
 		oldContentStruct := oldContent.(IPFSFile)
 		// check if different hash
 		if oldContentStruct.Hash != ipfsHash {
 			// check if the retrieved news feed is equal to the old news feed
-			sameFeed := reflect.DeepEqual(entityMetadata.NewsFeed, oldContentStruct.Content)
+			sameFeed := reflect.DeepEqual(oldContentStruct.OuterMap, uFile.OuterMap)
 			if !sameFeed {
-				// TODO: @jordipainan, return entityID + exact feed
 				// notify updated entity newsFeed
+				// add news feed content to create accurate notifications
+				uFile.NewsFeed = newsFeed
 				ft.UpdatedFilesQueue <- uFile
 				// delete old feed
 				ft.FileContentList.Delete(key)
+				// do not store news feed content at the current stage of the implementation
+				// this decision maintains the service more lightweight
+				// under a long list of entities and the content itself is only required for the notification.
+				// Remember that the comparation of the news feed with
+				// the old content (volatile memory) can be done at a hash
+				// level on the entity metadata itself so it isn't required to keep the news feed content.
+				uFile.NewsFeed = nil
 				ft.FileContentList.Store(uFile.eID, *uFile.IPFSFile)
 				log.Debugf("entity %s metadata updated, hash: %s content: %+v", uFile.eID, uFile.Hash, *uFile.IPFSFile)
 			}
@@ -204,6 +223,23 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, key string) e
 		log.Debugf("entity %s metadata stored for first time, hash: %s file: %+v", uFile.eID, uFile.Hash, *uFile.IPFSFile)
 	}
 	return nil
+}
+
+// url can be the hash or the url prefixed with ipfs://
+func (ft *IPFSFileTracker) fetchNewsFeedContent(ctx context.Context, url string) (*types.NewsFeed, error) {
+	// get file
+	contentBytes, err := ft.IPFS.Retrieve(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+	// unmarshal retrived file
+	var newsFeed *types.NewsFeed
+	err = json.Unmarshal(contentBytes, newsFeed)
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("metadata news feed retrieved is: %+v", newsFeed)
+	return newsFeed, nil
 }
 
 func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context) []error {

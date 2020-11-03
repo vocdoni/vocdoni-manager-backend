@@ -194,6 +194,40 @@ type EntityMetadata struct {
 	CensusServiceManagedEntities []interface{}       `json:"censusServiceManagedEntities,omitempty"`
 }
 
+// NewsFeed represents the news feed content of each entry in the NewsFeed entity metadata list
+type NewsFeed struct {
+	Items []NewsFeedItem `json:"items,omitempty"`
+
+	Version     string `json:"version,omitempty"`
+	Title       string `json:"title,omitempty"`
+	HomePageURL string `json:"home_page_url,omitempty"`
+	Description string `json:"description,omitempty"`
+	FeedURL     string `json:"feed_url,omitempty"`
+	Icon        string `json:"icon,omitempty"`
+	Favicon     string `json:"favicon,omitempty"`
+	Expired     string `json:"expired,omitempty"`
+}
+
+// NewsFeedItem represents each Item in the NewsFeed Items
+type NewsFeedItem struct {
+	Tags          []interface{}      `json:"tags,omitempty"`
+	Author        NewsFeedItemAuthor `json:"author,omitempty"`
+	ID            string             `json:"id,omitempty"`
+	Title         string             `json:"title,omitempty"`
+	Summary       string             `json:"summary,omitempty"`
+	ContentText   string             `json:"content_text,omitempty"`
+	ContentHTML   string             `json:"content_html,omitempty"`
+	URL           string             `json:"url,omitempty"`
+	Image         string             `json:"image,omitempty"`
+	DatePublished string             `json:"date_published,omitempty"`
+	DateModified  string             `json:"date_modified,omitempty"`
+}
+
+type NewsFeedItemAuthor struct {
+	Name string `json:"name,omitempty"`
+	URL  string `json:"url,omitempty"`
+}
+
 // A tag of a given entity for categorizing users
 type Tag struct {
 	CreatedUpdated
