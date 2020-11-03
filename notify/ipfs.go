@@ -55,8 +55,8 @@ type UpdatedFile struct {
 type IPFSFileTracker struct {
 	IPFS                   *data.IPFSHandle
 	IPFSConfig             *config.IPFSCfg
-	FileContentList        *sync.Map // [eID]IPFSFile
-	UpdatedFilesQueue      chan *UpdatedFile
+	FileContentList        *sync.Map         // [eID]IPFSFile
+	UpdatedFilesQueue      chan *UpdatedFile // read only receiver
 	EntitiesTrackingStatus *sync.Map
 	database               database.Database
 	ensRegistryAddress     string
@@ -212,8 +212,7 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, key string) e
 				// Remember that the comparation of the news feed with
 				// the old content (volatile memory) can be done at a hash
 				// level on the entity metadata itself so it isn't required to keep the news feed content.
-				uFile.NewsFeed = nil
-				ft.FileContentList.Store(uFile.eID, *uFile.IPFSFile)
+				ft.FileContentList.Store(uFile.eID, &UpdatedFile{eID: uFile.eID, IPFSFile: &IPFSFile{Hash: uFile.Hash, OuterMap: entityMetadata.NewsFeed}})
 				log.Debugf("entity %s metadata updated, hash: %s content: %+v", uFile.eID, uFile.Hash, *uFile.IPFSFile)
 			}
 		}

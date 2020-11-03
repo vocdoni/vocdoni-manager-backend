@@ -217,7 +217,7 @@ func (fa *FirebaseAdmin) send(pn *FirebasePushNotification) error {
 	if err != nil {
 		return err
 	}
-	log.Debugf("sending notification: %+v", *pn.FCM)
+	log.Debugf("sending notification: %+v with content: %+v", *pn.FCM, *pn.FCM.Notification)
 	res, err := client.Send(context.Background(), pn.FCM)
 	if err != nil {
 		log.Warnf("cannot send notification: %s", err)
