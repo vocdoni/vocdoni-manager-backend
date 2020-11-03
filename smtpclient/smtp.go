@@ -4,17 +4,21 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	htmlTemplate "html/template"
+	"io"
 	"net"
 	"net/smtp"
 	"net/textproto"
 	"strconv"
 	"strings"
+	"syscall"
 	txtTemplate "text/template"
 	"time"
 
 	"github.com/jordan-wright/email"
+	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
 )
@@ -66,7 +70,15 @@ func (s *SMTP) SendMail(email *email.Email, usePool bool) error {
 		if err != nil {
 			return fmt.Errorf("error calulating timeout: %v", err)
 		}
-		return s.pool.Send(email, timeout)
+		err = s.pool.Send(email, timeout)
+		var failed int
+		for (errors.Is(err, syscall.EPIPE) || errors.Is(err, io.EOF)) && failed < 3 {
+			log.Errorf("smtp pool error: (%v)", err)
+			time.Sleep(200 * time.Millisecond)
+			err = s.pool.Send(email, timeout)
+			failed++
+		}
+		return err
 	}
 	address := net.JoinHostPort(s.config.Host, strconv.Itoa(s.config.Port))
 	return email.SendWithStartTLS(address, s.auth, s.tlsConfig)
