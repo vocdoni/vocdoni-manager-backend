@@ -83,7 +83,7 @@ func (fa *FirebaseAdmin) Init() (err error) {
 		return err
 	}
 	log.Info("initializing IPFS file tracking service")
-	if err := fa.IPFS.Start(context.Background()); err != nil {
+	if err := fa.IPFS.Start(context.Background(), RefreshTime); err != nil {
 		return err
 	}
 	// start ipfs handler
@@ -330,7 +330,7 @@ func (fa *FirebaseAdmin) HandleIPFS() {
 		}
 		notification.FCM.Topic = util.HexPrefixed(newFeed.eID) + "_" + defaultLangTag + defaultTopicPostNew
 		notification.FCM.Notification.Title = defaultNewsFeedTitle
-		notification.FCM.Notification.Body = fmt.Sprintf("%s created a new post: %s", recentPost.Author.Name, recentPost.Title)
+		notification.FCM.Notification.Body = fmt.Sprintf("%s posted: %s", recentPost.Author.Name, recentPost.Title)
 		dataMap["message"] = notification.FCM.Notification.Body
 		notification.FCM.Data = dataMap
 

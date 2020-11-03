@@ -33,7 +33,10 @@ import (
 // by the push notifications service.
 
 // RetrieveTimeout the maximum duration the import queue will wait for retreiving a remote file
-const RetrieveTimeout = 1 * time.Minute
+const (
+	RetrieveTimeout = 1 * time.Minute
+	RefreshTime     = 30 * time.Second
+)
 
 // IPFSFile holds the ipfs hash of the entity metadata and the relevant content
 type IPFSFile struct {
@@ -80,7 +83,7 @@ func NewIPFSFileTracker(config *config.IPFSCfg, ma *metrics.Agent, db database.D
 }
 
 // Start initializes the file tracker IPFS node and starts the file tracker
-func (ft *IPFSFileTracker) Start(ctx context.Context) error {
+func (ft *IPFSFileTracker) Start(ctx context.Context, refreshTime time.Duration) error {
 	// init IPFS node
 	storage, err := ft.initIPFS()
 	if err != nil {
@@ -88,7 +91,7 @@ func (ft *IPFSFileTracker) Start(ctx context.Context) error {
 	}
 	ft.IPFS = storage.(*data.IPFSHandle)
 	// init file tracker
-	go ft.refreshLoop(ctx)
+	go ft.refreshLoop(ctx, refreshTime)
 	return err
 }
 
@@ -212,7 +215,7 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, key string) e
 				// Remember that the comparation of the news feed with
 				// the old content (volatile memory) can be done at a hash
 				// level on the entity metadata itself so it isn't required to keep the news feed content.
-				ft.FileContentList.Store(uFile.eID, &IPFSFile{Hash: uFile.Hash, OuterMap: entityMetadata.NewsFeed})
+				ft.FileContentList.Store(uFile.eID, *uFile.IPFSFile)
 				log.Debugf("entity %s metadata updated, hash: %s content: %+v", uFile.eID, uFile.Hash, *uFile.IPFSFile)
 			}
 		}
@@ -290,7 +293,7 @@ func (ft *IPFSFileTracker) refreshFileContentList(ctx context.Context) []error {
 	return errorList
 }
 
-func (ft IPFSFileTracker) refreshLoop(ctx context.Context) {
+func (ft IPFSFileTracker) refreshLoop(ctx context.Context, refreshTime time.Duration) {
 	for ctx.Err() == nil {
 		log.Debug("refresh loop has finished, starting new iteration")
 		log.Info("refreshing entities ...")
@@ -306,6 +309,6 @@ func (ft IPFSFileTracker) refreshLoop(ctx context.Context) {
 		} else {
 			log.Info("all files updated successfully")
 		}
-		time.Sleep(time.Second * 10)
+		time.Sleep(RefreshTime)
 	}
 }
