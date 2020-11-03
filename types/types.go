@@ -205,7 +205,7 @@ type NewsFeed struct {
 	FeedURL     string `json:"feed_url,omitempty"`
 	Icon        string `json:"icon,omitempty"`
 	Favicon     string `json:"favicon,omitempty"`
-	Expired     string `json:"expired,omitempty"`
+	Expired     bool   `json:"expired,omitempty"`
 }
 
 // NewsFeedItem represents each Item in the NewsFeed Items

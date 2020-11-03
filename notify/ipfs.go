@@ -233,7 +233,9 @@ func (ft *IPFSFileTracker) fetchNewsFeedContent(ctx context.Context, url string)
 		return nil, err
 	}
 	// unmarshal retrived file
-	var newsFeed *types.NewsFeed
+	newsFeed := &types.NewsFeed{
+		Items: make([]types.NewsFeedItem, 0),
+	}
 	err = json.Unmarshal(contentBytes, newsFeed)
 	if err != nil {
 		return nil, err

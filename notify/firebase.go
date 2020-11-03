@@ -313,8 +313,8 @@ func (fa *FirebaseAdmin) HandleIPFS() {
 		newFeed := <-fa.IPFS.UpdatedFilesQueue
 		log.Infof("found changes on entity metadata news feed: %v : %+v", newFeed.Hash, *newFeed.IPFSFile)
 		dataMap := make(map[string]string, 3)
-		// get last item list element (newest post)
-		recentPost := newFeed.NewsFeed.Items[len(newFeed.NewsFeed.Items)-1]
+		// get first list element (newest post)
+		recentPost := newFeed.NewsFeed.Items[0]
 		dataMap["uri"] = fmt.Sprintf("%s%s%s/%s", httpsPrefix, fa.Routes[1], util.HexPrefixed(newFeed.eID), recentPost.ID)
 		dataMap["click_action"] = defaultClickAction
 		// add notification fields
