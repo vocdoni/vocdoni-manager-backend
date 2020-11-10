@@ -119,7 +119,7 @@ func (ft *IPFSFileTracker) initIPFS() (data.Storage, error) {
 			}
 		}()
 
-		go storage.CollectMetrics(ft.metricsAgent, ctx)
+		go storage.CollectMetrics(ctx, ft.metricsAgent)
 	}
 	return storage, nil
 }
