@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gitlab.com/vocdoni/go-dvote/crypto"
+	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/test/testcommon"
@@ -1664,4 +1666,26 @@ func TestRemoveTag(t *testing.T) {
 		t.Fatal("unexpected response for removing for second time  tag from memberIDs")
 	}
 
+}
+
+func TestDvoteJSSignature(t *testing.T) {
+	signer := ethereum.NewSignKeys()
+	signer.AddHexKey("c6446f24d08a34fdefc2501d6177b25e8a1d0f589b7a06f5a0131e9a8d0307e4")
+	test := struct {
+		A string `json:"a"`
+	}{
+		A: "1",
+	}
+	a, err := crypto.SortedMarshalJSON(test)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	signature, err := signer.Sign(a)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	expectedSignature := "361d97d64186bc85cf41d918c9f4bb4ffa08cd756cfb57ab9fe2508808eabfdd5ab16092e419bb17840db104f07ee5452e0551ba61aa6b458e177bae224ee5ad00"
+	if signature != expectedSignature {
+		t.Fatalf("expected signature %s but got %s", expectedSignature, signature)
+	}
 }
