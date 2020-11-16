@@ -23,6 +23,8 @@ cache:
 go-test:
   image: golang:1.14.4
   stage: test
+  tags:
+    - vocdoni
   script:
     # we run vet in another step
     - go test -vet=off -timeout=1m ./...
@@ -35,6 +37,8 @@ go-test:
 go-analyze:
   image: golang:1.14.4
   stage: test
+  tags:
+    - vocdoni
   script:
     - diff -u <(echo -n) <(gofmt -s -d $(git ls-files '*.go'))
     - go vet ./...
