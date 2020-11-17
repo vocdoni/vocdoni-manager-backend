@@ -1,9 +1,9 @@
 // TODO Replace go asset embedding once in 1.16
 package smtpclient
 
-const Subject = `Participa en {{.OrgName}} con Vocdoni`
+const ValidationSubject = `Participa en {{.OrgName}} con Vocdoni`
 
-const TextTemplate = `
+const ValidationTextTemplate = `
 Versió en castellà
 
 Hola {{.Name}},
@@ -43,7 +43,7 @@ Gràcies,
 {{.OrgName}}
 `
 
-const HTMLTemplate = `
+const ValidationHTMLTemplate = `
 <!-- FILE: ../manager-backend/misc/mail/template_catesp.mjml -->
 <!doctype html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">

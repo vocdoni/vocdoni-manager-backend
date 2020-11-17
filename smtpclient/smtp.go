@@ -103,7 +103,7 @@ func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity, us
 		OrgEmail:       entity.Email,
 		ValidationLink: link,
 	}
-	htmlParsed, err := htmlTemplate.New("body").Parse(HTMLTemplate)
+	htmlParsed, err := htmlTemplate.New("body").Parse(ValidationHTMLTemplate)
 	if err != nil {
 		return fmt.Errorf("error parsing HTML template: %v", err)
 	}
@@ -113,7 +113,7 @@ func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity, us
 		return fmt.Errorf("error adding data to HTML template: %v", err)
 	}
 
-	textParsed, err := txtTemplate.New("body").Parse(TextTemplate)
+	textParsed, err := txtTemplate.New("body").Parse(ValidationTextTemplate)
 	if err != nil {
 		return fmt.Errorf("error parsing text template: %v", err)
 	}
@@ -122,7 +122,7 @@ func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity, us
 		return fmt.Errorf("error adding data to text template: %v", err)
 	}
 
-	subjectParsed, err := txtTemplate.New("subject").Parse(Subject)
+	subjectParsed, err := txtTemplate.New("subject").Parse(ValidationSubject)
 	if err != nil {
 		return fmt.Errorf("error parsing mail subject: %v", err)
 	}
