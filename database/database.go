@@ -47,7 +47,12 @@ type Database interface {
 	AddUser(user *types.User) error
 	User(pubKey []byte) (*types.User, error)
 	DumpClaims(entityID []byte) ([][]byte, error)
+	DumpCensusClaims(entityID []byte, censusID []byte) ([][]byte, error)
+	ExpandCensusMembers(entityID, censusID []byte) ([]types.CensusMember, error)
+	ListEphemeralMemberInfo(entityID, censusID []byte) ([]types.EphemeralMemberInfo, error)
+	EphemeralMemberInfoByEmail(entityID, censusID []byte, email string) (*types.EphemeralMemberInfo, error)
 	Census(entityID, censusID []byte) (*types.Census, error)
+	UpdateCensus(entityID, censusID []byte, info *types.CensusInfo) error
 	AddCensus(entityID, censusID []byte, targetID *uuid.UUID, info *types.CensusInfo) error
 	AddCensusWithMembers(entityID, censusID []byte, targetID *uuid.UUID, info *types.CensusInfo) (int64, error)
 	CountCensus(entityID []byte) (int, error)

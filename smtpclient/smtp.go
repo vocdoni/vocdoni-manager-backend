@@ -151,3 +151,77 @@ func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity, us
 
 	return s.SendMail(&e, usePool)
 }
+
+// SendVotingLink sends a unique voting link to the member m
+func (s *SMTP) SendVotingLink(ephemeralMember *types.EphemeralMemberInfo, entity *types.Entity, processID string, usePool bool) error {
+	if ephemeralMember.Email == "" {
+		log.Errorf("sendVotingLink: invalid member email for %s", ephemeralMember.ID.String())
+		return fmt.Errorf("invalid member email")
+	}
+	if len(ephemeralMember.PrivKey) == 0 {
+		log.Errorf("sendVotingLink: missing privKey for %s", ephemeralMember.ID.String())
+		return fmt.Errorf("missing privKey")
+	}
+
+	link := fmt.Sprintf("%s/0x%x/%s/0x%x", s.config.WebpollURL, entity.ID, processID, ephemeralMember.PrivKey)
+	data := struct {
+		Name       string
+		OrgName    string
+		OrgEmail   string
+		VotingLink string
+		OrgMessage string
+	}{
+		Name:       ephemeralMember.FirstName,
+		OrgName:    entity.Name,
+		OrgEmail:   entity.Email,
+		VotingLink: link,
+		OrgMessage: "",
+	}
+	htmlParsed, err := htmlTemplate.New("body").Parse(VotingHTMLTemplate)
+	if err != nil {
+		return fmt.Errorf("error parsing HTML template: %v", err)
+	}
+	var htmlBuff, txtBuff, subjectBuff bytes.Buffer
+	err = htmlParsed.Execute(&htmlBuff, data)
+	if err != nil {
+		return fmt.Errorf("error adding data to HTML template: %v", err)
+	}
+
+	textParsed, err := txtTemplate.New("body").Parse(VotingTextTemplate)
+	if err != nil {
+		return fmt.Errorf("error parsing text template: %v", err)
+	}
+	err = textParsed.Execute(&txtBuff, data)
+	if err != nil {
+		return fmt.Errorf("error adding data to text template: %v", err)
+	}
+
+	subjectParsed, err := txtTemplate.New("subject").Parse(ValidationSubject)
+	if err != nil {
+		return fmt.Errorf("error parsing mail subject: %v", err)
+	}
+	err = subjectParsed.Execute(&subjectBuff, data)
+	if err != nil {
+		return fmt.Errorf("error adding data to mail subject: %v", err)
+	}
+
+	e := email.Email{
+		From:    fmt.Sprintf("%s <%s>", s.config.SenderName, s.config.Sender),
+		Sender:  s.config.Sender,
+		To:      []string{fmt.Sprintf("%q %q <%s>", ephemeralMember.FirstName, ephemeralMember.LastName, ephemeralMember.Email)},
+		Subject: subjectBuff.String(),
+		Text:    []byte(txtBuff.Bytes()),
+		HTML:    []byte(htmlBuff.Bytes()),
+		Headers: textproto.MIMEHeader{},
+	}
+
+	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(LogoVocBase64))
+
+	attachment, err := e.Attach(reader, "logoVoc.png", "image/png; name=logoVoc.png")
+	if err != nil {
+		return fmt.Errorf("could not attach logo to the email: %v", err)
+	}
+	attachment.HTMLRelated = true
+
+	return s.SendMail(&e, usePool)
+}

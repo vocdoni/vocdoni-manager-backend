@@ -1,0 +1,26 @@
+<mjml>
+  <mj-body>  
+
+    <mj-section padding-top="20px" padding-bottom="0px">
+      <mj-column background-color="#f7f7f7" padding="20px">
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Hola {{.Name}},</mj-text>
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">{{.OrgMessage}}</mj-text>
+        
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Fent click <a href="{{.VotingLink}}">aquí</a> podràs consultar l'ordre del dia i la documentació, així com participar el dia de la votació.
+</mj-text>
+
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Si no pots obrir l'enllaç correctament, copia el següent text a la barra d'adreces del teu navegador:</mj-text>
+        <mj-text><pre><small>{{.VotingLink}}</small></pre></mj-text>
+
+        <mj-divider border-width="1px" border-color="#ccc"/>
+        
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">{{if .OrgEmail}}Per a més informació o ajuda, <a href="mailto:{{.OrgEmail}}">contacta amb {{.OrgName}}</a>.{{end}}</mj-text>
+        
+        <mj-text font-family="Open Sans, sans-serif" font-size="15px">Moltes gràcies,<br/></br/>{{.OrgName}} </mj-text>
+
+      </mj-column>
+    </mj-section>
+
+  </mj-body>
+</mjml>
+

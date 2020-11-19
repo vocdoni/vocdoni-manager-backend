@@ -70,6 +70,7 @@ func (t *TestAPI) Start(dbc *config.DB, route string) error {
 			Host:          "smtp.ethereal.email",
 			Port:          587,
 			ValidationURL: "https://vocdoni.link/validation",
+			WebpollURL:    "https://webpoll.vocdoni.net",
 			Sender:        "coby.rippin@ethereal.email",
 			Timeout:       7,
 			PoolSize:      4,
