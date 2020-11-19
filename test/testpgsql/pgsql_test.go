@@ -641,8 +641,113 @@ func TestCensus(t *testing.T) {
 		t.Fatalf("cannot count censuses correctly: %+v", err)
 	}
 
+	// Test Ephmeral censuses
+	// create members
+	_, members, _ := testcommon.CreateMembers(entities[0].ID, 2)
+	memberIDs, err := api.DB.CreateNMembers(entities[0].ID, 4)
+	if err != nil {
+		t.Fatalf("cannot generate random members (%v)", err)
+	}
+	err = api.DB.RegisterMember(entities[0].ID, members[0].PubKey, &memberIDs[0])
+	if err != nil {
+		t.Fatalf("cannot register member: (%v)", err)
+	}
+	err = api.DB.RegisterMember(entities[0].ID, members[1].PubKey, &memberIDs[1])
+	if err != nil {
+		t.Fatalf("cannot register member: (%v)", err)
+	}
+	id = util.RandomHex(len(entities[0].ID))
+	idBytes, err = hex.DecodeString(util.TrimHex(id))
+	if err != nil {
+		t.Fatalf("cannot decode random id: %s", err)
+	}
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: id})
+	if err != nil {
+		t.Fatalf("cannot add census: (%v)", err)
+	}
+	// Test that members without keys are not counted
 	// Verify that the corresponding members are also deleted
+	censusMembers, err := api.DB.ExpandCensusMembers(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("cannot expand census claims: (%v)", err)
+	}
+	if len(censusMembers) != len(memberIDs) {
+		t.Fatalf("expected to extract %d census members but extracted %d", len(memberIDs), len(censusMembers))
+	}
+	census, err = api.DB.Census(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("cannot retrieve census: (%v)", err)
+	}
+	if !census.Ephemeral {
+		t.Fatal("expected ephemeral census but got non-ephemeral one")
+	}
+	censusClaims, err := api.DB.DumpCensusClaims(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("cannot dump census claims: (%v)", err)
+	}
+	if len(censusClaims) != len(censusMembers) {
+		t.Fatalf("expected to dump %d claims but dumped %d", len(censusMembers), len(censusClaims))
+	}
+	countEphemeral := 0
+	for i, claim := range censusClaims {
+		if len(claim) == 0 || fmt.Sprintf("%x", claim) != fmt.Sprintf("%x", censusMembers[i].DigestedPubKey) {
+			t.Fatalf("expected digested pubKey %x but found %x", censusMembers[i].DigestedPubKey, claim)
+		}
+		if censusMembers[i].Ephemeral {
+			countEphemeral++
+		}
+	}
+	if countEphemeral != 2 {
+		t.Fatalf("expected to find 2 ephemeral members but found %d", countEphemeral)
+	}
 
+	ephemeralMembers, err := api.DB.ListEphemeralMemberInfo(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("cannot list ephemeral members info: (%v)", err)
+	}
+	if len(ephemeralMembers) != 2 {
+		t.Fatalf("expected to find 2 ephemeral members but found %d", len(ephemeralMembers))
+	}
+	email := "test@mail.com"
+	if err = api.DB.UpdateMember(entities[0].ID, &memberIDs[2], &types.MemberInfo{Email: email}); err != nil {
+		t.Fatalf("cannot update member: (%v)", err)
+	}
+	ephemeralMember, err := api.DB.EphemeralMemberInfoByEmail(entities[0].ID, idBytes, email)
+	if err != nil {
+		t.Fatalf("cannot retrieve ephemeral member info by email: (%v)", err)
+	}
+	if ephemeralMember.ID != memberIDs[2] {
+		t.Fatalf("retrieved wrong ephemeral member info by email: (%v)", err)
+	}
+
+	merkleRoot := util.RandomBytes(66)
+	merkleTreeUri := "ipfs://..."
+	info := &types.CensusInfo{
+		MerkleRoot:    merkleRoot,
+		MerkleTreeURI: merkleTreeUri,
+	}
+	if err := api.DB.UpdateCensus(entities[0].ID, idBytes, info); err != nil {
+		t.Fatalf("cannot update census: (%v)", err)
+	}
+	census, err = api.DB.Census(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("cannot retrieve census: (%v)", err)
+	}
+	if fmt.Sprintf("%x", census.MerkleRoot) != fmt.Sprintf("%x", merkleRoot) || census.MerkleTreeURI != merkleTreeUri {
+		t.Fatalf("could not update census: (%v)", err)
+	}
+	// merkleTreeUri = "ipfs://new"
+	info = &types.CensusInfo{}
+	if err := api.DB.UpdateCensus(entities[0].ID, idBytes, info); err != nil {
+		t.Fatalf("cannot update census: (%v)", err)
+	}
+	census, err = api.DB.Census(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("cannot retrieve census: (%v)", err)
+	}
+	if fmt.Sprintf("%x", census.MerkleRoot) != fmt.Sprintf("%x", merkleRoot) || census.MerkleTreeURI != merkleTreeUri {
+		t.Fatalf("erroneously updated censusInfo: (%v)", err)
+	}
 }
 
 func TestTags(t *testing.T) {

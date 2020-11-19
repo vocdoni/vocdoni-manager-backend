@@ -26,6 +26,11 @@ var Migrations = migrate.MemoryMigrationSource{
 			Up:   []string{migration3up},
 			Down: []string{migration3down},
 		},
+		{
+			Id:   "4",
+			Up:   []string{migration4up},
+			Down: []string{migration4down},
+		},
 	},
 }
 
@@ -267,6 +272,32 @@ DROP TABLE tags;
 ALTER TABLE ONLY members DROP COLUMN tags;
 DROP EXTENSION IF EXISTS intarray;
 `
+
+const migration4up = `
+ALTER TABLE ONLY censuses
+    ADD COLUMN ephemeral boolean DEFAULT false NOT NULL;
+ALTER TABLE ONLY census_members
+    ADD COLUMN ephemeral boolean DEFAULT false NOT NULL,
+    ADD COLUMN public_key bytea,
+    ADD COLUMN digested_public_key bytea,
+    ADD COLUMN private_key bytea;
+`
+
+// ALTER TABLE ONLY members
+//     ADD CONSTRAINT members_entity_id_email_unique UNIQUE (entity_id, email);
+
+const migration4down = `
+ALTER TABLE ONLY censuses
+    DROP COLUMN ephemeral;
+ALTER TABLE ONLY census_members
+    DROP COLUMN ephemeral,
+    DROP COLUMN public_key,
+    DROP COLUMN digested_public_key,
+    DROP COLUMN private_key;
+`
+
+// ALTER TABLE ONLY members
+// DROP CONSTRAINT members_entity_id_email_unique;
 
 func Migrator(action string, db database.Database) error {
 	switch action {

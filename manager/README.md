@@ -33,7 +33,7 @@ Registers an entity to the backend. The address of the Entity is calculated by t
 }
 ```
 
-#### getEntity
+### getEntity
 - Request
 ```json
 {
@@ -63,7 +63,7 @@ Registers an entity to the backend. The address of the Entity is calculated by t
     "signature": "0x123456"
 }
 ```
-#### updateEntity
+### updateEntity
 - Request
 ```json
 {    
@@ -324,7 +324,7 @@ Imports the given array of members with their info into the database.
 ### sendValidationLink
 Uses the `SMTP` module to send an email to the  selected member, containing the necesary info to register his public key.  Members already verified are ingored (a corresponding message is returned). `ok:false` is returned only in the case that there memberIDs contains valid members, but no mail was succesfully sent for any of these IDs (either because they are already validated or because email sending failed). In contrast with other calls, a `message` can be present in the response also in the case of `ok:true`, the IDs to which an email was not sent and the corresponfing error.
 
-Duplcate member IDs are ignored. The following constraint applies `length(memberIds) = count+length(invalidIds)+duplicates+length(errors)`.
+Duplicate member IDs are ignored. The following constraint applies `length(memberIds) = count+length(invalidIds)+duplicates+length(errors)`.
 
 An automated tag called "PendingValidation" is added to the members to which the emails were sent.
 
@@ -353,6 +353,33 @@ See also `validateToken`
      "signature": "0x123456"
 }
 ```
+
+### `sendVotingLinks`
+Uses the `SMTP` module to send emails containing one-time voting links to the ephemeral members (not having registered using `api/registry`) of a census. If the parameter `mail` exists in the request then the backend checks if there is a **unique**  **non-verified** user with that email and sends his the participation email. In contrast with other calls, a `message` can be present in the response also in the case of `ok:true`, the IDs to which an email was not sent and the corresponfing error.
+
+- Request:
+```json
+{
+    "id": "req-12345678",
+    "request": {
+        "method": "sendVotingLinks",
+        "processId": "12345badc34..", // received from gateway
+        "censusId": "12345badc34...", // target uuid
+        "email": "mail@mail.org" // optional, if added then email is sent only to this member
+    },
+    "signature": "0x12345"
+}
+```
+- Response:
+~~~json
+{
+    "id": "req-12345678",
+    "response": {
+        "ok": true,
+    },
+    "signature": "0x123456"
+}
+~~~
 
 
 ## Tokens
@@ -638,6 +665,36 @@ Add a census that is already published by a DvoteGW using the details provided b
 }
 ```
 
+### updateCensus
+Updates the census info
+
+- Request
+```json
+{
+    "id": "req-12345678",
+    "request": {
+        "method": "updateCensus",
+        "censusId": "12345badc34...", // target uuid
+        "census": {
+            "merkleRoot": "0fa34cb...",    // hex received from gateway
+            "merkleTreeUri": "ipfs://abc23454cbf",   // received from gateway
+        },
+        "invalidClaims": []
+    },
+    "signature": "0x12345"
+}
+```
+- Response:
+~~~json
+{
+    "id": "req-12345678",
+    "response": {
+        "ok": true,
+    },
+    "signature": "0x123456"
+}
+~~~
+
 ### listCensus
 Retrieve a list of exported census.
 - Request
@@ -731,6 +788,38 @@ Returns requested census with the corresponding target
      "signature": "0x123456"
 }
 ```
+
+### dumpCensus
+Closing the census populating the `census_members` filling with the necessary ephemeral identies for the members who have are not verified.
+
+- Request
+~~~json
+{
+    "id": "req-12345678",
+    "request": {
+        "method": "dumpCensus",
+        "censusId": "0x080980/0x3243"
+    },
+    "signature": "0x12345"
+}
+~~~
+- Response
+~~~json
+{
+    "id": "req-12345678",
+    "response": {
+        "ok": true,
+        "claims": [
+            "12345abccdef", //pubKey1
+            "7890abccdeff", //pubKey2
+            "34567abccdef", //pubKey3
+            ...
+        ],
+    },
+    "signature": "0x123456"
+}
+~~~
+
 
 ### Tags
 ### listTags

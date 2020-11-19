@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"math/rand"
 	"sync"
 
 	"fmt"
@@ -96,7 +97,13 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("dumpTarget", path+"/manager", m.dumpTarget, false, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("dumpCensus", path+"/manager", m.dumpCensus, false, false); err != nil {
+		return err
+	}
 	if err := m.Router.AddHandler("addCensus", path+"/manager", m.addCensus, false, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("updateCensus", path+"/manager", m.updateCensus, false, false); err != nil {
 		return err
 	}
 	if err := m.Router.AddHandler("getCensus", path+"/manager", m.getCensus, false, false); err != nil {
@@ -112,6 +119,9 @@ func (m *Manager) RegisterMethods(path string) error {
 		return err
 	}
 	if err := m.Router.AddHandler("sendValidationLinks", path+"/manager", m.sendValidationLinks, false, false); err != nil {
+		return err
+	}
+	if err := m.Router.AddHandler("sendVotingLinks", path+"/manager", m.sendVotingLinks, false, false); err != nil {
 		return err
 	}
 	if err := m.Router.AddHandler("createTag", path+"/manager", m.createTag, false, false); err != nil {
@@ -745,6 +755,193 @@ func (m *Manager) dumpTarget(request router.RouterRequest) {
 	m.send(&request, &response)
 }
 
+func (m *Manager) dumpCensus(request router.RouterRequest) {
+	var err error
+	var response types.MetaResponse
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	entityID, err := util.PubKeyToEntityID(request.SignaturePublicKey)
+	if err != nil {
+		log.Errorf("cannot recover %q entityID: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID")
+		return
+	}
+
+	censusID, err := util.DecodeCensusID(request.CensusID, request.SignaturePublicKey)
+	if err != nil {
+		log.Errorf("cannot decode census id %s for %x", request.CensusID, entityID)
+		m.Router.SendError(request, "cannot decode census id")
+		return
+	}
+
+	// TODO: Implement DumpTargetClaims filtered directly by target filters
+	censusMembers, err := m.db.ExpandCensusMembers(entityID, censusID)
+	if err != nil {
+		log.Errorf("cannot dump claims for %q: (%v)", entityID, err)
+		m.Router.SendError(request, "cannot dump claims")
+		return
+	}
+	shuffledClaims := make([][]byte, len(censusMembers))
+	shuffledIndexes := rand.Perm(len(censusMembers))
+	for i, v := range shuffledIndexes {
+		shuffledClaims[v] = censusMembers[i].DigestedPubKey
+	}
+	response.Claims = shuffledClaims
+
+	log.Debugf("Entity: %x dumpCensus: %d claims", entityID, len(response.Claims))
+	m.send(&request, &response)
+}
+
+func (m *Manager) sendVotingLinks(request router.RouterRequest) {
+
+	if len(request.MemberID) == 0 || request.ProcessID == "" {
+		m.Router.SendError(request, "invalid arguments")
+		return
+	}
+
+	// check public key length
+	if l := len(request.SignaturePublicKey); l != ethereum.PubKeyLength && l != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	entityID, err := util.PubKeyToEntityID(request.SignaturePublicKey)
+	if err != nil {
+		log.Errorf("cannot recover %q entityID from public key: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID from public key")
+		return
+	}
+
+	entity, err := m.db.Entity(entityID)
+	if err != nil {
+		log.Errorf("cannot recover entity %x: (%v)", entityID, err)
+		m.Router.SendError(request, "cannot recover entity from public key")
+		return
+	}
+
+	censusID, err := util.DecodeCensusID(request.CensusID, request.SignaturePublicKey)
+	if err != nil {
+		log.Errorf("cannot decode census id %s for %x", request.CensusID, entityID)
+		m.Router.SendError(request, "cannot decode census id")
+		return
+	}
+
+	if request.Email != "" {
+		// Individual email
+		censusMember, err := m.db.EphemeralMemberInfoByEmail(entityID, censusID, request.Email)
+		if err != nil {
+			log.Errorf("cannot retrieve ephemeral member %s of  census %x for enity %x: (%v)", request.Email, censusID, entityID, err)
+			m.Router.SendError(request, "cannot retrieve ephemeral census member by email")
+			return
+		}
+		if err := m.smtp.SendVotingLink(censusMember, entity, request.ProcessID, false); err != nil {
+			log.Errorf("could not send voting link for member %q entity: (%v)", censusMember.ID, err)
+			m.Router.SendError(request, "could not send voting link")
+			return
+		}
+		log.Infof("send validation links to 1 members for Entity %x", entityID)
+		var response types.MetaResponse
+		response.Count = 1
+		m.send(&request, &response)
+		return
+	}
+
+	censusMembers, err := m.db.ListEphemeralMemberInfo(entityID, censusID)
+	if err != nil {
+		log.Errorf("cannot retrieve ephemeral members of  census %x for enity %x: (%v)", censusID, entityID, err)
+		m.Router.SendError(request, "cannot retrieve ephemeral census members")
+		return
+	}
+
+	var response types.MetaResponse
+	if len(censusMembers) == 0 {
+		response.Count = 0
+		m.send(&request, &response)
+	}
+	// send concurrently emails
+	processID := request.ProcessID
+	var wg sync.WaitGroup
+	wg.Add(len(censusMembers))
+	ec := make(chan error, len(censusMembers))
+	sc := make(chan uuid.UUID, len(censusMembers))
+	for _, member := range censusMembers {
+		go func(member types.EphemeralMemberInfo) {
+			if err := m.smtp.SendVotingLink(&member, entity, processID, true); err != nil {
+				log.Errorf("could not send voting link for member %q entity: (%v)", member.ID, err)
+				ec <- fmt.Errorf("member %s error  %v", member.ID, err)
+				wg.Done()
+				return
+			}
+			sc <- member.ID
+			wg.Done()
+		}(member)
+	}
+	wg.Wait()
+	close(ec)
+	close(sc)
+	// get results
+	var successUUIDs []uuid.UUID
+	for uid := range sc {
+		successUUIDs = append(successUUIDs, uid)
+	}
+	response.Count = int(len(successUUIDs))
+	var errors []error
+	for err := range ec {
+		errors = append(errors, err)
+	}
+	if len(errors)+response.Count != len(censusMembers) {
+		log.Errorf("inconsistency in number of sent emails and errors")
+		m.Router.SendError(request, "inconsistency in number of sent emails and errors")
+	}
+	if len(errors) == len(censusMembers) {
+		log.Errorf("no validation email was sent %v", errors)
+		m.Router.SendError(request, "could not send emails")
+		return
+	}
+	if len(errors) > 0 {
+		response.Message = fmt.Sprintf("%d where found:\n%v", len(errors), errors)
+	}
+
+	// add tag PendingValidation to sucessful members
+	tagName := "VoteEmailSent"
+	tag, err := m.db.TagByName(entityID, tagName)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			tag = &types.Tag{}
+			tag.ID, err = m.db.AddTag(entityID, tagName)
+			if err != nil {
+				log.Infof("send validation links to %d members, skipped %d invalid IDs and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), len(errors), entityID, errors)
+				log.Errorf("error creating Pending tag:  %v", err)
+				m.Router.SendError(request, "sent emails but could not assign tag")
+				return
+			}
+		} else {
+			log.Infof("send validation links to %d members, skipped %d invalid IDs and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), len(errors), entityID, errors)
+			log.Errorf("error retreiving Pending tag:  %v", err)
+			m.Router.SendError(request, "sent emails but could not assign tag")
+			return
+		}
+	}
+	_, _, err = m.db.AddTagToMembers(entityID, successUUIDs, tag.ID)
+	if err != nil {
+		log.Infof("send validation links to %d members, skipped %d invalid IDs and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), len(errors), entityID, errors)
+		log.Errorf("error assinging Pending tag:  %v", err)
+		m.Router.SendError(request, "sent emails but could not assign tag")
+	}
+
+	log.Infof("send validation links to %d members, skipped %d invalid IDs and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), len(errors), entityID, errors)
+	m.send(&request, &response)
+}
+
 func (m *Manager) addCensus(request router.RouterRequest) {
 	var entityID []byte
 	var err error
@@ -783,15 +980,68 @@ func (m *Manager) addCensus(request router.RouterRequest) {
 		return
 	}
 
-	size, err := m.db.AddCensusWithMembers(entityID, censusID, request.TargetID, request.Census)
-	if err != nil {
-		log.Errorf("cannot add census %q  target members for: %q: (%v)", request.CensusID, request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot add census members")
+	// size, err := m.db.AddCensusWithMembers(entityID, censusID, request.TargetID, request.Census)
+	if err := m.db.AddCensus(entityID, censusID, request.TargetID, request.Census); err != nil {
+		log.Errorf("cannot add census %q  for: %q: (%v)", request.CensusID, entityID, err)
+		m.Router.SendError(request, "cannot add census")
 		return
 	}
 
-	log.Debugf("Entity: %q addCensus: %s  %d members", request.SignaturePublicKey, request.CensusID, size)
+	log.Debugf("Entity: %q addCensus: %s  ", entityID, request.CensusID)
 	log.Infof("addCensus")
+	m.send(&request, &response)
+}
+
+func (m *Manager) updateCensus(request router.RouterRequest) {
+	// TODO Handle invalid claims
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	if len(request.CensusID) == 0 {
+		log.Debugf("invalid census id %q for %s", request.CensusID, request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid census id")
+		return
+	}
+
+	if request.Census == nil {
+		log.Debugf("invalid census info for census %q for entity %s", request.CensusID, request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid census info")
+		return
+	}
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey)
+	if err != nil {
+		log.Errorf("cannot recover %q entityID: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID")
+		return
+	}
+
+	var censusID []byte
+	if censusID, err = util.DecodeCensusID(request.CensusID, request.SignaturePublicKey); err != nil {
+		m.Router.SendError(request, err.Error())
+		return
+	}
+
+	if request.InvalidClaims != nil && len(request.InvalidClaims) > 0 {
+		log.Warnf("invalid claims: %v", request.InvalidClaims)
+	}
+
+	if err := m.db.UpdateCensus(entityID, censusID, request.Census); err != nil {
+		log.Errorf("cannot update census %q for %x: (%v)", request.CensusID, entityID, err)
+		m.Router.SendError(request, "cannot update census")
+		return
+	}
+
+	log.Debugf("Entity: %x updateCensus: %s \n %v", entityID, request.CensusID, request.Census)
 	m.send(&request, &response)
 }
 
