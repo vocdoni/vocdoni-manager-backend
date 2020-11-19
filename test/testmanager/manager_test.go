@@ -706,6 +706,333 @@ func TestDumpTarget(t *testing.T) {
 	// another entity cannot request
 }
 
+func TestDumpCensus(t *testing.T) {
+	var targetID uuid.UUID
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// create entity
+	entitySigners, entities := testcommon.CreateEntities(1)
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+	t.Log(hex.EncodeToString(entities[0].ID))
+
+	// create members
+	n := 100
+	_, members, _ := testcommon.CreateMembers(entities[0].ID, n)
+	memberIDs, err := api.DB.CreateNMembers(entities[0].ID, n)
+	if err != nil {
+		t.Fatalf("cannot generate random members (%v)", err)
+	}
+
+	inTarget := &types.Target{EntityID: entities[0].ID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
+	if targetID, err = api.DB.AddTarget(entities[0].ID, inTarget); err != nil {
+		t.Fatalf("cannot add created target into database: %s", err)
+	}
+
+	id := util.RandomHex(len(entities[0].ID))
+	idBytes, err := hex.DecodeString(util.TrimHex(id))
+	if err != nil {
+		t.Fatalf("cannot decode random id: %s", err)
+	}
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: id})
+	if err != nil {
+		t.Fatalf("cannot add census: (%v)", err)
+	}
+
+	// Test only webpoll census
+	var req types.MetaRequest
+	req.Method = "dumpCensus"
+	req.CensusID = id
+	resp := wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if !resp.Ok || len(resp.Claims) != n {
+		t.Fatalf("request failed: %+v", req)
+	}
+
+	if len(resp.Claims) != n {
+		t.Fatalf("expected %d claims but got %d", n, len(resp.Claims))
+	}
+
+	census, err := api.DB.Census(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("cannot retrieve census: (%v)", err)
+	}
+	if !census.Ephemeral {
+		t.Fatal("census was marked as non ephemeral while it should")
+	}
+
+	ephemeralMembers, err := api.DB.ListEphemeralMemberInfo(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("testDumpCensus: cannot retrieve ephmeral member info: (%v)", err)
+	}
+	if len(ephemeralMembers) != n {
+		t.Fatalf("expected %d emphemeral members but got %d", n, len(ephemeralMembers))
+	}
+	for _, mem := range ephemeralMembers {
+		found := false
+		for _, claim := range resp.Claims {
+			if fmt.Sprintf("%x", claim) == fmt.Sprintf("%x", mem.DigestedPubKey) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatal("emphmeral pubKey not found in claims")
+		}
+	}
+
+	// Test mix webpoll-app census
+
+	for i := 0; i < n/2; i++ {
+		err = api.DB.RegisterMember(entities[0].ID, members[i].PubKey, &memberIDs[i])
+		if err != nil {
+			t.Fatalf("cannot register member: (%v)", err)
+		}
+	}
+
+	id = util.RandomHex(len(entities[0].ID))
+	idBytes, err = hex.DecodeString(util.TrimHex(id))
+	if err != nil {
+		t.Fatalf("cannot decode random id: %s", err)
+	}
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: id})
+	if err != nil {
+		t.Fatalf("cannot add census: (%v)", err)
+	}
+
+	req.CensusID = id
+	resp = wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if !resp.Ok || len(resp.Claims) != n {
+		t.Fatalf("request failed: %+v", req)
+	}
+
+	if len(resp.Claims) != n {
+		t.Fatalf("expected %d claims but got %d", n, len(resp.Claims))
+	}
+
+	census, err = api.DB.Census(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("cannot retrieve census: (%v)", err)
+	}
+	if !census.Ephemeral {
+		t.Fatal("census was not marked as ephemeral as it should")
+	}
+
+	ephemeralMembers, err = api.DB.ListEphemeralMemberInfo(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("testDumpCensus: cannot retrieve ephmeral member info: (%v)", err)
+	}
+	if len(ephemeralMembers) != n/2 {
+		t.Fatalf("expected %d emphemeral members but got %d", n/2, len(ephemeralMembers))
+	}
+	for _, mem := range ephemeralMembers {
+		found := false
+		for _, claim := range resp.Claims {
+			if fmt.Sprintf("%x", claim) == fmt.Sprintf("%x", mem.DigestedPubKey) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatal("emphmeral pubKey not found in claims")
+		}
+	}
+
+	// Test non-webpoll census
+	for i := n / 2; i < n; i++ {
+		err = api.DB.RegisterMember(entities[0].ID, members[i].PubKey, &memberIDs[i])
+		if err != nil {
+			t.Fatalf("cannot register member: (%v)", err)
+		}
+	}
+
+	id = util.RandomHex(len(entities[0].ID))
+	idBytes, err = hex.DecodeString(util.TrimHex(id))
+	if err != nil {
+		t.Fatalf("cannot decode random id: %s", err)
+	}
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: id})
+	if err != nil {
+		t.Fatalf("cannot add census: (%v)", err)
+	}
+
+	req.CensusID = id
+	resp = wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if !resp.Ok || len(resp.Claims) != n {
+		t.Fatalf("request failed: %+v", req)
+	}
+
+	if len(resp.Claims) != n {
+		t.Fatalf("expected %d claims but got %d", n, len(resp.Claims))
+	}
+
+	census, err = api.DB.Census(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("cannot retrieve census: (%v)", err)
+	}
+	if census.Ephemeral {
+		t.Fatal("census was marked as ephemeral while it should not")
+	}
+
+	ephemeralMembers, err = api.DB.ListEphemeralMemberInfo(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("testDumpCensus: cannot retrieve ephmeral member info: (%v)", err)
+	}
+	if len(ephemeralMembers) != 0 {
+		t.Fatalf("expected %d emphemeral members but got %d", 0, len(ephemeralMembers))
+	}
+}
+
+func TestSendVotingLinks(t *testing.T) {
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// create entity
+	entitySigners, entities := testcommon.CreateEntities(2)
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+	// create members
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 2)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
+
+	memInfo := make([]types.MemberInfo, len(members))
+	memInfo[0] = members[0].MemberInfo
+	memInfo[0].Email = "coby.rippin@ethereal.email"
+	memInfo[1] = members[1].MemberInfo
+	memInfo[1].Email = "melisa.oberbrunner48@ethereal.email"
+
+	// add members
+	if err := api.DB.ImportMembers(entities[0].ID, memInfo); err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+
+	dbMembers, err := api.DB.ListMembers(entities[0].ID, nil)
+	if err != nil {
+		t.Fatalf("coulld not retrieve DB members: %v", err)
+	}
+
+	// memberIDVerified := dbMembers[0].ID
+	memberIDUnverified := dbMembers[1].ID
+
+	inTarget := &types.Target{EntityID: entities[0].ID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
+	targetID, err := api.DB.AddTarget(entities[0].ID, inTarget)
+	if err != nil {
+		t.Fatalf("cannot add created target into database: %s", err)
+	}
+
+	processID := util.RandomHex(len(entities[0].ID))
+	censusID := util.RandomHex(len(entities[0].ID))
+	idBytes, err := hex.DecodeString(util.TrimHex(censusID))
+	if err != nil {
+		t.Fatalf("cannot decode random id: %s", err)
+	}
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: censusID})
+	if err != nil {
+		t.Fatalf("cannot add census: (%v)", err)
+	}
+
+	_, err = api.DB.ExpandCensusMembers(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("cannot dump census claims: (%v)", err)
+	}
+	// Valid request for unverified member should succeed
+	var req types.MetaRequest
+	req.Method = "sendVotingLinks"
+	req.ProcessID = processID
+	req.CensusID = censusID
+	resp := wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if !resp.Ok || resp.Count != 2 {
+		t.Fatalf("failed to send validation link to all unverified members: \n%v\n%v", req, resp)
+	}
+
+	if err := api.DB.RegisterMember(entities[0].ID, members[0].PubKey, &dbMembers[0].ID); err != nil {
+		t.Fatalf("could not register member: %v", err)
+	}
+
+	censusID = util.RandomHex(len(entities[0].ID))
+	idBytes, err = hex.DecodeString(util.TrimHex(censusID))
+	if err != nil {
+		t.Fatalf("cannot decode random id: %s", err)
+	}
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: censusID})
+	if err != nil {
+		t.Fatalf("cannot add census: (%v)", err)
+	}
+
+	_, err = api.DB.ExpandCensusMembers(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatalf("cannot dump census claims: (%v)", err)
+	}
+
+	req.CensusID = censusID
+	resp = wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if !resp.Ok || resp.Count != 1 {
+		t.Fatalf("failed to send voting link to the unverified member: \n%v\n%v", req, resp)
+	}
+
+	//  verify member tag was added correctly
+	memberUnverified, err := api.DB.Member(entities[0].ID, &memberIDUnverified)
+	if err != nil {
+		t.Fatalf("could not retrieve DB member: %v", err)
+	}
+	tag, err := api.DB.TagByName(entities[0].ID, "VoteEmailSent")
+	if err != nil {
+		t.Fatalf("error retrieving tag: (%v)", err)
+	}
+	if memberUnverified.Tags[0] != tag.ID {
+		t.Fatalf("member tags were not updated correctly. Expected to find %d inside %v", tag.ID, memberUnverified.Tags)
+	}
+
+	// member with one existing member email
+	req.Email = dbMembers[0].Email
+	resp = wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if !resp.Ok && resp.Count != 0 {
+		t.Fatalf("sent voting link to verified member while it should not : \n%v\n%v", req, resp)
+	}
+
+	req.Email = dbMembers[1].Email
+	resp = wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if !resp.Ok && resp.Count != 1 {
+		t.Fatalf("failed to send voting link to unverified member : \n%v\n%v", req, resp)
+	}
+
+	// Unverified member request by wrong entity should fail
+	resp = wsc.Request(req, entitySigners[1])
+	t.Log(resp)
+	if resp.Ok {
+		t.Fatalf("did not fail to send validation link to member of non-existing entity-member combination : \n%v\n%v", req, resp)
+	}
+
+	//duplicate email (with one member verfied and the other not)
+	api.DB.UpdateMember(entities[0].ID, &dbMembers[0].ID, &types.MemberInfo{Email: dbMembers[1].Email})
+	req.Email = dbMembers[1].Email
+	resp = wsc.Request(req, entitySigners[0])
+	t.Log(resp)
+	if resp.Ok || resp.Count != 0 {
+		t.Fatalf("sent voting link with duplicate member : \n%v\n%v", req, resp)
+	}
+
+}
+
 func TestImportMembers(t *testing.T) {
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
@@ -822,7 +1149,7 @@ func TestAddCensus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to recover created census: %s", err)
 	}
-	if census.Name != name || census.Size != 3 {
+	if census.Name != name {
 		t.Fatal("census stored incorrectly")
 	}
 
@@ -860,9 +1187,91 @@ func TestAddCensus(t *testing.T) {
 	if !resp.Ok {
 		t.Fatalf("unable to create a random census: %s", resp.Message)
 	}
+}
 
-	if census.Size != 3 {
-		t.Fatal("census size  incorrect")
+func TestUpdateCensus(t *testing.T) {
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// Create and add entity
+	signers, entities := testcommon.CreateEntities(1)
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &types.EntityInfo{Address: entities[0].Address, CensusManagersAddresses: entities[0].CensusManagersAddresses}); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+
+	//Add target
+	target := &types.Target{EntityID: entities[0].ID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
+
+	var targetID uuid.UUID
+	targetID, err = api.DB.AddTarget(entities[0].ID, target)
+	if err != nil {
+		t.Fatalf("cannot add created target into database: %s", err)
+	}
+
+	// Genreate ID and root
+	id := util.RandomHex(len(entities[0].ID))
+	idBytes, err := hex.DecodeString(util.TrimHex(id))
+	if err != nil {
+		t.Fatalf("cannot decode randpom id: %s", err)
+	}
+	root, err := hex.DecodeString(util.RandomHex(len(entities[0].ID)))
+	if err != nil {
+		t.Fatalf("cannot generate root: %s", err)
+	}
+	name := fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
+
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: name})
+	if err != nil {
+		t.Fatal("error adding census to the db")
+	}
+
+	// update without data should fail
+	var req types.MetaRequest
+	req.CensusID = id
+	req.Method = "updateCensus"
+	resp := wsc.Request(req, signers[0])
+	if resp.Ok {
+		t.Fatalf("census update without data succeeded: %+v", req)
+	}
+
+	// update with correct data should succeed
+	req.Census = &types.CensusInfo{
+		MerkleRoot:    root,
+		MerkleTreeURI: fmt.Sprintf("ipfs://%s", util.TrimHex(id)),
+	}
+
+	resp = wsc.Request(req, signers[0])
+	if !resp.Ok {
+		t.Fatalf("census update with data failed: %+v", req)
+	}
+
+	census, err := api.DB.Census(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatal("error retrieving census after signUp")
+	}
+	if fmt.Sprintf("%x", census.MerkleRoot) != fmt.Sprintf("%x", req.Census.MerkleRoot) || census.MerkleTreeURI != req.Census.MerkleTreeURI {
+		t.Fatalf("census data were not updated correctly")
+	}
+
+	// should not update data that are not allowed to be updated
+	req.Census = &types.CensusInfo{
+		Ephemeral: true,
+	}
+	resp = wsc.Request(req, signers[0])
+	if !resp.Ok {
+		t.Fatalf("census update with data failed: %+v", req)
+	}
+
+	census, err = api.DB.Census(entities[0].ID, idBytes)
+	if err != nil {
+		t.Fatal("error retrieving entity after signUp")
+	}
+	if census.Ephemeral == true {
+		t.Fatalf("entity data were updated while they should not")
 	}
 
 }

@@ -352,6 +352,26 @@ func (d *Database) DumpClaims(entityID []byte) ([][]byte, error) {
 	return nil, nil
 }
 
+func (d *Database) DumpCensusClaims(entityID []byte, censusID []byte) ([][]byte, error) {
+	return nil, nil
+}
+
+func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.CensusMember, error) {
+	return nil, nil
+}
+
+func (d *Database) ListEphemeralMemberInfo(entityID, censusID []byte) ([]types.EphemeralMemberInfo, error) {
+	return nil, nil
+}
+
+func (d *Database) EphemeralMemberInfoByEmail(entityID, censusID []byte, email string) (*types.EphemeralMemberInfo, error) {
+	return nil, nil
+}
+
+func (d *Database) UpdateCensus(entityID, censusID []byte, info *types.CensusInfo) error {
+	return nil
+}
+
 func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, error) {
 	failEid := hex.EncodeToString(entityID)
 	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {

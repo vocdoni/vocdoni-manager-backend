@@ -164,11 +164,26 @@ type CensusInfo struct {
 	MerkleRoot    HexBytes `json:"merkleRoot,omitempty" db:"merkle_root"`
 	MerkleTreeURI string   `json:"merkleTreeUri,omitempty" db:"merkle_tree_uri"`
 	Size          int      `json:"size" db:"size"`
+	Ephemeral     bool     `json:"ephemeral" db:"ephemeral"`
+	ProcessID     HexBytes `json:"processId,omitempty" db:"process_id"`
 }
 
 type CensusMember struct {
-	MemberID uuid.UUID `json:"memberId,omitempty" db:"member_id"`
-	CensusID HexBytes  `json:"censusId" db:"census_id"`
+	MemberID       uuid.UUID `json:"memberId,omitempty" db:"member_id"`
+	CensusID       HexBytes  `json:"censusId,omitempty" db:"census_id"`
+	Ephemeral      bool      `json:"ephemeral" db:"ephemeral"`
+	PrivKey        []byte    `json:"privateKey,omitempty" db:"private_key"`
+	PubKey         []byte    `json:"publicKey,omitempty" db:"public_key"`
+	DigestedPubKey []byte    `json:"digestedPublicKey,omitempty" db:"digested_public_key"`
+}
+
+type EphemeralMemberInfo struct {
+	ID             uuid.UUID `json:"id,omitempty" db:"id"`
+	FirstName      string    `json:"firstName,omitempty" db:"first_name"`
+	LastName       string    `json:"lastName,omitempty" db:"last_name"`
+	Email          string    `json:"email,omitempty" db:"email"`
+	PrivKey        []byte    `json:"privateKey,omitempty" db:"private_key"`
+	DigestedPubKey []byte    `json:"digestedPublicKey,omitempty" db:"digested_public_key"`
 }
 
 type Target struct {

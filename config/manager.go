@@ -70,6 +70,7 @@ type SMTP struct {
 	Sender        string
 	SenderName    string
 	Contact       string
+	WebpollURL    string
 }
 
 type Migrate struct {

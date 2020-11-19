@@ -1105,6 +1105,28 @@ func (d *Database) Member(entityID []byte, memberID *uuid.UUID) (*types.Member, 
 	return member, nil
 }
 
+func (d *Database) MemberByEmail(entityID []byte, email string) (*types.Member, error) {
+	if len(email) == 0 || len(entityID) == 0 {
+		return nil, fmt.Errorf("invalid arguments")
+	}
+	var pgMembers []PGMember
+	selectQuery := `SELECT
+	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented, tags as "pg_tags"
+					FROM members WHERE entity_id =$1 AND email LIKE $2`
+	err := d.db.Select(&pgMembers, selectQuery, entityID, email)
+	if err != nil {
+		log.Warnf("cannot retrieve member by email: (%v)", err)
+		return nil, err
+	}
+	if len(pgMembers) > 1 {
+		log.Warnf("memberByEmail:duplicate email")
+		return nil, fmt.Errorf("duplicate email")
+	}
+	member := ToMember(&pgMembers[0])
+	log.Debugf("MEMBER: %v", member)
+	return member, nil
+}
+
 func (d *Database) Members(entityID []byte, memberIDs []uuid.UUID) ([]types.Member, []uuid.UUID, error) {
 	var invalidTokens []uuid.UUID
 	var members []types.Member
@@ -1362,6 +1384,192 @@ func (d *Database) DumpClaims(entityID []byte) ([][]byte, error) {
 	return claims, nil
 }
 
+func (d *Database) DumpCensusClaims(entityID []byte, censusID []byte) ([][]byte, error) {
+	// Verify that census belongs to this entity
+	_, err := d.Census(entityID, censusID)
+	if err != nil {
+		log.Warnf("expandCensusClaims: cound not retrieve census: (%v)", err)
+		return nil, fmt.Errorf("could not retrieve census")
+	}
+	var claims [][]byte
+	query := `SELECT digested_public_key FROM census_members 
+			WHERE census_id = $1`
+	if err := d.db.Select(&claims, query, censusID); err != nil {
+		return nil, err
+	}
+	return claims, nil
+}
+
+func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.CensusMember, error) {
+	// Get target Members with pks
+	census, err := d.Census(entityID, censusID)
+	if err != nil {
+		log.Warnf("expandCensusClaims: cound not retrieve census: (%v)", err)
+		return nil, fmt.Errorf("could not retrieve census")
+	}
+	members, err := d.TargetMembers(entityID, &census.TargetID)
+	if err != nil {
+		log.Warnf("expandCensusClaims: cound not retrieve target members: (%v)", err)
+		return nil, fmt.Errorf("could not retrieve target members")
+	}
+	ephemeral := false
+	// Create census_members struct and fill keys where ncessary
+	censusMembers := make([]types.CensusMember, len(members))
+	for i, member := range members {
+		censusMembers[i].CensusID = censusID
+		censusMembers[i].MemberID = member.ID
+		if len(member.PubKey) == 0 || member.PubKey == nil {
+			ephemeral = true
+			signKeys := ethereum.NewSignKeys()
+			if err := signKeys.Generate(); err != nil {
+				log.Fatalf("expandCensusClaims: cound not generate emphemeral identity: (%v)", err)
+				return nil, fmt.Errorf("could not generate emphemeral identity")
+			}
+			pubKey, privKey := signKeys.HexString()
+			pubKey, err = ethereum.DecompressPubKey(pubKey)
+			if err != nil {
+				log.Errorf("expandCensusClaims: cound not decompress emphemeral identity pubKey: (%v)", err)
+				return nil, fmt.Errorf("could not generate emphemeral identity")
+			}
+			pubKeyBytes, err := hex.DecodeString(pubKey)
+			if err != nil {
+				log.Errorf("expandCensusClaims: cound not decode to bytes emphemeral identity pubKey: (%v)", err)
+				return nil, fmt.Errorf("could not generate emphemeral identity")
+			}
+			privKeyBytes, err := hex.DecodeString(privKey)
+			if err != nil {
+				log.Errorf("expandCensusClaims: cound not decode to bytes emphemeral identity pubKey: (%v)", err)
+				return nil, fmt.Errorf("could not generate emphemeral identity")
+			}
+			censusMembers[i].Ephemeral = true
+			censusMembers[i].PubKey = pubKeyBytes
+			censusMembers[i].PrivKey = privKeyBytes
+			censusMembers[i].DigestedPubKey = snarks.Poseidon.Hash(pubKeyBytes)
+		} else {
+			censusMembers[i].Ephemeral = false
+			censusMembers[i].DigestedPubKey = snarks.Poseidon.Hash(member.PubKey)
+		}
+	}
+	tx, err := d.db.Beginx()
+	if err != nil {
+		log.Errorf("expandCensusClaims: could not initialize postgres transaction: %v", err)
+		return nil, fmt.Errorf("cannot initialize postgres transaction")
+	}
+	if ephemeral {
+		updateCensus := `UPDATE censuses SET ephemeral = true, size = $1  WHERE id = $2 AND entity_id = $3`
+		result, err := tx.Exec(updateCensus, len(censusMembers), censusID, entityID)
+		if err != nil {
+			log.Errorf("expandCensusClaims: could not update census as ephemeral: %v", err)
+			return nil, fmt.Errorf("could not update census as ephemeral")
+		}
+		updatedRows, err := result.RowsAffected()
+		if err != nil {
+			log.Warnf("expandCensusClaims: could not verify updating census as ephemeral: (%v)", err)
+			return nil, fmt.Errorf("could not verify updating census as ephemeral")
+		}
+		if updatedRows != 1 {
+			log.Errorf("expandCensusClaims: could not update census as ephemeral")
+			return nil, fmt.Errorf("could not update census as ephemeral")
+		}
+	}
+
+	// update census members
+	insertMembers := `INSERT INTO census_members (census_id, member_id, ephemeral, public_key, digested_public_key, private_key)
+				  VALUES (:census_id, :member_id, :ephemeral, :public_key, :digested_public_key, :private_key)`
+	result, err := tx.NamedExec(insertMembers, censusMembers)
+	if err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			log.Errorf("expandCensusClaims: something is very wrong: error rolling back: %v\nafter error on updating census as ephemeral: %v", rollErr, err)
+			return nil, fmt.Errorf("something is very wrong: error rolling back on updating census as ephemeral")
+		}
+		log.Errorf("expandCensusClaims: could not add census_members to db: (%v)", err)
+		return nil, fmt.Errorf("could not add census_members to db")
+	}
+	var addedRows int64
+	if addedRows, err = result.RowsAffected(); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			log.Errorf("expandCensusClaims: something is very wrong: error rolling back: %v\nafter error on counting affected rows: %v", rollErr, err)
+			return nil, fmt.Errorf("something is very wrong: error rolling back after error on counting affected rowsl")
+		}
+		log.Warnf("expandCensusClaims: could not count affected rows: (%v)", err)
+		return nil, fmt.Errorf("could not verify updated rows")
+	}
+	if addedRows != int64(len(censusMembers)) {
+		if rollErr := tx.Rollback(); err != nil {
+			log.Errorf("expandCensusClaims: something is very wrong: error rolling back: %v\nexpected to have inserted %d census_members but inserted %d", rollErr, addedRows, len(censusMembers))
+			return nil, fmt.Errorf("something is very wrong: error rolling back after error on counting affected rows")
+		}
+		log.Errorf("expandCensusClaims: expected to have inserted %d census_members but inserted %d", addedRows, len(censusMembers))
+		return nil, fmt.Errorf("could not verify updated rows")
+	}
+	if err = tx.Commit(); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			log.Errorf("expandCensusClaims: something is very wrong: error rolling back: %v\nafter final commit to DB: %v", rollErr, err)
+			return nil, fmt.Errorf("something is very wrong: error rolling back after final commit to DB")
+		}
+		log.Errorf("expandCensusClaims: error commiting transactions to the DB: %v", err)
+		return nil, fmt.Errorf("error commiting transactions to the DB: %v", err)
+	}
+	return censusMembers, nil
+}
+
+func (d *Database) ListEphemeralMemberInfo(entityID, censusID []byte) ([]types.EphemeralMemberInfo, error) {
+	// TODO combine this query with the select query
+	// TODO Find how to optimize query (searching by member Id that is first on the index?)
+	census, err := d.Census(entityID, censusID)
+	if err != nil {
+		log.Warnf("listEphemeralMemberInfo: cound not retrieve census: (%v)", err)
+		return nil, fmt.Errorf("could not retrieve census")
+	}
+	selectQuery := `SELECT id, first_name, last_name, email, private_key, c.digested_public_key as "digested_public_key"
+					FROM  census_members c
+					INNER JOIN members m  ON m.id = c.member_id
+					WHERE c.census_id = $1 AND c.ephemeral = true`
+	var info []types.EphemeralMemberInfo
+	if err := d.db.Select(&info, selectQuery, census.ID); err != nil {
+		log.Errorf("listEphemeralMemberInfo: could not retrieve census members info: (%v)", err)
+		return nil, fmt.Errorf("could not retrieve census members info")
+	}
+	return info, nil
+}
+
+func (d *Database) EphemeralMemberInfoByEmail(entityID, censusID []byte, email string) (*types.EphemeralMemberInfo, error) {
+	// TODO combine this query with the select query
+	// TODO Find how to optimize query (searching by member Id that is first on the index?)
+	census, err := d.Census(entityID, censusID)
+	if err != nil {
+		log.Warnf("ephemeralMemberInfoByEmail: cound not retrieve census: (%v)", err)
+		return nil, fmt.Errorf("could not retrieve census")
+	}
+	member, err := d.MemberByEmail(entityID, email)
+	if err != nil {
+		log.Warnf("ephemeralMemberInfoByEmail: cound not retrieve member by email: (%v)", err)
+		return nil, fmt.Errorf("could not retrieve member")
+	}
+	if member.PubKey != nil && len(member.PubKey) > 0 {
+		log.Warnf("ephemeralMemberInfoByEmail: member not ephmeral: %d \n%v", len(member.PubKey), member.PubKey)
+		return nil, fmt.Errorf("member not ephmeral")
+	}
+
+	selectQuery := `SELECT * FROM census_members
+					WHERE census_id = $1 AND ephemeral = true`
+	var censusMember types.CensusMember
+	// var info types.EphemeralMemberInfo
+	if err := d.db.Get(&censusMember, selectQuery, census.ID); err != nil {
+		log.Errorf("ephemeralMemberInfoByEmail: could not retrieve census members info: (%v)", err)
+		return nil, fmt.Errorf("could not retrieve census members info")
+	}
+	info := types.EphemeralMemberInfo{
+		ID:             member.ID,
+		FirstName:      member.FirstName,
+		LastName:       member.LastName,
+		Email:          member.Email,
+		PrivKey:        censusMember.PrivKey,
+		DigestedPubKey: censusMember.DigestedPubKey,
+	}
+	return &info, nil
+}
+
 func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, error) {
 	var err error
 	if len(entityID) == 0 {
@@ -1455,7 +1663,7 @@ func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
 		return nil, fmt.Errorf("error retrieving target")
 	}
 	var census types.Census
-	selectQuery := `SELECT id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri, created_at, updated_at
+	selectQuery := `SELECT id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri, ephemeral, created_at, updated_at
 					FROM censuses
 					WHERE entity_id = $1 AND id = $2`
 	row := d.db.QueryRowx(selectQuery, entityID, censusID)
@@ -1471,8 +1679,16 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID *uuid.UUID, inf
 	if len(entityID) == 0 || len(censusID) == 0 || targetID == nil || *targetID == uuid.Nil {
 		return fmt.Errorf("invalid arguments")
 	}
-	// TODO check valid target selecting
 
+	if info == nil {
+		info = &types.CensusInfo{
+			MerkleRoot: []byte{},
+		}
+	}
+	if info.MerkleRoot == nil {
+		info.MerkleRoot = []byte{}
+	}
+	// TODO check valid target selecting
 	info.CreatedAt = time.Now()
 	info.UpdatedAt = time.Now()
 	census := types.Census{
@@ -1598,6 +1814,40 @@ func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uui
 		return 0, fmt.Errorf("rolled back because could not commit addCensus and addCensusMembers: %v", err)
 	}
 	return addedRows, nil
+}
+
+func (d *Database) UpdateCensus(entityID, censusID []byte, info *types.CensusInfo) error {
+	var err error
+	if len(entityID) == 0 || len(censusID) == 0 || info == nil {
+		return fmt.Errorf("invalid arguments")
+	}
+	// TODO check valid target selecting
+	if info.MerkleRoot == nil {
+		info.MerkleRoot = []byte{}
+	}
+	info.CreatedAt = time.Now()
+	info.UpdatedAt = time.Now()
+	census := types.Census{
+		ID:         censusID,
+		EntityID:   entityID,
+		CensusInfo: *info,
+	}
+	update := `UPDATE censuses SET
+				merkle_root = COALESCE(NULLIF(:merkle_root, '' ::::bytea ),  merkle_root),
+				merkle_tree_uri = COALESCE(NULLIF(:merkle_tree_uri, ''),  merkle_tree_uri) ,
+				updated_at = now()
+				WHERE id = :id AND entity_id = :entity_id`
+	var result sql.Result
+	if result, err = d.db.NamedExec(update, census); err != nil {
+		return fmt.Errorf("error updating census: %v", err)
+	}
+	var rows int64
+	if rows, err = result.RowsAffected(); err != nil {
+		return fmt.Errorf("cannot get affected rows: %v", err)
+	} else if rows != 1 { /* Nothing to update? */
+		return fmt.Errorf("nothing to update: %v", err)
+	}
+	return nil
 }
 
 func (d *Database) CountCensus(entityID []byte) (int, error) {

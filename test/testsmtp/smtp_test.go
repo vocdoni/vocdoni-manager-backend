@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jordan-wright/email"
+	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/smtpclient"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
@@ -22,12 +23,16 @@ var smtpConfig *config.SMTP
 
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
+	//alternative
+	//melisa.oberbrunner48@ethereal.email
+	//ExFmyARM3dCtaFJfcQ
 	smtpConfig = &config.SMTP{
 		User:          "coby.rippin@ethereal.email",
 		Password:      "HmjWVQ86X3Q6nKBR3u",
 		Host:          "smtp.ethereal.email",
 		Port:          587,
 		ValidationURL: "https://vocdoni.link/validation",
+		WebpollURL:    "https://webpoll.vocdoni.net",
 		Sender:        "coby.rippin@ethereal.email",
 		Timeout:       7,
 		PoolSize:      4,
@@ -152,7 +157,7 @@ func TestValidationLink(t *testing.T) {
 		MemberInfo: types.MemberInfo{
 			FirstName: "Manos",
 			LastName:  "Voc",
-			Email:     "manos@vocdoni.io",
+			Email:     "coby.rippin@ethereal.email",
 		},
 	}
 	id, err := hex.DecodeString("1026d682dc423d984abf6c086eca923245a33f45e5d1e06e069ac2663e5fff07")
@@ -167,6 +172,33 @@ func TestValidationLink(t *testing.T) {
 		},
 	}
 	if err := s.SendValidationLink(m, e, false); err != nil {
+		t.Fatalf("unable to send participation link email :%s", err)
+	}
+}
+
+func TestVotingLink(t *testing.T) {
+	privKey := util.RandomBytes(33)
+	processID := fmt.Sprintf("0x%s", util.RandomHex(33))
+	m := &types.EphemeralMemberInfo{
+		ID:        uuid.New(),
+		FirstName: "Manos",
+		LastName:  "Voc",
+		Email:     "coby.rippin@ethereal.email",
+		PrivKey:   privKey,
+	}
+
+	id, err := hex.DecodeString("1026d682dc423d984abf6c086eca923245a33f45e5d1e06e069ac2663e5fff07")
+	if err != nil {
+		t.Fatalf("failed to decode hex string: (%v)", err)
+	}
+	e := &types.Entity{
+		ID: []byte(id),
+		EntityInfo: types.EntityInfo{
+			Email: "hola@vocdoni.io",
+			Name:  "TestOrg",
+		},
+	}
+	if err := s.SendVotingLink(m, e, processID, false); err != nil {
 		t.Fatalf("unable to send participation link email :%s", err)
 	}
 }
