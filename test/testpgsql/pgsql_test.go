@@ -720,7 +720,12 @@ func TestCensus(t *testing.T) {
 		t.Fatalf("retrieved wrong ephemeral member info by email: (%v)", err)
 	}
 
-	merkleRoot := util.RandomBytes(66)
+	merkleRootStr := util.RandomHex(33)
+	merkleRoot, err := hex.DecodeString(merkleRootStr)
+	if err != nil {
+		t.Fatalf("error decoding merkleRoot string to bytes: (%v)", err)
+	}
+	// merkleRoot := util.RandomBytes(66)
 	merkleTreeUri := "ipfs://..."
 	info := &types.CensusInfo{
 		MerkleRoot:    merkleRoot,

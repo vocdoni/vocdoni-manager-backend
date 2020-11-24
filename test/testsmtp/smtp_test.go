@@ -177,7 +177,12 @@ func TestValidationLink(t *testing.T) {
 }
 
 func TestVotingLink(t *testing.T) {
-	privKey := util.RandomBytes(33)
+	// privKey := util.RandomBytes(33)
+	privKeyStr := util.RandomHex(33)
+	privKey, err := hex.DecodeString(privKeyStr)
+	if err != nil {
+		t.Fatalf("error decoding merkleRoot string to bytes: (%v)", err)
+	}
 	processID := fmt.Sprintf("0x%s", util.RandomHex(33))
 	m := &types.EphemeralMemberInfo{
 		ID:        uuid.New(),
