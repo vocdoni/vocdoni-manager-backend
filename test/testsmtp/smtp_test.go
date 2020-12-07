@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jordan-wright/email"
+	email "github.com/knadh/smtppool"
 	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/smtpclient"
@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 func TestSendMail(t *testing.T) {
 	t.Run("type=text", func(t *testing.T) {
 		// Test text mail
-		e := &email.Email{
+		e := email.Email{
 			From:    smtpConfig.User,
 			Sender:  smtpConfig.User,
 			To:      []string{smtpConfig.User},
@@ -56,14 +56,14 @@ func TestSendMail(t *testing.T) {
 			Text:    []byte("Hello There"),
 			Headers: textproto.MIMEHeader{},
 		}
-		if err := s.SendMail(e, false); err != nil {
+		if err := s.SendMail(e); err != nil {
 			t.Fatalf("unable to send simple text email :%s", err)
 		}
 	})
 
 	// Test html mail
 	t.Run("type=html", func(t *testing.T) {
-		e := &email.Email{
+		e := email.Email{
 			From:    smtpConfig.User,
 			Sender:  smtpConfig.User,
 			To:      []string{smtpConfig.User},
@@ -71,14 +71,14 @@ func TestSendMail(t *testing.T) {
 			HTML:    []byte("<html><body>This is an HTML text.</body></html>"),
 			Headers: textproto.MIMEHeader{},
 		}
-		if err := s.SendMail(e, false); err != nil {
+		if err := s.SendMail(e); err != nil {
 			t.Fatalf("unable to send simple HTML email :%s", err)
 		}
 	})
 
 	// Test attachment
 	t.Run("type=attachment", func(t *testing.T) {
-		e := &email.Email{
+		e := email.Email{
 			From:    smtpConfig.User,
 			Sender:  smtpConfig.User,
 			To:      []string{smtpConfig.User},
@@ -86,7 +86,7 @@ func TestSendMail(t *testing.T) {
 			HTML:    []byte("<html><body>This is an HTML text.</body></html>"),
 			Headers: textproto.MIMEHeader{},
 		}
-		if err := s.SendMail(e, false); err != nil {
+		if err := s.SendMail(e); err != nil {
 			t.Fatalf("unable to send HTML email with attachment :%s", err)
 		}
 	})
@@ -95,7 +95,7 @@ func TestSendMail(t *testing.T) {
 
 func TestSendMailPool(t *testing.T) {
 	count := 3
-	e := &email.Email{
+	e := email.Email{
 		From:    smtpConfig.User,
 		Sender:  smtpConfig.User,
 		To:      []string{smtpConfig.User},
@@ -106,7 +106,7 @@ func TestSendMailPool(t *testing.T) {
 
 	t.Run("type=sequential", func(t *testing.T) {
 		for i := 0; i < count; i++ {
-			if err := s.SendMail(e, true); err != nil {
+			if err := s.SendMail(e); err != nil {
 				t.Fatalf("error sending sequential mails with pool: (%v)", err)
 			}
 		}
@@ -119,7 +119,7 @@ func TestSendMailPool(t *testing.T) {
 		c := make(chan error, count)
 		for i := 0; i < count; i++ {
 			go func(i int) {
-				e := &email.Email{
+				e := email.Email{
 					From:    smtpConfig.User,
 					Sender:  smtpConfig.User,
 					To:      []string{smtpConfig.User},
@@ -131,7 +131,7 @@ func TestSendMailPool(t *testing.T) {
 					c <- fmt.Errorf("dummy error")
 					wg.Done()
 					return
-				} else if err := s.SendMail(e, true); err != nil {
+				} else if err := s.SendMail(e); err != nil {
 					c <- fmt.Errorf("unable to send HTML email with attachment :%s", err)
 					wg.Done()
 					return
@@ -171,7 +171,7 @@ func TestValidationLink(t *testing.T) {
 			Name:  "TestOrg",
 		},
 	}
-	if err := s.SendValidationLink(m, e, false); err != nil {
+	if err := s.SendValidationLink(m, e); err != nil {
 		t.Fatalf("unable to send participation link email :%s", err)
 	}
 }
@@ -203,7 +203,7 @@ func TestVotingLink(t *testing.T) {
 			Name:  "TestOrg",
 		},
 	}
-	if err := s.SendVotingLink(m, e, processID, false); err != nil {
+	if err := s.SendVotingLink(m, e, processID); err != nil {
 		t.Fatalf("unable to send participation link email :%s", err)
 	}
 }
