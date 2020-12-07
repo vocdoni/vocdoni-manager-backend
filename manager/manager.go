@@ -843,7 +843,7 @@ func (m *Manager) sendVotingLinks(request router.RouterRequest) {
 			m.Router.SendError(request, "cannot retrieve ephemeral census member by email")
 			return
 		}
-		if err := m.smtp.SendVotingLink(censusMember, entity, request.ProcessID, false); err != nil {
+		if err := m.smtp.SendVotingLink(censusMember, entity, request.ProcessID); err != nil {
 			log.Errorf("could not send voting link for member %q entity: (%v)", censusMember.ID, err)
 			m.Router.SendError(request, "could not send voting link")
 			return
@@ -875,7 +875,7 @@ func (m *Manager) sendVotingLinks(request router.RouterRequest) {
 	sc := make(chan uuid.UUID, len(censusMembers))
 	for _, member := range censusMembers {
 		go func(member types.EphemeralMemberInfo) {
-			if err := m.smtp.SendVotingLink(&member, entity, processID, true); err != nil {
+			if err := m.smtp.SendVotingLink(&member, entity, processID); err != nil {
 				log.Errorf("could not send voting link for member %q entity: (%v)", member.ID, err)
 				ec <- fmt.Errorf("member %s error  %v", member.ID, err)
 				wg.Done()
@@ -1272,7 +1272,7 @@ func (m *Manager) sendValidationLinks(request router.RouterRequest) {
 				wg.Done()
 				return
 			}
-			if err := m.smtp.SendValidationLink(&member, entity, true); err != nil {
+			if err := m.smtp.SendValidationLink(&member, entity); err != nil {
 				log.Errorf("could not send validation link for member %q entity: (%v)", member.ID, err)
 				ec <- fmt.Errorf("member %s error  %v", member.ID, err)
 				wg.Done()

@@ -4,20 +4,15 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	htmlTemplate "html/template"
-	"io"
-	"net"
 	"net/smtp"
 	"net/textproto"
-	"strconv"
 	"strings"
-	"syscall"
 	txtTemplate "text/template"
 	"time"
 
-	"github.com/jordan-wright/email"
+	email "github.com/knadh/smtppool"
 	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
@@ -25,6 +20,7 @@ import (
 
 // SMTP struct maintains the SMTP config and conncection objects
 type SMTP struct {
+	// pool      *email.Pool
 	pool      *email.Pool
 	config    *config.SMTP
 	auth      smtp.Auth
@@ -45,7 +41,20 @@ func New(smtpc *config.SMTP) *SMTP {
 // StartPool ooens a new STMP pool using the config values
 func (s *SMTP) StartPool() error {
 	var err error
-	s.pool, err = email.NewPool(net.JoinHostPort(s.config.Host, strconv.Itoa(s.config.Port)), s.config.PoolSize, s.auth, s.tlsConfig)
+	timeout, err := time.ParseDuration(fmt.Sprintf("%ds", s.config.Timeout))
+	if err != nil {
+		return fmt.Errorf("error calulating timeout: %v", err)
+	}
+	s.pool, err = email.New(email.Opt{
+		Host:              s.config.Host,
+		Port:              s.config.Port,
+		MaxConns:          s.config.PoolSize,
+		MaxMessageRetries: 3,
+		IdleTimeout:       time.Second * 10, //default value
+		PoolWaitTimeout:   time.Second * timeout,
+		Auth:              s.auth,
+		TLSConfig:         s.tlsConfig,
+	})
 	if err != nil {
 		return fmt.Errorf("error initializing smtp pool: %v", err)
 	}
@@ -58,35 +67,19 @@ func (s *SMTP) ClosePool() {
 }
 
 // SendMail Sends one email over StartTLS (without pool)
-func (s *SMTP) SendMail(email *email.Email, usePool bool) error {
-	// email.Headers = textproto.MIMEHeader{}
+func (s *SMTP) SendMail(email email.Email) error {
 	email.Headers.Add("X-Mailgun-Require-TLS", "true")
 	email.Headers.Add("X-Mailgun-Skip-Verification", "false")
-	if usePool {
-		if s.pool == nil {
-			return fmt.Errorf("requested pool is not initialized")
-		}
-		timeout, err := time.ParseDuration(fmt.Sprintf("%ds", s.config.Timeout))
-		if err != nil {
-			return fmt.Errorf("error calulating timeout: %v", err)
-		}
-		err = s.pool.Send(email, timeout)
-		var failed int
-		for (errors.Is(err, syscall.EPIPE) || errors.Is(err, io.EOF)) && failed < 3 {
-			log.Errorf("smtp pool error: (%v)", err)
-			time.Sleep(200 * time.Millisecond)
-			err = s.pool.Send(email, timeout)
-			failed++
-		}
-		return err
+	if s.pool == nil {
+		return fmt.Errorf("requested pool is not initialized")
 	}
-	address := net.JoinHostPort(s.config.Host, strconv.Itoa(s.config.Port))
-	return email.SendWithStartTLS(address, s.auth, s.tlsConfig)
+
+	return s.pool.Send(email)
 
 }
 
 // SendValidationLink sends a unique validation link to the member m
-func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity, usePool bool) error {
+func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity) error {
 	if member.Email == "" {
 		return fmt.Errorf("invalid member email")
 	}
@@ -143,17 +136,16 @@ func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity, us
 
 	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(LogoVocBase64))
 
-	attachment, err := e.Attach(reader, "logoVoc.png", "image/png; name=logoVoc.png")
-	if err != nil {
+	if _, err := e.Attach(reader, "logoVoc.png", "image/png; name=logoVoc.png"); err != nil {
 		return fmt.Errorf("could not attach logo to the email: %v", err)
 	}
-	attachment.HTMLRelated = true
+	e.Attachments[0].HTMLRelated = true
 
-	return s.SendMail(&e, usePool)
+	return s.SendMail(e)
 }
 
 // SendVotingLink sends a unique voting link to the member m
-func (s *SMTP) SendVotingLink(ephemeralMember *types.EphemeralMemberInfo, entity *types.Entity, processID string, usePool bool) error {
+func (s *SMTP) SendVotingLink(ephemeralMember *types.EphemeralMemberInfo, entity *types.Entity, processID string) error {
 	if ephemeralMember.Email == "" {
 		log.Errorf("sendVotingLink: invalid member email for %s", ephemeralMember.ID.String())
 		return fmt.Errorf("invalid member email")
@@ -217,11 +209,10 @@ func (s *SMTP) SendVotingLink(ephemeralMember *types.EphemeralMemberInfo, entity
 
 	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(LogoVocBase64))
 
-	attachment, err := e.Attach(reader, "logoVoc.png", "image/png; name=logoVoc.png")
-	if err != nil {
+	if _, err := e.Attach(reader, "logoVoc.png", "image/png; name=logoVoc.png"); err != nil {
 		return fmt.Errorf("could not attach logo to the email: %v", err)
 	}
-	attachment.HTMLRelated = true
+	e.Attachments[0].HTMLRelated = true
 
-	return s.SendMail(&e, usePool)
+	return s.SendMail(e)
 }

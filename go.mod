@@ -13,7 +13,7 @@ require (
 	github.com/jackc/pgtype v1.3.1-0.20200521144610-9d847241cb8f
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jmoiron/sqlx v1.2.1-0.20200615141059-0794cb1f47ee
-	github.com/jordan-wright/email v4.0.1-0.20200824153738-3f5bafa1cd84+incompatible
+	github.com/knadh/smtppool v0.2.1
 	github.com/lib/pq v1.8.0
 	github.com/prometheus/client_golang v1.7.1
 	github.com/rubenv/sql-migrate v0.0.0-20200616145509-8d140a17f351
@@ -27,4 +27,4 @@ require (
 	nhooyr.io/websocket v1.8.6
 )
 
-replace github.com/jordan-wright/email => github.com/emmdim/email v4.0.1-0.20201118225554-9f492e5bd239+incompatible
+replace github.com/knadh/smtppool => github.com/emmdim/smtppool v0.2.2-0.20201207174605-7a30c40886de
