@@ -17,7 +17,10 @@ Registers an entity to the backend. The address of the Entity is calculated by t
     "id": "req-12345678",
     "request": {
         "method": "signUp",
-        "entityName": "Name",
+        "entity": {
+            "name" : "Name",
+            "email" : "email@email.com",
+        }
     }
     "signature": "0x12345"
 }
