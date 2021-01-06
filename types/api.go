@@ -15,10 +15,12 @@ type RequestMessage struct {
 }
 
 type MetaRequest struct {
-	Amount        int          `json:"amount,omitempty"`
-	AuthHash      string       `json:"authHash,omitempty"`
-	Census        *CensusInfo  `json:"census,omitempty"`
-	CensusID      string       `json:"censusId,omitempty"`
+	Amount   int         `json:"amount,omitempty"`
+	AuthHash string      `json:"authHash,omitempty"`
+	Census   *CensusInfo `json:"census,omitempty"`
+	CensusID string      `json:"censusId,omitempty"`
+	//TODO Keys HexBytes when API supports protobuf or similar
+	Keys          []string     `json:"keys,omitempty"` // claim Keys
 	Email         string       `json:"email,omitempty"`
 	EntityID      string       `json:"entityId,omitempty"`
 	Entity        *EntityInfo  `json:"entity,omitempty"`

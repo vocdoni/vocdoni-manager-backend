@@ -278,12 +278,12 @@ func TestMember(t *testing.T) {
 	}
 
 	// Test Bulk Info
-	var bulkMembers []types.MemberInfo
+	var bulkMembersInfo []types.MemberInfo
 	for i := 0; i < 10; i++ {
 		info := types.MemberInfo{FirstName: fmt.Sprintf("Name%d", i), LastName: fmt.Sprintf("LastName%d", i)}
-		bulkMembers = append(bulkMembers, info)
+		bulkMembersInfo = append(bulkMembersInfo, info)
 	}
-	err = api.DB.ImportMembers(entities[0].ID, bulkMembers)
+	err = api.DB.ImportMembers(entities[0].ID, bulkMembersInfo)
 	if err != nil {
 		t.Fatalf("cannot add members to Postgres DB (pgsql.go:AddMemberBulk): %s", err)
 	}
@@ -342,7 +342,7 @@ func TestMember(t *testing.T) {
 	if err != nil {
 		t.Fatal("cannot fetch tokens and emails from the Prostgres DB (pgsql.go:MembersTokensEmails)")
 	}
-	if len(tokenMembers) != len(bulkMembers) {
+	if len(tokenMembers) != len(bulkMembersInfo) {
 		t.Fatalf("Expected retrieving tokens for %d members but instead retrieved %d (pgsql.go:MembersTokensEmails)", len(allMembers), len(tokenMembers))
 	}
 
@@ -453,6 +453,45 @@ func TestMember(t *testing.T) {
 	if len(invalidIDs) != 1 || invalidIDs[0] != tempUUID || updatedCount != 0 {
 		t.Fatal("recieved not expected invalid token (pgsql.go:DeleteMembers)")
 	}
+
+	// test AddMemberBulk
+	bulkKeys := make([][]byte, 10)
+	bulkMembers := make([]types.Member, 10)
+	bulkSigner := ethereum.NewSignKeys()
+	for i := range bulkMembers {
+		if err = bulkSigner.Generate(); err != nil {
+			t.Fatalf("error generating ethereum keys: (%v)", err)
+		}
+		pub, _ = bulkSigner.HexString()
+		pub, _ = ethereum.DecompressPubKey(pub)
+		pubBytes, err = hex.DecodeString(pub)
+		if err != nil {
+			t.Fatalf("%s", err)
+		}
+		bulkMembers[i].PubKey = pubBytes
+		bulkKeys[i] = pubBytes
+	}
+
+	if err := api.DB.AddMemberBulk(entities[0].ID, bulkMembers); err != nil {
+		t.Fatalf("error adding membbers (pgsql.go:AddMemberBulk): (%v)", err)
+	}
+	// verify added users and members
+	for _, key := range bulkKeys {
+		user, err = api.DB.User(key)
+		if err != nil || user == nil {
+			t.Fatalf("could not retrieve user added using AddMemberBulk: (%v)", err)
+		}
+		member, err = api.DB.MemberPubKey(entities[0].ID, key)
+		if err != nil || member == nil {
+			t.Fatalf("could not retrieve member added using AddMemberBulk: (%v)", err)
+		}
+	}
+
+	// verify that duplicated members cannot be added
+	if err := api.DB.AddMemberBulk(entities[0].ID, bulkMembers); err == nil {
+		t.Fatalf("managed to add duplicate membbers (pgsql.go:AddMemberBulk)")
+	}
+
 }
 
 func TestTarget(t *testing.T) {
