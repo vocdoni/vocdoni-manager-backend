@@ -1,6 +1,7 @@
 package tokenapi
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
@@ -56,6 +57,9 @@ func (t *TokenAPI) RegisterMethods(path string) error {
 	if err := t.Router.AddHandler("generate", path+"/token", t.generate, false, true); err != nil {
 		return err
 	}
+	if err := t.Router.AddHandler("importKeysBulk", path+"/token", t.importKeysBulk, false, true); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -67,7 +71,7 @@ func (t *TokenAPI) send(req *router.RouterRequest, resp *types.MetaResponse) {
 	req.Send(t.Router.BuildReply(req, resp))
 }
 
-func checkAuth(fields []string, timestamp int32, auth string) bool {
+func checkAuth(timestamp int32, auth string, fields ...interface{}) bool {
 	if len(fields) == 0 {
 		return false
 	}
@@ -77,11 +81,19 @@ func checkAuth(fields []string, timestamp int32, auth string) bool {
 		log.Warnf("timestamp out of window")
 		return false
 	}
-	toHash := ""
+	var toHash bytes.Buffer
 	for _, f := range fields {
-		toHash += f
+		switch v := f.(type) {
+		case string:
+			toHash.WriteString(v)
+		case []string:
+			for _, key := range v {
+				toHash.WriteString(key)
+			}
+		}
+
 	}
-	thisAuth := hex.EncodeToString(ethereum.HashRaw([]byte(toHash)))
+	thisAuth := hex.EncodeToString(ethereum.HashRaw(toHash.Bytes()))
 	return thisAuth == util.TrimHex(auth)
 }
 
@@ -133,9 +145,8 @@ func (t *TokenAPI) revoke(request router.RouterRequest) {
 		return
 	}
 	if !checkAuth(
-		[]string{request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), request.Token, secret},
-		request.Timestamp,
-		request.AuthHash) {
+		request.Timestamp, request.AuthHash,
+		request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), request.Token, secret) {
 		log.Warnf("invalid authentication: checkAuth error for entity (%q) to validate token (%q): (%v)", request.EntityID, request.Token, err)
 		t.Router.SendError(request, "invalid authentication")
 		return
@@ -193,9 +204,8 @@ func (t *TokenAPI) status(request router.RouterRequest) {
 		return
 	}
 	if !checkAuth(
-		[]string{request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), request.Token, secret},
-		request.Timestamp,
-		request.AuthHash) {
+		request.Timestamp, request.AuthHash,
+		request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), request.Token, secret) {
 		log.Warnf("invalid authentication: checkAuth error for entity (%q) to validate token (%q): (%v)", request.EntityID, request.Token, err)
 		t.Router.SendError(request, "invalid authentication")
 		return
@@ -253,9 +263,8 @@ func (t *TokenAPI) generate(request router.RouterRequest) {
 		return
 	}
 	if !checkAuth(
-		[]string{fmt.Sprintf("%d", request.Amount), request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), secret},
-		request.Timestamp,
-		request.AuthHash) {
+		request.Timestamp, request.AuthHash,
+		fmt.Sprintf("%d", request.Amount), request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), secret) {
 		log.Warnf("invalid authentication: checkAuth error for entity (%q) to generate tokens: (%v)", request.EntityID, err)
 		t.Router.SendError(request, "invalid authentication")
 		return
@@ -278,5 +287,68 @@ func (t *TokenAPI) generate(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %q generateTokens: %d tokens", request.SignaturePublicKey, len(response.Tokens))
+	t.send(&request, &response)
+}
+
+func (t *TokenAPI) importKeysBulk(request router.RouterRequest) {
+	var response types.MetaResponse
+
+	if len(request.EntityID) == 0 || len(request.Keys) == 0 {
+		t.Router.SendError(request, "invalid arguments")
+		return
+	}
+	// check entityId exists
+	entityID, err := hex.DecodeString(util.TrimHex(request.EntityID))
+	if err != nil {
+		log.Warnf("importKeysBulk: cannot decode entityId %q : (%v)", request.EntityID, err)
+		t.Router.SendError(request, "invalid entityId")
+		return
+	}
+
+	secret, err := t.getSecret(entityID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Warnf("importKeysBulk invalid authentication: non-existing entityID %s", request.EntityID)
+			t.Router.SendError(request, "invalid authentication")
+			return
+
+		}
+		log.Warnf("importKeysBulk invalid authentication: error retrieving entity (%q): (%v)", request.EntityID, err)
+		t.Router.SendError(request, "invalid authentication")
+		return
+	}
+	if !checkAuth(
+		request.Timestamp, request.AuthHash,
+		request.Keys, request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), secret) {
+		log.Warnf("importKeysBulk invalid authentication: checkAuth error for entity (%q)", request.EntityID)
+		t.Router.SendError(request, "invalid authentication")
+		return
+	}
+
+	members := make([]types.Member, len(request.Keys))
+	for i, claim := range request.Keys {
+		if members[i].PubKey, err = hex.DecodeString(util.TrimHex(claim)); err != nil {
+			log.Warnf("importKeysBulk: error decoding claim (%s): (%v)", claim, err)
+			t.Router.SendError(request, fmt.Sprintf("error decoding claim (%s)", claim))
+			return
+		}
+	}
+
+	chunkSize := 5000
+	for i := 0; i < len(members); i += chunkSize {
+		end := i + chunkSize
+
+		if end > len(members) {
+			end = len(members)
+		}
+
+		if err = t.db.AddMemberBulk(entityID, members[i:end]); err != nil {
+			log.Errorf("importKeysBulk: could not import provided keys for %s: (%v)", request.EntityID, err)
+			t.Router.SendError(request, "could not import keys")
+			return
+		}
+	}
+
+	log.Debugf("Entity: %q importKeysBulk: %d tokens", request.SignaturePublicKey, len(request.Keys))
 	t.send(&request, &response)
 }

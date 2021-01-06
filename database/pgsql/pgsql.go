@@ -1,6 +1,7 @@
 package pgsql
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/hex"
@@ -38,7 +39,7 @@ func New(dbc *config.DB) (*Database, error) {
 	db, err := sqlx.Open("pgx", fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s client_encoding=%s",
 		dbc.Host, dbc.Port, dbc.User, dbc.Password, dbc.Dbname, dbc.Sslmode, "UTF8"))
 	if err != nil {
-		return nil, fmt.Errorf("error initializing postgres connection handler: %v", err)
+		return nil, fmt.Errorf("error initializing postgres connection handler: %w", err)
 	}
 
 	// Try to get a connection, if fails connectionRetries times, return error.
@@ -62,7 +63,7 @@ func New(dbc *config.DB) (*Database, error) {
 	// ctx := context.Background()
 	// pgx, err := pgxpool.Connect(ctx, connectionString)
 	if err != nil {
-		return nil, fmt.Errorf("unable to connect to database: %v", err)
+		return nil, fmt.Errorf("unable to connect to database: %w", err)
 	}
 	// TODO: Set MaxOpenConnections, MaxLifetime (MaxIdle?)
 	// MaxOpen should be the number of expected clients? (Different apis?)
@@ -89,7 +90,7 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	}
 	tx, err := d.db.Beginx()
 	if err != nil {
-		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
+		return fmt.Errorf("cannot initialize postgres transaction: %w", err)
 	}
 	entity := &types.Entity{
 		EntityInfo: *info,
@@ -101,7 +102,7 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	}
 	pgEntity, err := ToPGEntity(entity)
 	if err != nil {
-		return fmt.Errorf("cannot convert entity data types to postgres types: %v", err)
+		return fmt.Errorf("cannot convert entity data types to postgres types: %w", err)
 	}
 	// TODO: Calculate EntityID (consult go-dvote)
 	insert := `INSERT INTO entities
@@ -109,22 +110,20 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 			VALUES (:id, :is_authorized, :address, :email, :name, :callback_url, :callback_secret, :pg_census_managers_addresses, :created_at, :updated_at)`
 	_, err = tx.NamedExec(insert, pgEntity)
 	if err != nil {
-		return fmt.Errorf("cannot add insert query in the transaction: %v", err)
+		return fmt.Errorf("cannot add insert query in the transaction: %w", err)
 	}
 	insertOrigins := `INSERT INTO entities_origins (entity_id,origin)
 					VALUES ($1, unnest(cast($2 AS Origins[])))`
 	_, err = tx.Exec(insertOrigins, entityID, pgEntity.Origins)
 	if err != nil {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-
-			return fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
-		return fmt.Errorf("cannot add insert query in the transaction: %v", err)
+		return fmt.Errorf("cannot add insert query in the transaction: %w", err)
 	}
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("cannot commit db queries :%v", err)
+		return fmt.Errorf("cannot commit db queries :%w", err)
 	}
 	return nil
 }
@@ -140,12 +139,12 @@ func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	}
 	entity, err := ToEntity(&pgEntity)
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert postgres types to entity data types: %v", err)
+		return nil, fmt.Errorf("cannot convert postgres types to entity data types: %w", err)
 	}
 	origins, err := d.EntityOrigins(entityID)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			return nil, fmt.Errorf("cannot entity origins: %v", err)
+			return nil, fmt.Errorf("cannot entity origins: %w", err)
 		}
 		origins = []types.Origin{}
 
@@ -173,7 +172,7 @@ func (d *Database) AuthorizeEntity(entityID []byte) error {
 	entity := &types.Entity{ID: entityID, IsAuthorized: true}
 	pgentity, err := ToPGEntity(entity)
 	if err != nil {
-		return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
+		return fmt.Errorf("cannot convert member data types to postgres types: %w", err)
 	}
 	update := `UPDATE entities SET
 				is_authorized = COALESCE(NULLIF(:is_authorized, false), is_authorized),
@@ -182,11 +181,11 @@ func (d *Database) AuthorizeEntity(entityID []byte) error {
 				AND  :is_authorized IS DISTINCT FROM is_authorized`
 	result, err := d.db.NamedExec(update, pgentity)
 	if err != nil {
-		return fmt.Errorf("error updating entity: %v", err)
+		return fmt.Errorf("error updating entity: %w", err)
 	}
 	var rows int64
 	if rows, err = result.RowsAffected(); err != nil {
-		return fmt.Errorf("cannot get affected rows: %v", err)
+		return fmt.Errorf("cannot get affected rows: %w", err)
 	} else if rows == 0 { /* Nothing to update? */
 		return fmt.Errorf("already authorized")
 	} else if rows != 1 { /* Nothing to update? */
@@ -199,7 +198,7 @@ func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
 	entity := &types.Entity{ID: entityID, EntityInfo: *info}
 	pgentity, err := ToPGEntity(entity)
 	if err != nil {
-		return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
+		return fmt.Errorf("cannot convert member data types to postgres types: %w", err)
 	}
 	// TODO: Implement Update CensusManagerAddresses (table)
 	update := `UPDATE entities SET
@@ -217,11 +216,11 @@ func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
 				:email IS DISTINCT FROM email)`
 	result, err := d.db.NamedExec(update, pgentity)
 	if err != nil {
-		return fmt.Errorf("error updating entity: %v", err)
+		return fmt.Errorf("error updating entity: %w", err)
 	}
 	var rows int64
 	if rows, err = result.RowsAffected(); err != nil {
-		return fmt.Errorf("cannot get affected rows: %v", err)
+		return fmt.Errorf("cannot get affected rows: %w", err)
 	} else if rows == 0 { /* Nothing to update? */
 		return fmt.Errorf("nothing to update")
 	} else if rows != 1 { /* Nothing to update? */
@@ -235,7 +234,7 @@ func (d *Database) EntityOrigins(entityID []byte) ([]types.Origin, error) {
 	selectOrigins := `SELECT origin FROM entities_origins WHERE entity_id=$1`
 	err := d.db.Select(&stringOrigins, selectOrigins, entityID)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve entity origins: %v", err)
+		return nil, fmt.Errorf("cannot retrieve entity origins: %w", err)
 	}
 	origins, err := StringToOriginArray(stringOrigins)
 	if err != nil {
@@ -262,11 +261,11 @@ func (d *Database) AddUser(user *types.User) error {
 				VALUES (:public_key, :digested_public_key, :created_at, :updated_at)`
 	result, err := d.db.NamedExec(insert, user)
 	if err != nil {
-		return fmt.Errorf("cannot add user: %v", err)
+		return fmt.Errorf("cannot add user: %w", err)
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("cannot verify that user was added to the db: %v", err)
+		return fmt.Errorf("cannot verify that user was added to the db: %w", err)
 	}
 	if rows != 1 {
 		return fmt.Errorf("cannot add user")
@@ -312,34 +311,32 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 
 	tx, err := d.db.Beginx()
 	if err != nil {
-		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
+		return fmt.Errorf("cannot initialize postgres transaction: %w", err)
 	}
 	insert := `INSERT INTO members
 				(id,entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, created_at, updated_at)
 				VALUES (:id, :entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :created_at, :updated_at)`
 	// result, err = tx.NamedExec(insert, pgmembers)
 	if result, err = tx.NamedExec(insert, pgmembers); err != nil {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
 		if err != nil {
-			return fmt.Errorf("error in bulk import %v", err)
+			return fmt.Errorf("error in bulk import %w", err)
 		}
 	}
 	if rows, err = result.RowsAffected(); err != nil || int(rows) != len(pgmembers) {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
 		if err != nil {
-			return fmt.Errorf("error in bulk import %v", err)
+			return fmt.Errorf("error in bulk import %w", err)
 		}
 		return fmt.Errorf("should insert %d rows, while inserted %d rows. Rolled back", len(pgmembers), rows)
 	}
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("could not commit bulk import %v", err)
+		return fmt.Errorf("could not commit bulk import %w", err)
 	}
 	return nil
 
@@ -364,11 +361,11 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	member := &types.Member{EntityID: entityID, PubKey: pubKey, MemberInfo: *info}
 	tx, err = d.db.Beginx()
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("cannot initialize postgres transaction: %v", err)
+		return uuid.Nil, fmt.Errorf("cannot initialize postgres transaction: %w", err)
 	}
 	_, err = d.User(pubKey)
 	if err != nil && err != sql.ErrNoRows {
-		return uuid.Nil, fmt.Errorf("error retrieving members corresponding user: %v", err)
+		return uuid.Nil, fmt.Errorf("error retrieving members corresponding user: %w", err)
 	} else if err == sql.ErrNoRows {
 		user := &types.User{
 			PubKey: pubKey,
@@ -387,21 +384,21 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 		if result, err = tx.NamedExec(insert, user); err == nil {
 			var rows int64
 			if rows, err = result.RowsAffected(); err != nil || rows != 1 {
-				return uuid.Nil, fmt.Errorf("error creating user for member: %v", err)
+				return uuid.Nil, fmt.Errorf("error creating user for member: %w", err)
 			}
 		}
 		if err != nil {
 			if rollErr := tx.Rollback(); err != nil {
-				return uuid.Nil, fmt.Errorf("error rolling back user creation for member: %v\nafter error: %v", rollErr, err)
+				return uuid.Nil, fmt.Errorf("error rolling back user creation for member: %v after error: %w", rollErr, err)
 			}
-			return uuid.Nil, fmt.Errorf("error creating user for member: %v", err)
+			return uuid.Nil, fmt.Errorf("error creating user for member: %w", err)
 		}
 	}
 	pgmember, err := ToPGMember(member)
 	pgmember.CreatedAt = time.Now()
 	pgmember.UpdatedAt = time.Now()
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("cannot convert member data types to postgres types: %v", err)
+		return uuid.Nil, fmt.Errorf("cannot convert member data types to postgres types: %w", err)
 	}
 	insert := `INSERT INTO members
 	 			(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
@@ -416,33 +413,33 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	// that something went wrong (no member added).
 	if result, err = tx.NamedQuery(insert, pgmember); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v\nafter error: %v", rollErr, err)
+			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v after error: %w", rollErr, err)
 		}
-		return uuid.Nil, fmt.Errorf("error adding member to the DB: %v", err)
+		return uuid.Nil, fmt.Errorf("error adding member to the DB: %w", err)
 	}
 	if !result.Next() {
 		if rollErr := tx.Rollback(); err != nil {
-			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v\nafter error: %v", rollErr, err)
+			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v after error: %w", rollErr, err)
 		}
 		return uuid.Nil, fmt.Errorf("no rows affected after adding member, posible violation of db constraints")
 	}
 	if err = result.Scan(&id); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v\nafter error: %v", rollErr, err)
+			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v after error: %w", rollErr, err)
 		}
-		return uuid.Nil, fmt.Errorf("error retrieving new member id: %v", err)
+		return uuid.Nil, fmt.Errorf("error retrieving new member id: %w", err)
 	}
 	if err = result.Close(); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v\nafter error: %v", rollErr, err)
+			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %vafter error: %w", rollErr, err)
 		}
-		return uuid.Nil, fmt.Errorf("error retrieving new member id: %v", err)
+		return uuid.Nil, fmt.Errorf("error retrieving new member id: %w", err)
 	}
 	if err = tx.Commit(); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v\nafter error: %v", rollErr, err)
+			return uuid.Nil, fmt.Errorf("error rolling back member and user creation: %v after error: %w", rollErr, err)
 		}
-		return uuid.Nil, fmt.Errorf("error commiting add member transactions to the DB: %v", err)
+		return uuid.Nil, fmt.Errorf("error commiting add member transactions to the DB: %w", err)
 	}
 	return id, err
 }
@@ -472,17 +469,17 @@ func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberI
 		pub, _ := keys[idx].HexString()
 		pubBytes, err := hex.DecodeString(pub)
 		if err != nil {
-			return fmt.Errorf("error decoding generated pubKey: %v", err)
+			return fmt.Errorf("error decoding generated pubKey: %w", err)
 		}
 		user := &types.User{PubKey: pubBytes}
 		err = d.AddUser(user)
 		if err != nil {
-			return fmt.Errorf("error creating generated user for imported member: %v", err)
+			return fmt.Errorf("error creating generated user for imported member: %w", err)
 		}
 		newMember := &types.Member{EntityID: entityID, PubKey: pubBytes, MemberInfo: member}
 		pgMember, err := ToPGMember(newMember)
 		if err != nil {
-			return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
+			return fmt.Errorf("cannot convert member data types to postgres types: %w", err)
 		}
 		pgMember.CreatedAt = time.Now()
 		pgMember.UpdatedAt = time.Now()
@@ -491,33 +488,31 @@ func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberI
 
 	tx, err := d.db.Beginx()
 	if err != nil {
-		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
+		return fmt.Errorf("cannot initialize postgres transaction: %w", err)
 	}
 	insert := `INSERT INTO members
 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
 				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
 	if result, err = tx.NamedExec(insert, members); err != nil {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
 		if err != nil {
-			return fmt.Errorf("error in bulk import %v", err)
+			return fmt.Errorf("error in bulk import %w", err)
 		}
 	}
 	if rows, err = result.RowsAffected(); err != nil || int(rows) != len(members) {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
 		if err != nil {
-			return fmt.Errorf("error in bulk import %v", err)
+			return fmt.Errorf("error in bulk import %w", err)
 		}
 		return fmt.Errorf("should insert %d rows, while inserted %d rows. Rolled back", len(members), rows)
 	}
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("could not commit bulk import %v", err)
+		return fmt.Errorf("could not commit bulk import %w", err)
 	}
 	return nil
 }
@@ -536,7 +531,7 @@ func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error
 		newMember := &types.Member{EntityID: entityID, MemberInfo: member}
 		pgMember, err := ToPGMember(newMember)
 		if err != nil {
-			return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
+			return fmt.Errorf("cannot convert member data types to postgres types: %w", err)
 		}
 		pgMember.CreatedAt = time.Now()
 		pgMember.UpdatedAt = time.Now()
@@ -572,49 +567,48 @@ func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error
 	// }
 	tx, err := d.db.Beginx()
 	if err != nil {
-		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
+		return fmt.Errorf("cannot initialize postgres transaction: %w", err)
 	}
 	insert := `INSERT INTO members
 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
 				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
 	if result, err = tx.NamedExec(insert, members); err != nil {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
 		if err != nil {
-			return fmt.Errorf("error in bulk import %v", err)
+			return fmt.Errorf("error in bulk import %w", err)
 		}
 	}
 	if rows, err = result.RowsAffected(); err != nil || int(rows) != len(members) {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
 		if err != nil {
-			return fmt.Errorf("error in bulk import %v", err)
+			return fmt.Errorf("error in bulk import %w", err)
 		}
 		return fmt.Errorf("should insert %d rows, while inserted %d rows. Rolled back", len(members), rows)
 	}
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("could not commit bulk import %v", err)
+		return fmt.Errorf("could not commit bulk import %w", err)
 	}
 	return nil
 }
 
+// AddMemberBulk imports an array of members to an entity,
+// creating the corresponding users.
+// ue to PostgreSQL and schema restriction the maximum array
+// size acceptable is 5000 members
 func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error {
 	// TODO: Check if support for Update a Member is needed
 	// TODO: Investigate COPY FROM with pgx
-	var err error
-	var result sql.Result
-	var rows int64
 	if len(members) <= 0 {
 		return fmt.Errorf("no member data provided")
 	}
 	tx, err := d.db.Beginx()
 	if err != nil {
-		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
+		return fmt.Errorf("cannot initialize postgres transaction: %w", err)
 	}
 	users := make([]types.User, len(members))
 	pgMembers := []PGMember{}
@@ -632,12 +626,16 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 			},
 		}
 		// Member related
-		if hex.EncodeToString(member.EntityID) != hex.EncodeToString(entityID) {
-			return fmt.Errorf("trying to import members for other entity")
+		if len(member.EntityID) > 0 && !bytes.Equal(member.EntityID, entityID) {
+			return fmt.Errorf("expected member entityID %x but provided entityID %x", entityID, member.EntityID)
 		}
+		if len(member.EntityID) == 0 {
+			member.EntityID = entityID
+		}
+
 		pgMember, err := ToPGMember(&member)
 		if err != nil {
-			return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
+			return fmt.Errorf("cannot convert member data types to postgres types: %w", err)
 		}
 		pgMember.CreatedAt = time.Now()
 		pgMember.UpdatedAt = time.Now()
@@ -645,36 +643,55 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 	}
 	insertUsers := `INSERT INTO users
 					(public_key, digested_public_key, created_at, updated_at) VALUES (:public_key, :digested_public_key, :created_at, :updated_at)`
-	if _, err = tx.NamedExec(insertUsers, users); err != nil {
-		return fmt.Errorf("error creating users %v", err)
+	result, err := tx.NamedExec(insertUsers, users)
+	if err != nil {
+		return fmt.Errorf("error creating users %w", err)
+	}
+	userRows, err := result.RowsAffected()
+	if err != nil || int(userRows) != len(users) {
+		// First do rollback for all the error cases
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
+		}
+		// Then handle each error
+		if err != nil {
+			return fmt.Errorf("error verifying created users: (%v)", err)
+		}
+		return fmt.Errorf("expected to add %d users but added %d", int(userRows), len(users))
+
 	}
 
 	insert := `INSERT INTO members
 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
 				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
 	if result, err = tx.NamedExec(insert, pgMembers); err != nil {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
 		if err != nil {
-			return fmt.Errorf("error in bulk import %v", err)
+			return fmt.Errorf("error adding members: (%v)", err)
 		}
 	}
-	if rows, err = result.RowsAffected(); err != nil || int(rows) != len(members) {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+	memberRows, err := result.RowsAffected()
+	if err != nil || int(memberRows) != len(members) || memberRows != userRows {
+		// First do rollback for all the error cases
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("cannot perform db rollback %v after verifying created members error %w", rollbackErr, err)
 		}
+		// Then handle each error
 		if err != nil {
-			return fmt.Errorf("error in bulk import %v", err)
+			return fmt.Errorf("error verifying created members: (%v)", err)
 		}
-		return fmt.Errorf("should insert %d rows, while inserted %d rows. Rolled back", len(members), rows)
+		if int(memberRows) != len(members) {
+			return fmt.Errorf("expected to add %d members but added %d", len(members), memberRows)
+		}
+		return fmt.Errorf("diference in number of created users(%d) and members (%d)", len(members), memberRows)
+
 	}
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("could not commit bulk import %v", err)
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("could not commit bulk import %w", err)
 	}
+	log.Debugf("AddMemberBulk: imported %d members and the correspondig users", len(members))
 	return nil
 }
 
@@ -685,7 +702,7 @@ func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *type
 	member := &types.Member{ID: *memberID, EntityID: entityID, MemberInfo: *info}
 	pgmember, err := ToPGMember(member)
 	if err != nil {
-		return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
+		return fmt.Errorf("cannot convert member data types to postgres types: %w", err)
 	}
 	update := `UPDATE members SET
 				street_address = COALESCE(NULLIF(:street_address, ''),  street_address),
@@ -704,13 +721,13 @@ func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *type
 				:pg_tags  IS DISTINCT FROM tags)`
 	var result sql.Result
 	if result, err = d.db.NamedExec(update, pgmember); err != nil {
-		return fmt.Errorf("error updating member: %v", err)
+		return fmt.Errorf("error updating member: %w", err)
 	}
 	var rows int64
 	if rows, err = result.RowsAffected(); err != nil {
-		return fmt.Errorf("cannot get affected rows: %v", err)
+		return fmt.Errorf("cannot get affected rows: %w", err)
 	} else if rows != 1 { /* Nothing to update? */
-		return fmt.Errorf("nothing to update: %v", err)
+		return fmt.Errorf("nothing to update: %w", err)
 	}
 	return nil
 }
@@ -734,14 +751,12 @@ func (d *Database) AddTag(entityID []byte, tagName string) (int32, error) {
 				RETURNING id`
 	result, err := d.db.NamedQuery(insert, tag)
 	if err != nil || !result.Next() {
-		log.Errorf("error inserting tag: (%v)", err)
-		return 0, fmt.Errorf("error inserting tag: %v", err)
+		return 0, fmt.Errorf("error inserting tag: %w", err)
 	}
 	var id int32
 	err = result.Scan(&id)
 	if err != nil {
-		log.Errorf("error inserting tag: (%v)", err)
-		return 0, err
+		return 0, fmt.Errorf("error inserting tag: %w", err)
 	}
 	return id, nil
 
@@ -757,7 +772,6 @@ func (d *Database) ListTags(entityID []byte) ([]types.Tag, error) {
 					WHERE entity_id=$1`
 	var tags []types.Tag
 	if err := d.db.Select(&tags, selectQuery, entityID); err != nil {
-		log.Errorf("error retrieving tags for %x", entityID)
 		return nil, err
 	}
 	return tags, nil
@@ -773,18 +787,15 @@ func (d *Database) DeleteTag(entityID []byte, tagID int32) error {
 	_, err := d.Tag(entityID, tagID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Debugf("removing not existing tag %d for entity %x", tagID, entityID)
-			return err
+			return fmt.Errorf("removing not existing tag %d for entity %x", tagID, entityID)
 		}
-		log.Errorf("DeleteTag: error retrieving tag %d for %x : (%v)", tagID, entityID, err)
-		return err
+		return fmt.Errorf("DeleteTag: error retrieving tag %d for %x : (%v)", tagID, entityID, err)
 	}
 
 	// Delete tag from members
 	tx, err := d.db.Beginx()
 	if err != nil {
-		log.Errorf("DeleteTag: cannot initialize postgres transaction: %v", err)
-		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
+		return fmt.Errorf("cannot initialize postgres transaction: %w", err)
 	}
 	queryData := struct {
 		EntityID []byte `db:"entity_id"`
@@ -801,13 +812,11 @@ func (d *Database) DeleteTag(entityID []byte, tagID int32) error {
 
 	result, err := tx.NamedExec(update, queryData)
 	if err != nil {
-		log.Errorf("DeleteTag: error adding  tag %d  to members of %x: (%v)", tagID, entityID, err)
-		return err
+		return fmt.Errorf("DeleteTag: error adding  tag %d  to members of %x: (%v)", tagID, entityID, err)
 	}
 
 	if rows, err := result.RowsAffected(); err != nil {
-		log.Errorf("DeleteTag: cannot get affected rows: %v", err)
-		return fmt.Errorf("cannot get affected rows: %v", err)
+		return fmt.Errorf("cannot get affected rows: %w", err)
 	} else { // Nothing to update?
 		log.Debugf("DeleteTag: removed tag from %d members", rows)
 	}
@@ -816,21 +825,17 @@ func (d *Database) DeleteTag(entityID []byte, tagID int32) error {
 	deleteQuery := `DELETE FROM tags WHERE id = $1 and entity_id =$2`
 	result, err = tx.Exec(deleteQuery, tagID, entityID)
 	if err != nil {
-		log.Errorf("DeleteTag: error deleting tags for entity %x: %v", entityID, err)
-		return err
+		return fmt.Errorf("DeleteTag: error deleting tags for entity %x: %w", entityID, err)
 	}
 
 	if _, err := result.RowsAffected(); err != nil {
-		log.Errorf("DeleteTag: error deleting tag %d for %x : %v", tagID, entityID, err)
-		return err
+		return fmt.Errorf("DeleteTag: error deleting tag %d for %x : %w", tagID, entityID, err)
 	}
 	if err = tx.Commit(); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			log.Errorf("DeleteTag: something is very wrong: error rolling back on deleting tag: %v\nafter final commit to DB: %v", rollErr, err)
-			return fmt.Errorf("something is very wrong: error rolling back on deleting tag: %v\nafter final commit to DB: %v", rollErr, err)
+			return fmt.Errorf("something is very wrong: error rolling back on deleting tag: %v after final commit to DB: %w", rollErr, err)
 		}
-		log.Errorf("DeleteTag: error commiting delete transactions to the DB: %v", err)
-		return fmt.Errorf("error commiting delete transactions to the DB: %v", err)
+		return fmt.Errorf("error commiting delete transactions to the DB: %w", err)
 	}
 	return nil
 }
@@ -845,7 +850,6 @@ func (d *Database) Tag(entityID []byte, tagID int32) (*types.Tag, error) {
 					WHERE entity_id=$1 AND id=$2`
 	var tag types.Tag
 	if err := d.db.Get(&tag, selectQuery, entityID, tagID); err != nil {
-		log.Errorf("error retrieving tag %d for entity %x : (%v)", tagID, entityID, err)
 		return nil, err
 	}
 	return &tag, nil
@@ -861,7 +865,6 @@ func (d *Database) TagByName(entityID []byte, tagName string) (*types.Tag, error
 					WHERE entity_id=$1 AND name=$2`
 	var tag types.Tag
 	if err := d.db.Get(&tag, selectQuery, entityID, tagName); err != nil {
-		log.Errorf("error retrieving tag %s for entity %x : (%v)", tagName, entityID, err)
 		return nil, err
 	}
 	return &tag, nil
@@ -882,11 +885,9 @@ func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID i
 	_, err := d.Tag(entityID, tagID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Debug("AddTagToMembers: trying to add not existing tag %d for entity %x", tagID, entityID)
-			return updated, invalidTokens, fmt.Errorf("tag does not exist")
+			return updated, invalidTokens, fmt.Errorf("trying to add not existing tag %d for entity %x", tagID, entityID)
 		}
-		log.Errorf("AddTagsToMembers: error retrieving tag %d for %x : (%v)", tagID, entityID, err)
-		return updated, invalidTokens, err
+		return updated, invalidTokens, fmt.Errorf("error retrieving tag %d for %x : (%v)", tagID, entityID, err)
 	}
 	type TagData struct {
 		MemberID string `db:"member_id"`
@@ -913,8 +914,7 @@ func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID i
 
 	result, err := d.db.NamedQuery(update, idTagsList)
 	if err != nil {
-		log.Errorf("AddTagToMembers: error adding  tag %d  to members of %x: (%v)", tagID, entityID, err)
-		return updated, invalidTokens, err
+		return updated, invalidTokens, fmt.Errorf("error adding  tag %d  to members of %x: (%v)", tagID, entityID, err)
 	}
 	var id uuid.UUID
 	invalidTokensMap := make(map[uuid.UUID]bool)
@@ -923,8 +923,7 @@ func (d *Database) AddTagToMembers(entityID []byte, members []uuid.UUID, tagID i
 	}
 	for result.Next() {
 		if err := result.Scan(&id); err != nil {
-			log.Errorf("AddTagToMembers: error parsing query result: %v", err)
-			return updated, invalidTokens, fmt.Errorf("error parsing query result: %v", err)
+			return updated, invalidTokens, fmt.Errorf("error parsing query result: %w", err)
 		}
 		updated++
 
@@ -952,11 +951,9 @@ func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, ta
 	tag, err := d.Tag(entityID, tagID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Debugf("RemoveTagFromMembers: non-existing tag %d for entity %x", tagID, entityID)
-			return updated, invalidTokens, err
+			return updated, invalidTokens, fmt.Errorf("non-existing tag %d for entity %x", tagID, entityID)
 		}
-		log.Errorf("RemoveTagFromMembers: error retrieving tag %d for %x : (%v)", tagID, entityID, err)
-		return updated, invalidTokens, err
+		return updated, invalidTokens, fmt.Errorf("RemoveTagFromMembers: error retrieving tag %d for %x : (%v)", tagID, entityID, err)
 	}
 	type TagData struct {
 		MemberID string `db:"member_id"`
@@ -983,8 +980,7 @@ func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, ta
 
 	result, err := d.db.NamedQuery(update, idTagsMap)
 	if err != nil {
-		log.Errorf("error removing  tag %d  to members of %x: (%v)", tagID, entityID, err)
-		return updated, invalidTokens, err
+		return updated, invalidTokens, fmt.Errorf("error removing  tag %d  to members of %x: (%v)", tagID, entityID, err)
 	}
 
 	var id uuid.UUID
@@ -994,8 +990,7 @@ func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, ta
 	}
 	for result.Next() {
 		if err := result.Scan(&id); err != nil {
-			log.Errorf("RemoveTagFromMembers: error parsing query result: %v", err)
-			return updated, invalidTokens, fmt.Errorf("error parsing query result: %v", err)
+			return updated, invalidTokens, fmt.Errorf("error parsing query result: %w", err)
 		}
 		updated++
 
@@ -1020,7 +1015,7 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 	member := &types.Member{ID: *token, EntityID: entityID, PubKey: pubKey}
 	tx, err = d.db.Beginx()
 	if err != nil {
-		return fmt.Errorf("cannot initialize postgres transaction: %v", err)
+		return fmt.Errorf("cannot initialize postgres transaction: %w", err)
 	}
 	if len(pubKey) != ethereum.PubKeyLength/2 && len(pubKey) != ethereum.PubKeyLengthUncompressed/2 {
 		return fmt.Errorf("invalid public key size")
@@ -1042,20 +1037,20 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 		result, err := tx.NamedExec(insert, user)
 		if err != nil {
 			if rollErr := tx.Rollback(); err != nil {
-				return fmt.Errorf("error rolling back user creation for member: %v\nafter error: %v", rollErr, err)
+				return fmt.Errorf("error rolling back user creation for member: %v after error: %w", rollErr, err)
 			}
-			return fmt.Errorf("error creating user for member: %v", err)
+			return fmt.Errorf("error creating user for member: %w", err)
 		}
 		if rows, err := result.RowsAffected(); err != nil || rows != 1 {
-			return fmt.Errorf("error creating user for member: %v", err)
+			return fmt.Errorf("error creating user for member: %w", err)
 		}
 	} else if err != nil {
-		return fmt.Errorf("error retrieving members corresponding user: %v", err)
+		return fmt.Errorf("error retrieving members corresponding user: %w", err)
 	}
 
 	pgmember, err := ToPGMember(member)
 	if err != nil {
-		return fmt.Errorf("cannot convert member data types to postgres types: %v", err)
+		return fmt.Errorf("cannot convert member data types to postgres types: %w", err)
 	}
 	update := `UPDATE members SET
 				public_key = :public_key,
@@ -1065,26 +1060,26 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 	var result sql.Result
 	if result, err = tx.NamedExec(update, pgmember); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			return fmt.Errorf("error rolling back member and user creation: %v\nafter error: %v", rollErr, err)
+			return fmt.Errorf("error rolling back member and user creation: %v after error: %w", rollErr, err)
 		}
-		return fmt.Errorf("error adding member to the DB: %v", err)
+		return fmt.Errorf("error adding member to the DB: %w", err)
 	}
 	if rows, err := result.RowsAffected(); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			return fmt.Errorf("error rolling back member and user creation: %v\nafter not being able to get affected rows: %v", rollErr, err)
+			return fmt.Errorf("error rolling back member and user creation: %v after not being able to get affected rows: %w", rollErr, err)
 		}
-		return fmt.Errorf("cannot get affected rows: %v", err)
+		return fmt.Errorf("cannot get affected rows: %w", err)
 	} else if rows != 1 { /* Nothing to update? */
 		if rollErr := tx.Rollback(); err != nil {
-			return fmt.Errorf("error rolling back member and user creation: %v\nafter expecting 1 row update but found %d: %v", rollErr, rows, err)
+			return fmt.Errorf("error rolling back member and user creation: %v after expecting 1 row update but found %d: %w", rollErr, rows, err)
 		}
 		return fmt.Errorf("expected 1 row affected after adding member, but found %d, posible violation of db constraints", rows)
 	}
 	if err = tx.Commit(); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			return fmt.Errorf("error rolling back member and user creation: %v\nafter final commit to DB: %v", rollErr, err)
+			return fmt.Errorf("error rolling back member and user creation: %v after final commit to DB: %w", rollErr, err)
 		}
-		return fmt.Errorf("error commiting add member transactions to the DB: %v", err)
+		return fmt.Errorf("error commiting add member transactions to the DB: %w", err)
 	}
 	return nil
 }
@@ -1123,7 +1118,7 @@ func (d *Database) MemberByEmail(entityID []byte, email string) (*types.Member, 
 		return nil, fmt.Errorf("duplicate email")
 	}
 	member := ToMember(&pgMembers[0])
-	log.Debugf("MEMBER: %v", member)
+	log.Debugf("MEMBER: %w", member)
 	return member, nil
 }
 
@@ -1159,7 +1154,6 @@ func (d *Database) Members(entityID []byte, memberIDs []uuid.UUID) ([]types.Memb
 
 	result, err := d.db.NamedQuery(update, membersList)
 	if err != nil {
-		log.Errorf("error retrieving members of %x: (%v)", entityID, err)
 		return members, invalidTokens, err
 	}
 
@@ -1170,8 +1164,7 @@ func (d *Database) Members(entityID []byte, memberIDs []uuid.UUID) ([]types.Memb
 	}
 	for result.Next() {
 		if err := result.StructScan(&pgmember); err != nil {
-			log.Errorf("Members: error parsing query result: %v", err)
-			return members, invalidTokens, fmt.Errorf("error parsing query result: %v", err)
+			return members, invalidTokens, fmt.Errorf("error parsing query result: %w", err)
 		}
 		members = append(members, *ToMember(&pgmember))
 
@@ -1200,7 +1193,7 @@ func (d *Database) DeleteMember(entityID []byte, memberID *uuid.UUID) error {
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("error deleting member: %v", err)
+		return fmt.Errorf("error deleting member: %w", err)
 	}
 	return nil
 }
@@ -1237,13 +1230,12 @@ func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int, []u
 
 	result, err := d.db.NamedQuery(update, membersList)
 	if err != nil {
-		log.Errorf("error removing members of %x: (%v)", entityID, err)
-		return updated, invalidTokens, err
+		return updated, invalidTokens, fmt.Errorf("error removing members of %x: (%v)", entityID, err)
 	}
 
 	// if err = result.Scan(&invalidTokens); err != nil {
-	// 	log.Errorf("DeleteMembers: cannot parse query result: %v", err)
-	// 	return invalidTokens, fmt.Errorf("cannot parse query result: %v", err)
+	// 	log.Errorf("DeleteMembers: cannot parse query result: %w", err)
+	// 	return invalidTokens, fmt.Errorf("cannot parse query result: %w", err)
 	// }
 
 	var id uuid.UUID
@@ -1253,8 +1245,7 @@ func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int, []u
 	}
 	for result.Next() {
 		if err := result.Scan(&id); err != nil {
-			log.Errorf("DeleteMembers: error parsing query result: %v", err)
-			return updated, invalidTokens, fmt.Errorf("error parsing query result: %v", err)
+			return updated, invalidTokens, fmt.Errorf("error parsing query result: %w", err)
 		}
 		updated++
 
@@ -1415,12 +1406,12 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 	ephemeral := false
 	// Create census_members struct and fill keys where ncessary
 	censusMembers := make([]types.CensusMember, len(members))
+	signKeys := ethereum.NewSignKeys()
 	for i, member := range members {
 		censusMembers[i].CensusID = censusID
 		censusMembers[i].MemberID = member.ID
 		if len(member.PubKey) == 0 || member.PubKey == nil {
 			ephemeral = true
-			signKeys := ethereum.NewSignKeys()
 			if err := signKeys.Generate(); err != nil {
 				log.Fatalf("expandCensusClaims: cound not generate emphemeral identity: (%v)", err)
 				return nil, fmt.Errorf("could not generate emphemeral identity")
@@ -1428,18 +1419,15 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 			pubKey, privKey := signKeys.HexString()
 			pubKey, err = ethereum.DecompressPubKey(pubKey)
 			if err != nil {
-				log.Errorf("expandCensusClaims: cound not decompress emphemeral identity pubKey: (%v)", err)
-				return nil, fmt.Errorf("could not generate emphemeral identity")
+				return nil, fmt.Errorf("cound not decompress emphemeral identity pubKey: (%v)", err)
 			}
 			pubKeyBytes, err := hex.DecodeString(pubKey)
 			if err != nil {
-				log.Errorf("expandCensusClaims: cound not decode to bytes emphemeral identity pubKey: (%v)", err)
-				return nil, fmt.Errorf("could not generate emphemeral identity")
+				return nil, fmt.Errorf("cound not decode to bytes emphemeral identity pubKey: (%v)", err)
 			}
 			privKeyBytes, err := hex.DecodeString(privKey)
 			if err != nil {
-				log.Errorf("expandCensusClaims: cound not decode to bytes emphemeral identity pubKey: (%v)", err)
-				return nil, fmt.Errorf("could not generate emphemeral identity")
+				return nil, fmt.Errorf("cound not decode to bytes emphemeral identity pubKey: (%v)", err)
 			}
 			censusMembers[i].Ephemeral = true
 			censusMembers[i].PubKey = pubKeyBytes
@@ -1452,23 +1440,19 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 	}
 	tx, err := d.db.Beginx()
 	if err != nil {
-		log.Errorf("expandCensusClaims: could not initialize postgres transaction: %v", err)
-		return nil, fmt.Errorf("cannot initialize postgres transaction")
+		return nil, fmt.Errorf("could not initialize postgres transaction: %w", err)
 	}
 	if ephemeral {
 		updateCensus := `UPDATE censuses SET ephemeral = true, size = $1  WHERE id = $2 AND entity_id = $3`
 		result, err := tx.Exec(updateCensus, len(censusMembers), censusID, entityID)
 		if err != nil {
-			log.Errorf("expandCensusClaims: could not update census as ephemeral: %v", err)
-			return nil, fmt.Errorf("could not update census as ephemeral")
+			return nil, fmt.Errorf("could not update census as ephemeral: %w", err)
 		}
 		updatedRows, err := result.RowsAffected()
 		if err != nil {
-			log.Warnf("expandCensusClaims: could not verify updating census as ephemeral: (%v)", err)
-			return nil, fmt.Errorf("could not verify updating census as ephemeral")
+			return nil, fmt.Errorf("could not verify updating census as ephemeral: (%v)", err)
 		}
 		if updatedRows != 1 {
-			log.Errorf("expandCensusClaims: could not update census as ephemeral")
 			return nil, fmt.Errorf("could not update census as ephemeral")
 		}
 	}
@@ -1479,36 +1463,29 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 	result, err := tx.NamedExec(insertMembers, censusMembers)
 	if err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			log.Errorf("expandCensusClaims: something is very wrong: error rolling back: %v\nafter error on updating census as ephemeral: %v", rollErr, err)
-			return nil, fmt.Errorf("something is very wrong: error rolling back on updating census as ephemeral")
+			return nil, fmt.Errorf("something is very wrong: error rolling back: %v after error on updating census as ephemeral: %w", rollErr, err)
 		}
-		log.Errorf("expandCensusClaims: could not add census_members to db: (%v)", err)
-		return nil, fmt.Errorf("could not add census_members to db")
+		return nil, fmt.Errorf("could not add census_members to db: (%v)", err)
 	}
 	var addedRows int64
 	if addedRows, err = result.RowsAffected(); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			log.Errorf("expandCensusClaims: something is very wrong: error rolling back: %v\nafter error on counting affected rows: %v", rollErr, err)
-			return nil, fmt.Errorf("something is very wrong: error rolling back after error on counting affected rowsl")
+			return nil, fmt.Errorf("something is very wrong: error rolling back: %v after error on counting affected rows: %w", rollErr, err)
 		}
 		log.Warnf("expandCensusClaims: could not count affected rows: (%v)", err)
 		return nil, fmt.Errorf("could not verify updated rows")
 	}
 	if addedRows != int64(len(censusMembers)) {
 		if rollErr := tx.Rollback(); err != nil {
-			log.Errorf("expandCensusClaims: something is very wrong: error rolling back: %v\nexpected to have inserted %d census_members but inserted %d", rollErr, addedRows, len(censusMembers))
-			return nil, fmt.Errorf("something is very wrong: error rolling back after error on counting affected rows")
+			return nil, fmt.Errorf("something is very wrong: error rolling back: %v expected to have inserted %d census_members but inserted %d", rollErr, addedRows, len(censusMembers))
 		}
-		log.Errorf("expandCensusClaims: expected to have inserted %d census_members but inserted %d", addedRows, len(censusMembers))
-		return nil, fmt.Errorf("could not verify updated rows")
+		return nil, fmt.Errorf("expected to have inserted %d census_members but inserted %d", addedRows, len(censusMembers))
 	}
 	if err = tx.Commit(); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
-			log.Errorf("expandCensusClaims: something is very wrong: error rolling back: %v\nafter final commit to DB: %v", rollErr, err)
-			return nil, fmt.Errorf("something is very wrong: error rolling back after final commit to DB")
+			return nil, fmt.Errorf("something is very wrong: error rolling back: %v after final commit to DB: %w", rollErr, err)
 		}
-		log.Errorf("expandCensusClaims: error commiting transactions to the DB: %v", err)
-		return nil, fmt.Errorf("error commiting transactions to the DB: %v", err)
+		return nil, fmt.Errorf("error commiting transactions to the DB: %w", err)
 	}
 	return censusMembers, nil
 }
@@ -1527,8 +1504,7 @@ func (d *Database) ListEphemeralMemberInfo(entityID, censusID []byte) ([]types.E
 					WHERE c.census_id = $1 AND c.ephemeral = true`
 	var info []types.EphemeralMemberInfo
 	if err := d.db.Select(&info, selectQuery, census.ID); err != nil {
-		log.Errorf("listEphemeralMemberInfo: could not retrieve census members info: (%v)", err)
-		return nil, fmt.Errorf("could not retrieve census members info")
+		return nil, fmt.Errorf("could not retrieve census members info: (%v)", err)
 	}
 	return info, nil
 }
@@ -1538,17 +1514,14 @@ func (d *Database) EphemeralMemberInfoByEmail(entityID, censusID []byte, email s
 	// TODO Find how to optimize query (searching by member Id that is first on the index?)
 	census, err := d.Census(entityID, censusID)
 	if err != nil {
-		log.Warnf("ephemeralMemberInfoByEmail: cound not retrieve census: (%v)", err)
-		return nil, fmt.Errorf("could not retrieve census")
+		return nil, fmt.Errorf("cound not retrieve census: %w", err)
 	}
 	member, err := d.MemberByEmail(entityID, email)
 	if err != nil {
-		log.Warnf("ephemeralMemberInfoByEmail: cound not retrieve member by email: (%v)", err)
-		return nil, fmt.Errorf("could not retrieve member")
+		return nil, fmt.Errorf("cound not retrieve member by email: %w", err)
 	}
 	if member.PubKey != nil && len(member.PubKey) > 0 {
-		log.Warnf("ephemeralMemberInfoByEmail: member not ephmeral: %d \n%v", len(member.PubKey), member.PubKey)
-		return nil, fmt.Errorf("member not ephmeral")
+		return nil, fmt.Errorf("member not ephmeral: %d %x", len(member.PubKey), member.PubKey)
 	}
 
 	selectQuery := `SELECT * FROM census_members
@@ -1556,8 +1529,7 @@ func (d *Database) EphemeralMemberInfoByEmail(entityID, censusID []byte, email s
 	var censusMember types.CensusMember
 	// var info types.EphemeralMemberInfo
 	if err := d.db.Get(&censusMember, selectQuery, census.ID); err != nil {
-		log.Errorf("ephemeralMemberInfoByEmail: could not retrieve census members info: (%v)", err)
-		return nil, fmt.Errorf("could not retrieve census members info")
+		return nil, fmt.Errorf("could not retrieve census members info: %w", err)
 	}
 	info := types.EphemeralMemberInfo{
 		ID:             member.ID,
@@ -1709,7 +1681,7 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID *uuid.UUID, inf
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("failed to add census: %v", err)
+		return fmt.Errorf("failed to add census: %w", err)
 	}
 	return nil
 }
@@ -1724,7 +1696,7 @@ func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uui
 	// TODO Enable upon implementing targets (also enalbe manager_test targets)
 	// members, err := d.TargetMembers(entityID, targetID)
 	// if err != nil {
-	// 	return 0, fmt.Errorf("failed to recover target members: %v", err)
+	// 	return 0, fmt.Errorf("failed to recover target members: %w", err)
 	// }
 	// if len(members) == 0 {
 	// 	return 0, fmt.Errorf("target contains 0 members")
@@ -1746,17 +1718,17 @@ func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uui
 	census.UpdatedAt = time.Now()
 	tx, err := d.db.Beginx()
 	if err != nil {
-		return 0, fmt.Errorf("cannot initialize postgres transaction: %v", err)
+		return 0, fmt.Errorf("cannot initialize postgres transaction: %w", err)
 	}
 	insertCensus := `INSERT  INTO censuses
 					(id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri, created_at, updated_at)
 					VALUES (:id, :entity_id, :target_id, :name, :size, :merkle_root, :merkle_tree_uri, :created_at, :updated_at)`
 	result, err := tx.NamedExec(insertCensus, census)
 	if err != nil {
-		return 0, fmt.Errorf("cannot add census: %v", err)
+		return 0, fmt.Errorf("cannot add census: %w", err)
 	}
 	if rows, err := result.RowsAffected(); err != nil || rows != 1 {
-		return 0, fmt.Errorf("cannot add census: %v", err)
+		return 0, fmt.Errorf("cannot add census: %w", err)
 	}
 
 	censusMembers := make([]types.CensusMember, len(members))
@@ -1769,49 +1741,43 @@ func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uui
 				  VALUES (:census_id, :member_id)`
 	result, err = tx.NamedExec(insertMembers, censusMembers)
 	if err != nil {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return 0, fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return 0, fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
-		return 0, fmt.Errorf("rolled back due to error inserting census members: %v", err)
+		return 0, fmt.Errorf("rolled back due to error inserting census members: %w", err)
 	}
 	var addedRows int64
 	if addedRows, err = result.RowsAffected(); err != nil {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return 0, fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return 0, fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
-		return 0, fmt.Errorf("rolled back error retriveing census members added count: %v", err)
+		return 0, fmt.Errorf("rolled back error retriveing census members added count: %w", err)
 	}
 	if addedRows != int64(len(censusMembers)) {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return 0, fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return 0, fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
 		return 0, fmt.Errorf("rolled back because failed to add census members, expected to add %d members but added %d", len(censusMembers), addedRows)
 	}
 	updateCensus := `UPDATE censuses SET size = $1, updated_at = now() WHERE id = $2`
 	result, err = tx.Exec(updateCensus, addedRows, censusID)
 	if err != nil {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return 0, fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return 0, fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
-		return 0, fmt.Errorf("rolled back due to error updating census size: %v", err)
+		return 0, fmt.Errorf("rolled back due to error updating census size: %w", err)
 	}
 	if updated, err := result.RowsAffected(); err != nil || updated != 1 {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return 0, fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return 0, fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
-		return 0, fmt.Errorf("rolled back due to error updating census size: %v", err)
+		return 0, fmt.Errorf("rolled back due to error updating census size: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
-		rollbackErr := tx.Rollback()
-		if rollbackErr != nil {
-			return 0, fmt.Errorf("cannot perform db rollback %v\n after error %v", rollbackErr, err)
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return 0, fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
 		}
-		return 0, fmt.Errorf("rolled back because could not commit addCensus and addCensusMembers: %v", err)
+		return 0, fmt.Errorf("rolled back because could not commit addCensus and addCensusMembers: %w", err)
 	}
 	return addedRows, nil
 }
@@ -1839,13 +1805,13 @@ func (d *Database) UpdateCensus(entityID, censusID []byte, info *types.CensusInf
 				WHERE id = :id AND entity_id = :entity_id`
 	var result sql.Result
 	if result, err = d.db.NamedExec(update, census); err != nil {
-		return fmt.Errorf("error updating census: %v", err)
+		return fmt.Errorf("error updating census: %w", err)
 	}
 	var rows int64
 	if rows, err = result.RowsAffected(); err != nil {
-		return fmt.Errorf("cannot get affected rows: %v", err)
+		return fmt.Errorf("cannot get affected rows: %w", err)
 	} else if rows != 1 { /* Nothing to update? */
-		return fmt.Errorf("nothing to update: %v", err)
+		return fmt.Errorf("nothing to update: %w", err)
 	}
 	return nil
 }
@@ -1930,13 +1896,13 @@ func (d *Database) DeleteCensus(entityID []byte, censusID []byte) error {
 	deleteQuery := `DELETE FROM censuses WHERE id = $1 and entity_id =$2`
 	result, err := d.db.Exec(deleteQuery, censusID, entityID)
 	if err != nil {
-		return fmt.Errorf("error deleting census: %v", err)
+		return fmt.Errorf("error deleting census: %w", err)
 	}
 	if err == nil {
 		if rows, err := result.RowsAffected(); rows != 1 {
 			return fmt.Errorf("nothing to delete")
 		} else if err != nil {
-			return fmt.Errorf("error verifying deleted census: %v", err)
+			return fmt.Errorf("error verifying deleted census: %w", err)
 		}
 	}
 
@@ -1951,7 +1917,7 @@ func (d *Database) Ping() error {
 func (d *Database) Migrate(dir migrate.MigrationDirection) (int, error) {
 	n, err := migrate.ExecMax(d.db.DB, "postgres", Migrations, dir, 1)
 	if err != nil {
-		return 0, fmt.Errorf("failed migration: %v", err)
+		return 0, fmt.Errorf("failed migration: %w", err)
 	}
 	return n, nil
 }
@@ -1961,15 +1927,15 @@ func (d *Database) Migrate(dir migrate.MigrationDirection) (int, error) {
 func (d *Database) MigrateStatus() (int, int, string, error) {
 	total, err := Migrations.FindMigrations()
 	if err != nil {
-		return 0, 0, "", fmt.Errorf("cannot retrieve total migrations status: %v", err)
+		return 0, 0, "", fmt.Errorf("cannot retrieve total migrations status: %w", err)
 	}
 	record, err := migrate.GetMigrationRecords(d.db.DB, "postgres")
 	if err != nil {
-		return len(total), 0, "", fmt.Errorf("cannot  retrieve applied migrations status: %v", err)
+		return len(total), 0, "", fmt.Errorf("cannot  retrieve applied migrations status: %w", err)
 	}
 	recordB, err := json.Marshal(record)
 	if err != nil {
-		return len(total), len(record), "", fmt.Errorf("failed to parse migration status: %v", err)
+		return len(total), len(record), "", fmt.Errorf("failed to parse migration status: %w", err)
 	}
 	return len(total), len(record), string(recordB), nil
 }
@@ -1979,7 +1945,7 @@ func (d *Database) MigrateStatus() (int, int, string, error) {
 func (d *Database) MigrationUpSync() (int, error) {
 	n, err := migrate.ExecMax(d.db.DB, "postgres", Migrations, migrate.Up, 0)
 	if err != nil {
-		return 0, fmt.Errorf("cannot  perform missing migrations: %v", err)
+		return 0, fmt.Errorf("cannot  perform missing migrations: %w", err)
 	}
 	return n, nil
 }

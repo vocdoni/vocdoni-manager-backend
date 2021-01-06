@@ -11,6 +11,7 @@ There is a common known secret between the entity and the vocdoni backend. This 
 `authHash: hexadecimal(keccak256(field1+field2+fieldN+secret))`
 
 The fields are concatenated strings. One of the fields must be a 32 bits `timestamp` (seconds).
+If a field is an array, then all the elements of the array should be included as strings in the secret.
 
 When computing the authHash the order of the fields is alphabetical using the field name, except from the last word that is is always the secret. This order in not obligatorily applied in the request body, just for the authHash calculation.
 
@@ -31,7 +32,24 @@ The timestamp window tolerance is 3 seconds. If the request is processed outside
 
 secret = "hello"
 
-`authHash = keccack256("0x123456"+"revoke"+"1234567890"+"xxx-yyy-zzz"+"hello")`
+`authHash = keccack256("0x123456789"+"revoke"+"1234567890"+"xxx-yyy-zzz"+"hello")`
+
+### Error
+
++ `response.ok` A bool indicating if the request failed
++ `response.request` The value given in the request `id` field
++ `response.message` Explanation of what went wrong
+
+```json
+{
+  "id": "req-12345678",                 // ID of the originating request
+  "response": {
+	"ok": false,                        // false if error found
+    "request": "req-12345678",          // Request ID here as well
+    "message": "Unknown method"         // What went wrong
+  }
+}
+```
 
 ## Methods
 
@@ -119,6 +137,33 @@ secret = "hello"
 }
 ```
 
+### import users by public keys
+Populate the entity members/users importing based on **non-digested** public keys
+- Request
+```json
+{
+    "id": "req-12345678",
+    "request": {
+        "method": "importKeysBulk",
+        "entityId": "0x12345",
+        "keys": ["590289d82938","850c7ea5a360e599dbbd"],
+        "timestamp": 1234567890,
+        "authHash": "0x123456789"
+    },
+    "signature": "0x12345"
+}
+```
+- Response
+```json
+{
+    "id": "req-12345678", // ID of the originating request
+    "response": {
+        "ok": true,
+    },
+    "signature": "0x123456"
+}
+```
+
 ### Full example 
 
 A full working example with secret=`test`.
@@ -152,45 +197,91 @@ A full working example with secret=`test`.
 Dependencies (tested versions): [ethers@4.0.47](https://docs.ethers.io/v5/api/utils/hashing/#utils-keccak256), [ws@7.3.1](https://github.com/websockets/ws)
 
 ```js
-const WebSocket = require('ws')
-const keccak256 = require("ethers").utils.keccak256
-const toUtf8Bytes = require("ethers").utils.toUtf8Bytes
+const axios = require("axios")
+const utils = require("ethers").utils
+const createWallet  = require("ethers").Wallet.createRandom
 
-const ws = new WebSocket('ws://localhost:8000/api/token')
+// Basic parameters
+const url = "http://localhost:9000"
+const entityId = "bda15be769a73fd2fc556f3c194c812dd321b056cb089cb83cede5edde6d16d8"
 
 const generateAuthHash = (fields, secret) => {
   str = fields.reduce((x,y) => String(x)+String(y)) + secret
-  return keccak256(toUtf8Bytes(str))  
+  return utils.keccak256(utils.toUtf8Bytes(str))  
 }
 
-ws.on('message', function incoming(message) {
-    console.log('received: %s', message);
-    ws.close()
-});
+// Example 1
+// Send a token status request
+const statusRequest = () => {
+    var secret = "test"
+    // Generate request
+    var request = {
+        method: "status",
+        entityId,
+        token: "69cdfe74-8f1f-45fa-9074-c82d5aade894",
+    }
+    // adjust timestamp precision to the server
+    request.timestamp = Math.floor(Date.now() / 1000)
+    request.authHash = generateAuthHash(new Array(request.entityId, request.method, request.timestamp, request.token), secret)  
 
-ws.on('open', function open() {
-  var secret = "test"
-  // Generate request
-  var request = {}
-  request.method= "status"
-  // adjust timestamp precision to the server
-  request.timestamp = Math.floor(Date.now() / 1000)
-  request.authHash = generateAuthHash(new Array(request.entityId, request.method, request.timestamp, request.token), secret)  
+    // Generate random request id
+    var rand = Math.random().toString(16).split('.')[1]
+    var requestId = utils.keccak256('0x' + rand).substr(2, 10)
+    var body = {
+        "id": requestId,
+        "request": request
+    }
+    console.log("REQUEST\n",body)
+    return axios.post(`${url}/api/token`, body)
+}
 
-  // Generate random request id
-  var rand = Math.random().toString(16).split('.')[1]
-  var requestId = keccak256('0x' + rand).substr(2, 10)
-  var msg = {
-  "id": requestId,
-  "request": request
-  }
-  console.log(msg)
-  ws.send(JSON.stringify(msg));
+statusRequest()
+    .then(res => {
+        response = res.data.response
+        if (response.ok) console.log("RESPONSE\n",JSON.stringify(response,null,2))
+        else  console.error("ERROR\n",JSON.stringify(response.message,null,2))
+    })
+    .catch(err => console.error("ERROR\n",JSON.stringify(err,null,2)))
 
-ws.on('error', function error(err) {
-  console.error(err)
-  })
-});
+
+// Example 2
+// Send an importKeysBulk request
+const importKeysRequest = () => {
+    const createKeys = (size) => {
+        var keys = Array.from({length: size}, () => createWallet().signingKey.publicKey)
+        return keys
+    }
+
+    const secret = "test"
+    // For number of keys higher than 10000 the socket timeout may need to be adjusted 
+    const keys = createKeys(100)
+    // Generate request
+    var request = {
+        method: "importKeysBulk",
+        entityId,
+        keys,
+    }
+    // adjust timestamp precision to the server
+    request.timestamp = Math.floor(Date.now() / 1000)
+    request.authHash = generateAuthHash(keys.concat(request.entityId, request.method, request.timestamp), secret)  
+    // Generate random request id
+    var rand = Math.random().toString(16).split('.')[1]
+    var requestId = utils.keccak256('0x' + rand).substr(2, 10)
+    var body = {
+        "id": requestId,
+        "request": request
+    }
+    console.log("REQUEST\n",body)
+    return axios.post(`${url}/api/token`, body)
+}
+
+importKeysRequest()
+    .then(res => {
+        response = res.data.response
+        if (response.ok) console.log("RESPONSE\n",JSON.stringify(response,null,2))
+        else  console.error("ERROR\n",JSON.stringify(response.message,null,2))
+    })
+    .catch(err => console.error("ERROR\n",JSON.stringify(err,null,2)))
 ```
 
 ### Callback
