@@ -1,6 +1,7 @@
 package testmanager
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -162,11 +163,11 @@ func TestUpdateEntity(t *testing.T) {
 	}
 
 	// should not update data that are not allowed to be updated
-	testURL := "test"
+	address := util.RandomBytes(10)
 	req.Entity = &types.EntityInfo{
-		Name:        "New",
-		Email:       "New",
-		CallbackURL: testURL,
+		Name:    "New",
+		Email:   "New",
+		Address: address,
 	}
 	resp = wsc.Request(req, signers[0])
 	if !resp.Ok {
@@ -177,7 +178,7 @@ func TestUpdateEntity(t *testing.T) {
 	if err != nil {
 		t.Fatal("error retrieving entity after signUp")
 	}
-	if entity.CallbackURL == testURL {
+	if bytes.Equal(entity.Address, address) {
 		t.Fatalf("entity data were updated while they should not")
 	}
 

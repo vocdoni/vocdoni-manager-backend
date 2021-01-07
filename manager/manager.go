@@ -274,6 +274,13 @@ func (m *Manager) updateEntity(request router.RouterRequest) {
 		Name:  request.Entity.Name,
 		Email: request.Entity.Email,
 	}
+	if len(request.Entity.CallbackURL) > 0 {
+		entityInfo.CallbackURL = request.Entity.CallbackURL
+	}
+	if len(request.Entity.CallbackSecret) > 0 {
+		entityInfo.CallbackSecret = request.Entity.CallbackSecret
+	}
+
 	// Add Entity
 	if err = m.db.UpdateEntity(entityID, entityInfo); err != nil {
 		log.Errorf("cannot update entity %x to the DB: (%v)", entityID, err)
