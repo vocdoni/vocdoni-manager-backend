@@ -163,7 +163,11 @@ func TestUpdateEntity(t *testing.T) {
 	}
 
 	// should not update data that are not allowed to be updated
-	address := util.RandomBytes(10)
+	addressStr := util.RandomHex(10)
+	address, err := hex.DecodeString(addressStr)
+	if err != nil {
+		t.Fatal("error decoding string to bytes")
+	}
 	req.Entity = &types.EntityInfo{
 		Name:    "New",
 		Email:   "New",
