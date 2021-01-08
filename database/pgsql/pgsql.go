@@ -204,8 +204,8 @@ func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
 	update := `UPDATE entities SET
 				address = COALESCE(NULLIF(:address, decode('','hex')), address),
 				name = COALESCE(NULLIF(:name, ''), name),
-				callback_url = COALESCE(NULLIF(:callback_url, ''), callback_url),
-				callback_secret = COALESCE(NULLIF(:callback_secret, ''), callback_secret),
+				callback_url = :callback_url,
+				callback_secret = :callback_secret,
 				email = COALESCE(NULLIF(:email, ''), email),
 				updated_at = now()
 				WHERE (id = :id )

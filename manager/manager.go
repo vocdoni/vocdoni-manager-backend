@@ -273,6 +273,9 @@ func (m *Manager) updateEntity(request router.RouterRequest) {
 	entityInfo := &types.EntityInfo{
 		Name:  request.Entity.Name,
 		Email: request.Entity.Email,
+		// Initialize values to accept empty spaces from the UI
+		CallbackURL:    "",
+		CallbackSecret: "",
 	}
 	if len(request.Entity.CallbackURL) > 0 {
 		entityInfo.CallbackURL = request.Entity.CallbackURL
