@@ -19,7 +19,7 @@ import (
 )
 
 // AuthWindowSeconds is the time window (in seconds) that the tokenapi Auth tolerates
-const AuthWindowSeconds = 5
+const AuthWindowSeconds = 300
 
 // TokenAPI is a handler for external token managmement
 type TokenAPI struct {
