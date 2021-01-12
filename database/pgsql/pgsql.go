@@ -1460,27 +1460,30 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 	// update census members
 	insertMembers := `INSERT INTO census_members (census_id, member_id, ephemeral, public_key, digested_public_key, private_key)
 				  VALUES (:census_id, :member_id, :ephemeral, :public_key, :digested_public_key, :private_key)`
-	result, err := tx.NamedExec(insertMembers, censusMembers)
-	if err != nil {
-		if rollErr := tx.Rollback(); err != nil {
-			return nil, fmt.Errorf("something is very wrong: error rolling back: %v after error on updating census as ephemeral: %w", rollErr, err)
-		}
-		return nil, fmt.Errorf("could not add census_members to db: (%v)", err)
+	if err := bulkInsert(tx, insertMembers, censusMembers); err != nil {
+		return nil, fmt.Errorf("error during bulk insert: %w", err)
 	}
-	var addedRows int64
-	if addedRows, err = result.RowsAffected(); err != nil {
-		if rollErr := tx.Rollback(); err != nil {
-			return nil, fmt.Errorf("something is very wrong: error rolling back: %v after error on counting affected rows: %w", rollErr, err)
-		}
-		log.Warnf("expandCensusClaims: could not count affected rows: (%v)", err)
-		return nil, fmt.Errorf("could not verify updated rows")
-	}
-	if addedRows != int64(len(censusMembers)) {
-		if rollErr := tx.Rollback(); err != nil {
-			return nil, fmt.Errorf("something is very wrong: error rolling back: %v expected to have inserted %d census_members but inserted %d", rollErr, addedRows, len(censusMembers))
-		}
-		return nil, fmt.Errorf("expected to have inserted %d census_members but inserted %d", addedRows, len(censusMembers))
-	}
+	// result, err := tx.NamedExec(insertMembers, censusMembers)
+	// if err != nil {
+	// 	if rollErr := tx.Rollback(); err != nil {
+	// 		return nil, fmt.Errorf("something is very wrong: error rolling back: %v after error on updating census as ephemeral: %w", rollErr, err)
+	// 	}
+	// 	return nil, fmt.Errorf("could not add census_members to db: (%v)", err)
+	// }
+	// var addedRows int64
+	// if addedRows, err = result.RowsAffected(); err != nil {
+	// 	if rollErr := tx.Rollback(); err != nil {
+	// 		return nil, fmt.Errorf("something is very wrong: error rolling back: %v after error on counting affected rows: %w", rollErr, err)
+	// 	}
+	// 	log.Warnf("expandCensusClaims: could not count affected rows: (%v)", err)
+	// 	return nil, fmt.Errorf("could not verify updated rows")
+	// }
+	// if addedRows != int64(len(censusMembers)) {
+	// 	if rollErr := tx.Rollback(); err != nil {
+	// 		return nil, fmt.Errorf("something is very wrong: error rolling back: %v expected to have inserted %d census_members but inserted %d", rollErr, addedRows, len(censusMembers))
+	// 	}
+	// 	return nil, fmt.Errorf("expected to have inserted %d census_members but inserted %d", addedRows, len(censusMembers))
+	// }
 	if err = tx.Commit(); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
 			return nil, fmt.Errorf("something is very wrong: error rolling back: %v after final commit to DB: %w", rollErr, err)
@@ -1906,6 +1909,46 @@ func (d *Database) DeleteCensus(entityID []byte, censusID []byte) error {
 		}
 	}
 
+	return nil
+}
+
+func bulkInsert(tx *sqlx.Tx, bulkQuery string, bulkStruct []types.CensusMember) error {
+	// The number of placeholders allowed in a query is capped at 2^16, therefore,
+	// divide 2^16 by the number of fields in the struct, and that is the max
+	// number of bulk inserts possible. Use that number to chunk the inserts.
+	v := reflect.ValueOf(bulkStruct[0])
+	maxBulkInsert := ((1 << 16) / v.NumField()) - 1
+
+	// send batch requests
+	for i := 0; i < len(bulkStruct); i += maxBulkInsert {
+		// set limit to i + chunk size or to max
+		limit := i + maxBulkInsert
+		if len(bulkStruct) < limit {
+			limit = len(bulkStruct)
+		}
+		batch := bulkStruct[i:limit]
+		result, err := tx.NamedExec(bulkQuery, batch)
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				return fmt.Errorf("something is very wrong: could not rollback performing batch insert %s %w", bulkQuery, rollbackErr)
+			}
+			return fmt.Errorf("error during batch insert %s %w", bulkQuery, err)
+		}
+		addedRows, err := result.RowsAffected()
+		if err != nil {
+			if rollErr := tx.Rollback(); err != nil {
+				return fmt.Errorf("something is very wrong: could not rollback performing batch insert: %v after error on counting affected rows: %w", rollErr, err)
+			}
+			return fmt.Errorf("could not verify updated rows: %w", err)
+		}
+		if addedRows != int64(len(batch)) {
+			if rollErr := tx.Rollback(); err != nil {
+				return fmt.Errorf("something is very wrong: error rolling back: %v expected to have inserted %d rows but inserted %d", rollErr, addedRows, len(batch))
+			}
+			return fmt.Errorf("expected to have inserted %d rows but inserted %d", addedRows, len(batch))
+		}
+
+	}
 	return nil
 }
 
