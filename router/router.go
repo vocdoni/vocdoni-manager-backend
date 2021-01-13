@@ -85,7 +85,9 @@ func (r *Router) Route() {
 			continue
 		}
 		log.Infof("api method %s/%s", msg.Namespace, request.method)
-		log.Debugf("received: %s\n\t%+v", msg.Data, request)
+		if len(msg.Data) < 10000 {
+			log.Debugf("received: %s\n\t%+v", msg.Data, request)
+		}
 		go method.handler(request)
 	}
 }
@@ -191,7 +193,9 @@ func (r *Router) BuildReply(request *RouterRequest, resp *types.MetaResponse) dv
 			Data:      []byte(err.Error()),
 		}
 	}
-	log.Debugf("response: %s", respData)
+	if len(respData) < 10000 {
+		log.Debugf("response: %s", respData)
+	}
 	return dvote.Message{
 		TimeStamp: int32(time.Now().Unix()),
 		Context:   request.MessageContext,
