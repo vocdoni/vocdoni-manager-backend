@@ -91,6 +91,13 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	return nil
 }
 
+func (d *Database) DeleteEntity(entityID []byte) error {
+	if fmt.Sprintf("%x", entityID) == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+		return fmt.Errorf("error deleting entity with id: %x", entityID)
+	}
+	return nil
+}
+
 func (d *Database) AuthorizeEntity(entityID []byte) error {
 	if fmt.Sprintf("%x", entityID) == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
 		return fmt.Errorf("error adding entity with id: %x", entityID)

@@ -155,6 +155,23 @@ func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	return entity, nil
 }
 
+func (d *Database) DeleteEntity(entityID []byte) error {
+	if len(entityID) == 0 {
+		return fmt.Errorf("invalid arguments")
+	}
+
+	deleteQuery := `DELETE FROM entities WHERE id = $1`
+	result, err := d.db.Exec(deleteQuery, entityID)
+	if err != nil {
+		return fmt.Errorf("error deleting entity: %w", err)
+	}
+	var rows int64
+	if rows, err = result.RowsAffected(); rows != 1 {
+		return fmt.Errorf("nothing to delete")
+	}
+	return nil
+}
+
 // EntitiesID returns all the entities ID's
 func (d *Database) EntitiesID() ([]string, error) {
 	var entitiesIDs [][]byte

@@ -67,8 +67,7 @@ func TestEntity(t *testing.T) {
 		t.Fatalf("cannot get entities from the Postgres DB (pgsql.go:Entities): %s", err)
 	}
 
-	err = api.DB.AddEntity(entityID, info)
-	if err != nil {
+	if err = api.DB.AddEntity(entityID, info); err != nil {
 		t.Fatalf("cannot add entity to the Postgres DB (pgsql.go:addEntity): %s", err)
 	}
 
@@ -96,8 +95,7 @@ func TestEntity(t *testing.T) {
 		CallbackURL:             "http://127.0.0.1/extapi",
 		CallbackSecret:          "asdafgewgrf",
 	}
-	err = api.DB.UpdateEntity(entityID, updateInfo)
-	if err != nil {
+	if err := api.DB.UpdateEntity(entityID, updateInfo); err != nil {
 		t.Fatalf("cannot update entity Entity info: (%s)", err)
 	}
 	updatedEntity, err := api.DB.Entity(entityID)
@@ -120,7 +118,7 @@ func TestEntity(t *testing.T) {
 		t.Fatalf("error entity authorized not explicitly: (%v)", err)
 	}
 
-	if err = api.DB.AuthorizeEntity(entityID); err != nil {
+	if err := api.DB.AuthorizeEntity(entityID); err != nil {
 		t.Fatalf("error authorizing entity: (%v)", err)
 	}
 	updatedEntity, err = api.DB.Entity(entityID)
@@ -131,8 +129,7 @@ func TestEntity(t *testing.T) {
 		t.Fatalf("error entity not authorized even though authorizedEntity was succesful: (%v)", err)
 	}
 
-	err = api.DB.AuthorizeEntity(entityID)
-	if err == nil {
+	if err := api.DB.AuthorizeEntity(entityID); err == nil {
 		t.Fatalf("managed to reauthorize entity: (%v)", err)
 	} else if err.Error() != "already authorized" {
 		t.Fatalf("error while trying to reauthorize entity: (%v)", err)
@@ -144,6 +141,23 @@ func TestEntity(t *testing.T) {
 	}
 	if len(finalEntities)-len(startEntities) != +1 {
 		t.Fatalf("expected to have created 1 new entity but created %d", len(finalEntities)-len(startEntities))
+	}
+
+	entitySigner.Generate()
+
+	pub, _ := entitySigner.HexString()
+	pubString, err := hex.DecodeString(pub)
+	if err != nil {
+		t.Fatalf("error decoding pubKey: %s", err)
+	}
+	entityID1 := ethereum.HashRaw(pubString)
+
+	if err := api.DB.DeleteEntity(entityID1); err == nil {
+		t.Fatalf("could delete a random entity entity: %s", err)
+	}
+
+	if err := api.DB.DeleteEntity(entityID); err != nil {
+		t.Fatalf("could not delete entity: %s", err)
 	}
 }
 
