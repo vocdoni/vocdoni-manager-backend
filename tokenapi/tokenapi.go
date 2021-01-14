@@ -334,19 +334,10 @@ func (t *TokenAPI) importKeysBulk(request router.RouterRequest) {
 		}
 	}
 
-	chunkSize := 5000
-	for i := 0; i < len(members); i += chunkSize {
-		end := i + chunkSize
-
-		if end > len(members) {
-			end = len(members)
-		}
-
-		if err = t.db.AddMemberBulk(entityID, members[i:end]); err != nil {
-			log.Errorf("importKeysBulk: could not import provided keys for %s: (%v)", request.EntityID, err)
-			t.Router.SendError(request, "could not import keys")
-			return
-		}
+	if err = t.db.AddMemberBulk(entityID, members); err != nil {
+		log.Errorf("importKeysBulk: could not import provided keys for %s: (%v)", request.EntityID, err)
+		t.Router.SendError(request, "could not import keys")
+		return
 	}
 
 	log.Debugf("Entity: %q importKeysBulk: %d tokens", request.SignaturePublicKey, len(request.Keys))
