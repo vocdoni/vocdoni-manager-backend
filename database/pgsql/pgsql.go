@@ -121,9 +121,11 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 		}
 		return fmt.Errorf("cannot add insert query in the transaction: %w", err)
 	}
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("cannot commit db queries :%w", err)
+	if err := tx.Commit(); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			return fmt.Errorf("something is very wrong: error rolling back: %v after final commit to DB: %w", rollErr, err)
+		}
+		return fmt.Errorf("error commiting transactions to the DB: %w", err)
 	}
 	return nil
 }
@@ -287,8 +289,6 @@ func (d *Database) User(pubKey []byte) (*types.User, error) {
 
 func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error {
 	var err error
-	var result sql.Result
-	var rows int64
 	pgmembers := make([]PGMember, len(tokens))
 	for idx := range pgmembers {
 		if tokens[idx] == uuid.Nil {
@@ -305,8 +305,6 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 				},
 			},
 		}
-		// pgmembers[idx].ID = tokens[idx]
-		// pgmembers[idx].EntityID = entityID
 	}
 
 	tx, err := d.db.Beginx()
@@ -316,27 +314,14 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 	insert := `INSERT INTO members
 				(id,entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, created_at, updated_at)
 				VALUES (:id, :entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :created_at, :updated_at)`
-	// result, err = tx.NamedExec(insert, pgmembers)
-	if result, err = tx.NamedExec(insert, pgmembers); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
-		}
-		if err != nil {
-			return fmt.Errorf("error in bulk import %w", err)
-		}
+	if err := bulkInsert(tx, insert, pgmembers, 12); err != nil {
+		return fmt.Errorf("error during bulk insert: %w", err)
 	}
-	if rows, err = result.RowsAffected(); err != nil || int(rows) != len(pgmembers) {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
+	if err = tx.Commit(); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			return fmt.Errorf("something is very wrong: error rolling back: %v after final commit to DB: %w", rollErr, err)
 		}
-		if err != nil {
-			return fmt.Errorf("error in bulk import %w", err)
-		}
-		return fmt.Errorf("should insert %d rows, while inserted %d rows. Rolled back", len(pgmembers), rows)
-	}
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("could not commit bulk import %w", err)
+		return fmt.Errorf("error commiting transactions to the DB: %w", err)
 	}
 	return nil
 
@@ -458,8 +443,6 @@ func createEthRandomKeysBatch(n int) []*ethereum.SignKeys {
 
 func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberInfo) error {
 	var err error
-	var result sql.Result
-	var rows int64
 	if len(info) <= 0 {
 		return fmt.Errorf("no member data provided")
 	}
@@ -493,26 +476,14 @@ func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberI
 	insert := `INSERT INTO members
 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
 				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
-	if result, err = tx.NamedExec(insert, members); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
-		}
-		if err != nil {
-			return fmt.Errorf("error in bulk import %w", err)
-		}
+	if err := bulkInsert(tx, insert, members, 12); err != nil {
+		return fmt.Errorf("error during bulk insert: %w", err)
 	}
-	if rows, err = result.RowsAffected(); err != nil || int(rows) != len(members) {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
+	if err = tx.Commit(); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			return fmt.Errorf("something is very wrong: error rolling back: %v after final commit to DB: %w", rollErr, err)
 		}
-		if err != nil {
-			return fmt.Errorf("error in bulk import %w", err)
-		}
-		return fmt.Errorf("should insert %d rows, while inserted %d rows. Rolled back", len(members), rows)
-	}
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("could not commit bulk import %w", err)
+		return fmt.Errorf("error commiting transactions to the DB: %w", err)
 	}
 	return nil
 }
@@ -521,8 +492,6 @@ func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error
 	// TODO: Check if support for Update a Member is needed
 	// TODO: Investigate COPY FROM with pgx
 	var err error
-	var result sql.Result
-	var rows int64
 	if len(info) <= 0 {
 		return fmt.Errorf("no member data provided")
 	}
@@ -572,26 +541,14 @@ func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error
 	insert := `INSERT INTO members
 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
 				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
-	if result, err = tx.NamedExec(insert, members); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
-		}
-		if err != nil {
-			return fmt.Errorf("error in bulk import %w", err)
-		}
+	if err := bulkInsert(tx, insert, members, 12); err != nil {
+		return fmt.Errorf("error during bulk insert: %w", err)
 	}
-	if rows, err = result.RowsAffected(); err != nil || int(rows) != len(members) {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
+	if err = tx.Commit(); err != nil {
+		if rollErr := tx.Rollback(); err != nil {
+			return fmt.Errorf("something is very wrong: error rolling back: %v after final commit to DB: %w", rollErr, err)
 		}
-		if err != nil {
-			return fmt.Errorf("error in bulk import %w", err)
-		}
-		return fmt.Errorf("should insert %d rows, while inserted %d rows. Rolled back", len(members), rows)
-	}
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("could not commit bulk import %w", err)
+		return fmt.Errorf("error commiting transactions to the DB: %w", err)
 	}
 	return nil
 }
@@ -643,51 +600,17 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 	}
 	insertUsers := `INSERT INTO users
 					(public_key, digested_public_key, created_at, updated_at) VALUES (:public_key, :digested_public_key, :created_at, :updated_at)`
-	result, err := tx.NamedExec(insertUsers, users)
-	if err != nil {
-		return fmt.Errorf("error creating users %w", err)
-	}
-	userRows, err := result.RowsAffected()
-	if err != nil || int(userRows) != len(users) {
-		// First do rollback for all the error cases
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
-		}
-		// Then handle each error
-		if err != nil {
-			return fmt.Errorf("error verifying created users: (%v)", err)
-		}
-		return fmt.Errorf("expected to add %d users but added %d", int(userRows), len(users))
-
+	if err := bulkInsert(tx, insertUsers, users, 4); err != nil {
+		return fmt.Errorf("error during bulk insert: %w", err)
 	}
 
 	insert := `INSERT INTO members
 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
 				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
-	if result, err = tx.NamedExec(insert, pgMembers); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
-		}
-		if err != nil {
-			return fmt.Errorf("error adding members: (%v)", err)
-		}
+	if err := bulkInsert(tx, insert, pgMembers, 12); err != nil {
+		return fmt.Errorf("error during bulk insert: %w", err)
 	}
-	memberRows, err := result.RowsAffected()
-	if err != nil || int(memberRows) != len(members) || memberRows != userRows {
-		// First do rollback for all the error cases
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("cannot perform db rollback %v after verifying created members error %w", rollbackErr, err)
-		}
-		// Then handle each error
-		if err != nil {
-			return fmt.Errorf("error verifying created members: (%v)", err)
-		}
-		if int(memberRows) != len(members) {
-			return fmt.Errorf("expected to add %d members but added %d", len(members), memberRows)
-		}
-		return fmt.Errorf("diference in number of created users(%d) and members (%d)", len(members), memberRows)
 
-	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("could not commit bulk import %w", err)
 	}
@@ -1460,30 +1383,9 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 	// update census members
 	insertMembers := `INSERT INTO census_members (census_id, member_id, ephemeral, public_key, digested_public_key, private_key)
 				  VALUES (:census_id, :member_id, :ephemeral, :public_key, :digested_public_key, :private_key)`
-	if err := bulkInsert(tx, insertMembers, censusMembers); err != nil {
+	if err := bulkInsert(tx, insertMembers, censusMembers, 6); err != nil {
 		return nil, fmt.Errorf("error during bulk insert: %w", err)
 	}
-	// result, err := tx.NamedExec(insertMembers, censusMembers)
-	// if err != nil {
-	// 	if rollErr := tx.Rollback(); err != nil {
-	// 		return nil, fmt.Errorf("something is very wrong: error rolling back: %v after error on updating census as ephemeral: %w", rollErr, err)
-	// 	}
-	// 	return nil, fmt.Errorf("could not add census_members to db: (%v)", err)
-	// }
-	// var addedRows int64
-	// if addedRows, err = result.RowsAffected(); err != nil {
-	// 	if rollErr := tx.Rollback(); err != nil {
-	// 		return nil, fmt.Errorf("something is very wrong: error rolling back: %v after error on counting affected rows: %w", rollErr, err)
-	// 	}
-	// 	log.Warnf("expandCensusClaims: could not count affected rows: (%v)", err)
-	// 	return nil, fmt.Errorf("could not verify updated rows")
-	// }
-	// if addedRows != int64(len(censusMembers)) {
-	// 	if rollErr := tx.Rollback(); err != nil {
-	// 		return nil, fmt.Errorf("something is very wrong: error rolling back: %v expected to have inserted %d census_members but inserted %d", rollErr, addedRows, len(censusMembers))
-	// 	}
-	// 	return nil, fmt.Errorf("expected to have inserted %d census_members but inserted %d", addedRows, len(censusMembers))
-	// }
 	if err = tx.Commit(); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
 			return nil, fmt.Errorf("something is very wrong: error rolling back: %v after final commit to DB: %w", rollErr, err)
@@ -1530,7 +1432,6 @@ func (d *Database) EphemeralMemberInfoByEmail(entityID, censusID []byte, email s
 	selectQuery := `SELECT * FROM census_members
 					WHERE census_id = $1 AND ephemeral = true`
 	var censusMember types.CensusMember
-	// var info types.EphemeralMemberInfo
 	if err := d.db.Get(&censusMember, selectQuery, census.ID); err != nil {
 		return nil, fmt.Errorf("could not retrieve census members info: %w", err)
 	}
@@ -1742,28 +1643,12 @@ func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uui
 
 	insertMembers := `INSERT INTO census_members (census_id, member_id)
 				  VALUES (:census_id, :member_id)`
-	result, err = tx.NamedExec(insertMembers, censusMembers)
-	if err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return 0, fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
-		}
-		return 0, fmt.Errorf("rolled back due to error inserting census members: %w", err)
+	if err := bulkInsert(tx, insertMembers, censusMembers, 2); err != nil {
+		return 0, fmt.Errorf("error during bulk insert: %w", err)
 	}
-	var addedRows int64
-	if addedRows, err = result.RowsAffected(); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return 0, fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
-		}
-		return 0, fmt.Errorf("rolled back error retriveing census members added count: %w", err)
-	}
-	if addedRows != int64(len(censusMembers)) {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return 0, fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
-		}
-		return 0, fmt.Errorf("rolled back because failed to add census members, expected to add %d members but added %d", len(censusMembers), addedRows)
-	}
+
 	updateCensus := `UPDATE censuses SET size = $1, updated_at = now() WHERE id = $2`
-	result, err = tx.Exec(updateCensus, addedRows, censusID)
+	result, err = tx.Exec(updateCensus, len(censusMembers), censusID)
 	if err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
 			return 0, fmt.Errorf("cannot perform db rollback %v after error %w", rollbackErr, err)
@@ -1782,7 +1667,7 @@ func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uui
 		}
 		return 0, fmt.Errorf("rolled back because could not commit addCensus and addCensusMembers: %w", err)
 	}
-	return addedRows, nil
+	return int64(len(censusMembers)), nil
 }
 
 func (d *Database) UpdateCensus(entityID, censusID []byte, info *types.CensusInfo) error {
@@ -1912,21 +1797,30 @@ func (d *Database) DeleteCensus(entityID []byte, censusID []byte) error {
 	return nil
 }
 
-func bulkInsert(tx *sqlx.Tx, bulkQuery string, bulkStruct []types.CensusMember) error {
+func bulkInsert(tx *sqlx.Tx, bulkQuery string, bulkData interface{}, numField int) error {
+	// This function allows to solve the postgresql limit of max 65535 parameters in a query
 	// The number of placeholders allowed in a query is capped at 2^16, therefore,
 	// divide 2^16 by the number of fields in the struct, and that is the max
 	// number of bulk inserts possible. Use that number to chunk the inserts.
-	v := reflect.ValueOf(bulkStruct[0])
-	maxBulkInsert := ((1 << 16) / v.NumField()) - 1
+	maxBulkInsert := ((1 << 16) / numField) - 1
+
+	s := reflect.ValueOf(bulkData)
+	if s.Kind() != reflect.Slice {
+		return fmt.Errorf(" given a non-slice type")
+	}
+	bulkSlice := make([]interface{}, s.Len())
+	for i := 0; i < s.Len(); i++ {
+		bulkSlice[i] = s.Index(i).Interface()
+	}
 
 	// send batch requests
-	for i := 0; i < len(bulkStruct); i += maxBulkInsert {
+	for i := 0; i < len(bulkSlice); i += maxBulkInsert {
 		// set limit to i + chunk size or to max
 		limit := i + maxBulkInsert
-		if len(bulkStruct) < limit {
-			limit = len(bulkStruct)
+		if len(bulkSlice) < limit {
+			limit = len(bulkSlice)
 		}
-		batch := bulkStruct[i:limit]
+		batch := bulkSlice[i:limit]
 		result, err := tx.NamedExec(bulkQuery, batch)
 		if err != nil {
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
