@@ -506,6 +506,32 @@ func TestMember(t *testing.T) {
 		t.Fatalf("managed to add duplicate membbers (pgsql.go:AddMemberBulk)")
 	}
 
+	// test DeleteMembersByKeys
+	invalidKeys, err := api.DB.DeleteMembersByKeys(entities[0].ID, bulkKeys)
+	if err != nil {
+		t.Fatalf("deleteMembersByKets: error deleteing members: %v", err)
+	}
+	if len(invalidKeys) > 0 {
+		t.Fatal("unexpected invalid keys")
+	}
+
+	// test DeleteMembersByKeys that should return only invalid keys, since everything was deleted
+	invalidKeys, err = api.DB.DeleteMembersByKeys(entities[0].ID, bulkKeys)
+	if err != nil {
+		t.Fatalf("deleteMembersByKeys: error deleting members: %v", err)
+	}
+	if len(invalidKeys) != len(bulkKeys) {
+		t.Fatalf("expected %v invalid keys but found %v invalid keys", bulkKeys, invalidKeys)
+	}
+
+	// cleaning up
+	for _, entity := range entities {
+		if err := api.DB.DeleteEntity(entity.ID); err != nil {
+			t.Errorf("error deleting test entity: %w", err)
+		}
+
+	}
+
 }
 
 func TestTarget(t *testing.T) {

@@ -144,6 +144,10 @@ func (d *Database) Members(entityID []byte, memberIDs []uuid.UUID) ([]types.Memb
 	return nil, nil, nil
 }
 
+func (d *Database) MembersKeys(entityID []byte, memberKeys [][]byte) ([]types.Member, [][]byte, error) {
+	return nil, nil, nil
+}
+
 func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) {
 	failPub := hex.EncodeToString(pubKey)
 	if failPub == Signers[3].Pub {
@@ -266,6 +270,14 @@ func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int, []u
 		return 0, nil, fmt.Errorf("error deleting members of entity: %s", failEid)
 	}
 	return len(members), []uuid.UUID{}, nil
+}
+
+func (d *Database) DeleteMembersByKeys(entityID []byte, memberKeys [][]byte) ([][]byte, error) {
+	failEid := hex.EncodeToString(entityID)
+	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+		return nil, fmt.Errorf("error deleting members of entity: %s", failEid)
+	}
+	return [][]byte{}, nil
 }
 
 func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberInfo) error {
