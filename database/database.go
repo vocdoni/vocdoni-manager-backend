@@ -23,8 +23,10 @@ type Database interface {
 	AddMemberBulk(entityID []byte, members []types.Member) error
 	Member(entityID []byte, memberID *uuid.UUID) (*types.Member, error)
 	Members(entityID []byte, memberIDs []uuid.UUID) ([]types.Member, []uuid.UUID, error)
+	MembersKeys(entityID []byte, memberKeys [][]byte) ([]types.Member, [][]byte, error)
 	DeleteMember(entityID []byte, memberID *uuid.UUID) error
 	DeleteMembers(entityID []byte, members []uuid.UUID) (int, []uuid.UUID, error)
+	DeleteMembersByKeys(entityID []byte, memberKeys [][]byte) ([][]byte, error)
 	MemberPubKey(entityID, pubKey []byte) (*types.Member, error)
 	CountMembers(entityID []byte) (int, error)
 	ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error)

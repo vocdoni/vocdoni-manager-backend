@@ -165,8 +165,12 @@ func (d *Database) DeleteEntity(entityID []byte) error {
 	if err != nil {
 		return fmt.Errorf("error deleting entity: %w", err)
 	}
-	var rows int64
-	if rows, err = result.RowsAffected(); rows != 1 {
+	// var rows int64
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error veryfying deleted entity: %w", err)
+	}
+	if rows != 1 {
 		return fmt.Errorf("nothing to delete")
 	}
 	return nil
@@ -1062,6 +1066,7 @@ func (d *Database) MemberByEmail(entityID []byte, email string) (*types.Member, 
 	return member, nil
 }
 
+// Members returns a list of Members based on the memberIDs array
 func (d *Database) Members(entityID []byte, memberIDs []uuid.UUID) ([]types.Member, []uuid.UUID, error) {
 	var invalidTokens []uuid.UUID
 	var members []types.Member
@@ -1119,6 +1124,64 @@ func (d *Database) Members(entityID []byte, memberIDs []uuid.UUID) ([]types.Memb
 	return members, invalidTokens, nil
 }
 
+// Members returns a list of Members based on the memberKeys array
+func (d *Database) MembersKeys(entityID []byte, memberKeys [][]byte) ([]types.Member, [][]byte, error) {
+	var invalidTokens [][]byte
+	var members []types.Member
+	if len(entityID) == 0 || len(memberKeys) == 0 {
+		return members, invalidTokens, fmt.Errorf("invalid arguments")
+	}
+	type MemberData struct {
+		MemberKey string `db:"member_key"`
+	}
+
+	membersList := make([]*MemberData, len(memberKeys))
+
+	for i, memberKey := range memberKeys {
+		membersList[i] = &MemberData{
+			MemberKey: fmt.Sprintf("%x", memberKey),
+		}
+	}
+	update := `SELECT id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented, tags as "pg_tags"
+				FROM members 
+				WHERE id IN (
+					SELECT encode(member_key,'hex') FROM (VALUES 
+							(:member_key)
+						)
+						AS u(member_key)	
+					)`
+
+	result, err := d.db.NamedQuery(update, membersList)
+	if err != nil {
+		return members, invalidTokens, err
+	}
+
+	var pgmember PGMember
+	invalidTokensMap := make(map[string]bool)
+	for _, token := range memberKeys {
+		invalidTokensMap[fmt.Sprintf("%x", token)] = true
+	}
+	for result.Next() {
+		if err := result.StructScan(&pgmember); err != nil {
+			return members, invalidTokens, fmt.Errorf("error parsing query result: %w", err)
+		}
+		members = append(members, *ToMember(&pgmember))
+
+		delete(invalidTokensMap, fmt.Sprintf("%x", pgmember.PubKey))
+	}
+	invalidTokens = make([][]byte, len(invalidTokensMap))
+	i := 0
+	for k := range invalidTokensMap {
+		token, err := hex.DecodeString(k)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error decoding token")
+		}
+		invalidTokens[i] = token
+		i++
+	}
+	return members, invalidTokens, nil
+}
+
 func (d *Database) DeleteMember(entityID []byte, memberID *uuid.UUID) error {
 	if memberID == nil {
 		return fmt.Errorf("memberID is nil")
@@ -1138,6 +1201,7 @@ func (d *Database) DeleteMember(entityID []byte, memberID *uuid.UUID) error {
 	return nil
 }
 
+// len(members) - updated - len(invalidIDs) = duplicates
 func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int, []uuid.UUID, error) {
 	var invalidTokens []uuid.UUID
 	var updated int
@@ -1198,6 +1262,62 @@ func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int, []u
 		i++
 	}
 	return updated, invalidTokens, nil
+}
+
+func (d *Database) DeleteMembersByKeys(entityID []byte, memberKeys [][]byte) ([][]byte, error) {
+	var invalidTokens [][]byte
+	if len(entityID) == 0 {
+		return invalidTokens, fmt.Errorf("invalid arguments")
+	}
+	if len(memberKeys) == 0 {
+		return invalidTokens, nil
+	}
+	// uniqueMembers := util.UniqueUUIDs(members)
+	type MemberData struct {
+		MemberKey string `db:"member_key"`
+	}
+	membersList := make([]*MemberData, len(memberKeys))
+	for i, memberKey := range memberKeys {
+		membersList[i] = &MemberData{
+			MemberKey: fmt.Sprintf("%x", memberKey),
+		}
+	}
+	deleteQuery := fmt.Sprintf(`DELETE FROM members
+					WHERE entity_id =  decode('%x','hex') AND public_key IN (
+						SELECT decode(member_key,'hex') FROM (VALUES
+							(:member_key)
+						)
+						AS u(member_key)
+					)
+					RETURNING public_key`, entityID)
+
+	result, err := d.db.NamedQuery(deleteQuery, membersList)
+	if err != nil {
+		return invalidTokens, fmt.Errorf("DeleteMembersByKeys: error removing members of %x: %w", entityID, err)
+	}
+	invalidTokensMap := make(map[string]bool)
+	for _, token := range memberKeys {
+		invalidTokensMap[fmt.Sprintf("%x", token)] = true
+	}
+	var id []byte
+	for result.Next() {
+		if err := result.Scan(&id); err != nil {
+			return invalidTokens, fmt.Errorf("error parsing query result: %w", err)
+		}
+		temp := fmt.Sprintf("%x", id)
+		delete(invalidTokensMap, temp)
+	}
+	invalidTokens = make([][]byte, len(invalidTokensMap))
+	i := 0
+	for k := range invalidTokensMap {
+		key, err := hex.DecodeString(k)
+		if err != nil {
+			return invalidTokens, fmt.Errorf("error converting hex to string: %w", err)
+		}
+		invalidTokens[i] = key
+		i++
+	}
+	return invalidTokens, nil
 }
 
 func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) {
