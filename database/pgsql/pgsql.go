@@ -1264,13 +1264,15 @@ func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int, []u
 	return updated, invalidTokens, nil
 }
 
-func (d *Database) DeleteMembersByKeys(entityID []byte, memberKeys [][]byte) ([][]byte, error) {
-	var invalidTokens [][]byte
+// len(memberKeys) - updated - len(invalidKeys) = duplicates
+func (d *Database) DeleteMembersByKeys(entityID []byte, memberKeys [][]byte) (int, [][]byte, error) {
+	var invalidKeys [][]byte
+	var updated int
 	if len(entityID) == 0 {
-		return invalidTokens, fmt.Errorf("invalid arguments")
+		return updated, invalidKeys, fmt.Errorf("invalid arguments")
 	}
 	if len(memberKeys) == 0 {
-		return invalidTokens, nil
+		return updated, invalidKeys, nil
 	}
 	// uniqueMembers := util.UniqueUUIDs(members)
 	type MemberData struct {
@@ -1293,31 +1295,32 @@ func (d *Database) DeleteMembersByKeys(entityID []byte, memberKeys [][]byte) ([]
 
 	result, err := d.db.NamedQuery(deleteQuery, membersList)
 	if err != nil {
-		return invalidTokens, fmt.Errorf("DeleteMembersByKeys: error removing members of %x: %w", entityID, err)
+		return updated, invalidKeys, fmt.Errorf("DeleteMembersByKeys: error removing members of %x: %w", entityID, err)
 	}
-	invalidTokensMap := make(map[string]bool)
+	invalidKeysMap := make(map[string]bool)
 	for _, token := range memberKeys {
-		invalidTokensMap[fmt.Sprintf("%x", token)] = true
+		invalidKeysMap[fmt.Sprintf("%x", token)] = true
 	}
 	var id []byte
 	for result.Next() {
 		if err := result.Scan(&id); err != nil {
-			return invalidTokens, fmt.Errorf("error parsing query result: %w", err)
+			return updated, invalidKeys, fmt.Errorf("error parsing query result: %w", err)
 		}
 		temp := fmt.Sprintf("%x", id)
-		delete(invalidTokensMap, temp)
+		delete(invalidKeysMap, temp)
+		updated++
 	}
-	invalidTokens = make([][]byte, len(invalidTokensMap))
+	invalidKeys = make([][]byte, len(invalidKeysMap))
 	i := 0
-	for k := range invalidTokensMap {
+	for k := range invalidKeysMap {
 		key, err := hex.DecodeString(k)
 		if err != nil {
-			return invalidTokens, fmt.Errorf("error converting hex to string: %w", err)
+			return updated, invalidKeys, fmt.Errorf("error converting hex to string: %w", err)
 		}
-		invalidTokens[i] = key
+		invalidKeys[i] = key
 		i++
 	}
-	return invalidTokens, nil
+	return updated, invalidKeys, nil
 }
 
 func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) {

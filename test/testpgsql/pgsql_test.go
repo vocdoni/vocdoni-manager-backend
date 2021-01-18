@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	qt "github.com/frankban/quicktest"
 	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
 	"gitlab.com/vocdoni/go-dvote/util"
@@ -179,6 +180,7 @@ func TestUser(t *testing.T) {
 func TestMember(t *testing.T) {
 	var id uuid.UUID
 	var initialCount, count int
+	c := qt.New(t)
 	db := api.DB
 	// Create or retrieve existing entity
 	// create entity
@@ -507,22 +509,24 @@ func TestMember(t *testing.T) {
 	}
 
 	// test DeleteMembersByKeys
-	invalidKeys, err := api.DB.DeleteMembersByKeys(entities[0].ID, bulkKeys)
-	if err != nil {
-		t.Fatalf("deleteMembersByKets: error deleteing members: %v", err)
-	}
+	updated, invalidKeys, err := api.DB.DeleteMembersByKeys(entities[0].ID, bulkKeys[:9])
+	c.Assert(err, qt.IsNil)
+	c.Assert(bulkKeys[:9], qt.HasLen, updated)
 	if len(invalidKeys) > 0 {
 		t.Fatal("unexpected invalid keys")
 	}
 
 	// test DeleteMembersByKeys that should return only invalid keys, since everything was deleted
-	invalidKeys, err = api.DB.DeleteMembersByKeys(entities[0].ID, bulkKeys)
-	if err != nil {
-		t.Fatalf("deleteMembersByKeys: error deleting members: %v", err)
-	}
-	if len(invalidKeys) != len(bulkKeys) {
-		t.Fatalf("expected %v invalid keys but found %v invalid keys", bulkKeys, invalidKeys)
-	}
+	updated, invalidKeys, err = api.DB.DeleteMembersByKeys(entities[0].ID, bulkKeys[:9])
+	c.Assert(err, qt.IsNil)
+	c.Assert(updated, qt.Equals, 0)
+	c.Assert(invalidKeys, qt.HasLen, len(bulkKeys[:9]))
+
+	// test Duplicate count
+	updated, invalidKeys, err = api.DB.DeleteMembersByKeys(entities[0].ID, [][]byte{bulkKeys[9:][0], bulkKeys[9:][0]})
+	c.Assert(err, qt.IsNil)
+	c.Assert(invalidKeys, qt.HasLen, 0)
+	c.Assert(updated, qt.Equals, 1)
 
 	// cleaning up
 	for _, entity := range entities {
