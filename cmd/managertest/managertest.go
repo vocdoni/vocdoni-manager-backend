@@ -63,7 +63,7 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	if err != nil {
 		log.Fatalf("%s: %v", method, err)
 	}
-	var signature string
+	var signature types.HexBytes
 	if signer != nil {
 		signature, err = signer.Sign(reqInner)
 		if err != nil {
@@ -112,7 +112,7 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	if respOuter.ID != reqOuter.ID {
 		log.Fatalf("%s: %v", method, "request ID doesn'tb match")
 	}
-	if respOuter.Signature == "" {
+	if len(respOuter.Signature) == 0 {
 		log.Fatalf("%s: empty signature in response: %s", method, message)
 	}
 	var respInner types.MetaResponse

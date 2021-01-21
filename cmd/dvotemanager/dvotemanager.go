@@ -11,13 +11,13 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
-	log "gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/database"
 	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
 	"gitlab.com/vocdoni/manager/manager-backend/manager"
 	"gitlab.com/vocdoni/manager/manager-backend/smtpclient"
+	"go.vocdoni.io/dvote/crypto/ethereum"
+	log "go.vocdoni.io/dvote/log"
 
 	"gitlab.com/vocdoni/manager/manager-backend/registry"
 	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"

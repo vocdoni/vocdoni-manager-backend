@@ -10,8 +10,8 @@ import (
 type RequestMessage struct {
 	MetaRequest json.RawMessage `json:"request"`
 
-	ID        string `json:"id"`
-	Signature string `json:"signature"`
+	ID        string   `json:"id"`
+	Signature HexBytes `json:"signature"`
 }
 
 type MetaRequest struct {
@@ -50,8 +50,8 @@ type MetaRequest struct {
 type ResponseMessage struct {
 	MetaResponse json.RawMessage `json:"response"`
 
-	ID        string `json:"id"`
-	Signature string `json:"signature"`
+	ID        string   `json:"id"`
+	Signature HexBytes `json:"signature"`
 }
 
 // MetaResponse contains all of the possible request fields.
