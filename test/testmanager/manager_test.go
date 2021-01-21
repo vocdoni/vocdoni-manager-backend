@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	qt "github.com/frankban/quicktest"
 	"github.com/google/uuid"
 	"gitlab.com/vocdoni/go-dvote/crypto"
 	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
@@ -712,6 +713,7 @@ func TestDumpTarget(t *testing.T) {
 }
 
 func TestDumpCensus(t *testing.T) {
+	c := qt.New(t)
 	var targetID uuid.UUID
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
@@ -725,7 +727,6 @@ func TestDumpCensus(t *testing.T) {
 	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
 	}
-	t.Log(hex.EncodeToString(entities[0].ID))
 
 	// create members
 	n := 100
@@ -745,7 +746,7 @@ func TestDumpCensus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot decode random id: %s", err)
 	}
-	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: id})
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: id, Ephemeral: true})
 	if err != nil {
 		t.Fatalf("cannot add census: (%v)", err)
 	}
@@ -755,10 +756,8 @@ func TestDumpCensus(t *testing.T) {
 	req.Method = "dumpCensus"
 	req.CensusID = id
 	resp := wsc.Request(req, entitySigners[0])
-	t.Log(resp)
-	if !resp.Ok || len(resp.Claims) != n {
-		t.Fatalf("request failed: %+v", req)
-	}
+	c.Assert(resp.Ok, qt.IsTrue, qt.Commentf("request failed: %+v", req))
+	c.Assert(resp.Claims, qt.HasLen, n)
 
 	if len(resp.Claims) != n {
 		t.Fatalf("expected %d claims but got %d", n, len(resp.Claims))
@@ -773,12 +772,9 @@ func TestDumpCensus(t *testing.T) {
 	}
 
 	ephemeralMembers, err := api.DB.ListEphemeralMemberInfo(entities[0].ID, idBytes)
-	if err != nil {
-		t.Fatalf("testDumpCensus: cannot retrieve ephmeral member info: (%v)", err)
-	}
-	if len(ephemeralMembers) != n {
-		t.Fatalf("expected %d emphemeral members but got %d", n, len(ephemeralMembers))
-	}
+	c.Assert(err, qt.IsNil, qt.Commentf("testDumpCensus: cannot retrieve ephemeral member info: (%v)", err))
+	c.Assert(ephemeralMembers, qt.HasLen, n)
+
 	for _, mem := range ephemeralMembers {
 		found := false
 		for _, claim := range resp.Claims {
@@ -806,21 +802,15 @@ func TestDumpCensus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot decode random id: %s", err)
 	}
-	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: id})
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: id, Ephemeral: true})
 	if err != nil {
 		t.Fatalf("cannot add census: (%v)", err)
 	}
 
 	req.CensusID = id
 	resp = wsc.Request(req, entitySigners[0])
-	t.Log(resp)
-	if !resp.Ok || len(resp.Claims) != n {
-		t.Fatalf("request failed: %+v", req)
-	}
-
-	if len(resp.Claims) != n {
-		t.Fatalf("expected %d claims but got %d", n, len(resp.Claims))
-	}
+	c.Assert(resp.Ok, qt.IsTrue, qt.Commentf("request failed: %+v", req))
+	c.Assert(resp.Claims, qt.HasLen, n)
 
 	census, err = api.DB.Census(entities[0].ID, idBytes)
 	if err != nil {
@@ -831,9 +821,8 @@ func TestDumpCensus(t *testing.T) {
 	}
 
 	ephemeralMembers, err = api.DB.ListEphemeralMemberInfo(entities[0].ID, idBytes)
-	if err != nil {
-		t.Fatalf("testDumpCensus: cannot retrieve ephmeral member info: (%v)", err)
-	}
+	c.Assert(err, qt.IsNil, qt.Commentf("testDumpCensus: cannot retrieve ephemeral member info: (%v)", err))
+
 	if len(ephemeralMembers) != n/2 {
 		t.Fatalf("expected %d emphemeral members but got %d", n/2, len(ephemeralMembers))
 	}
@@ -863,21 +852,15 @@ func TestDumpCensus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot decode random id: %s", err)
 	}
-	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: id})
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: id, Ephemeral: false})
 	if err != nil {
 		t.Fatalf("cannot add census: (%v)", err)
 	}
 
 	req.CensusID = id
 	resp = wsc.Request(req, entitySigners[0])
-	t.Log(resp)
-	if !resp.Ok || len(resp.Claims) != n {
-		t.Fatalf("request failed: %+v", req)
-	}
-
-	if len(resp.Claims) != n {
-		t.Fatalf("expected %d claims but got %d", n, len(resp.Claims))
-	}
+	c.Assert(resp.Ok, qt.IsTrue, qt.Commentf("request failed: %+v", req))
+	c.Assert(resp.Claims, qt.HasLen, n)
 
 	census, err = api.DB.Census(entities[0].ID, idBytes)
 	if err != nil {
@@ -888,15 +871,16 @@ func TestDumpCensus(t *testing.T) {
 	}
 
 	ephemeralMembers, err = api.DB.ListEphemeralMemberInfo(entities[0].ID, idBytes)
-	if err != nil {
-		t.Fatalf("testDumpCensus: cannot retrieve ephmeral member info: (%v)", err)
-	}
-	if len(ephemeralMembers) != 0 {
-		t.Fatalf("expected %d emphemeral members but got %d", 0, len(ephemeralMembers))
-	}
+	c.Assert(err, qt.IsNil, qt.Commentf("testDumpCensus: cannot retrieve ephemeral member info: (%v)", err))
+	c.Assert(ephemeralMembers, qt.HasLen, 0)
+
+	err = api.DB.DeleteEntity(entities[0].ID)
+	c.Check(err, qt.IsNil, qt.Commentf("error cleaning up"))
+
 }
 
 func TestSendVotingLinks(t *testing.T) {
+	c := qt.New(t)
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
@@ -946,7 +930,7 @@ func TestSendVotingLinks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot decode random id: %s", err)
 	}
-	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: censusID})
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: censusID, Ephemeral: true})
 	if err != nil {
 		t.Fatalf("cannot add census: (%v)", err)
 	}
@@ -961,10 +945,8 @@ func TestSendVotingLinks(t *testing.T) {
 	req.ProcessID = processID
 	req.CensusID = censusID
 	resp := wsc.Request(req, entitySigners[0])
-	t.Log(resp)
-	if !resp.Ok || resp.Count != 2 {
-		t.Fatalf("failed to send validation link to all unverified members: \n%v\n%v", req, resp)
-	}
+	c.Assert(resp.Ok, qt.IsTrue, qt.Commentf("failed to send validation link to all unverified members: \n%v\n%v", req, resp))
+	c.Assert(resp.Count, qt.Equals, 2, qt.Commentf("failed to send validation link to all unverified members: \n%v\n%v", req, resp))
 
 	if err := api.DB.RegisterMember(entities[0].ID, members[0].PubKey, &dbMembers[0].ID); err != nil {
 		t.Fatalf("could not register member: %v", err)
@@ -975,7 +957,7 @@ func TestSendVotingLinks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot decode random id: %s", err)
 	}
-	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: censusID})
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: censusID, Ephemeral: true})
 	if err != nil {
 		t.Fatalf("cannot add census: (%v)", err)
 	}
@@ -987,10 +969,8 @@ func TestSendVotingLinks(t *testing.T) {
 
 	req.CensusID = censusID
 	resp = wsc.Request(req, entitySigners[0])
-	t.Log(resp)
-	if !resp.Ok || resp.Count != 1 {
-		t.Fatalf("failed to send voting link to the unverified member: \n%v\n%v", req, resp)
-	}
+	c.Assert(resp.Ok, qt.IsTrue, qt.Commentf("failed to send voting link to unverified member : \n%v\n%v", req, resp))
+	c.Assert(resp.Count, qt.Equals, 1, qt.Commentf("failed to send voting link to unverified member : \n%v\n%v", req, resp))
 
 	//  verify member tag was added correctly
 	memberUnverified, err := api.DB.Member(entities[0].ID, &memberIDUnverified)
@@ -1008,34 +988,27 @@ func TestSendVotingLinks(t *testing.T) {
 	// member with one existing member email
 	req.Email = dbMembers[0].Email
 	resp = wsc.Request(req, entitySigners[0])
-	t.Log(resp)
-	if !resp.Ok && resp.Count != 0 {
-		t.Fatalf("sent voting link to verified member while it should not : \n%v\n%v", req, resp)
-	}
+	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("sent voting link to verified member while it should not : \n%v\n%v", req, resp))
+	c.Assert(resp.Count, qt.Equals, 0, qt.Commentf("sent voting link to verified member while it should not : \n%v\n%v", req, resp))
 
 	req.Email = dbMembers[1].Email
 	resp = wsc.Request(req, entitySigners[0])
-	t.Log(resp)
-	if !resp.Ok && resp.Count != 1 {
-		t.Fatalf("failed to send voting link to unverified member : \n%v\n%v", req, resp)
-	}
+	c.Assert(resp.Ok, qt.IsTrue, qt.Commentf("failed to send voting link to unverified member : \n%v\n%v", req, resp))
+	c.Assert(resp.Count, qt.Equals, 1, qt.Commentf("failed to send voting link to unverified member : \n%v\n%v", req, resp))
 
 	// Unverified member request by wrong entity should fail
 	resp = wsc.Request(req, entitySigners[1])
-	t.Log(resp)
-	if resp.Ok {
-		t.Fatalf("did not fail to send validation link to member of non-existing entity-member combination : \n%v\n%v", req, resp)
-	}
+	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("did not fail to send validation link to member of non-existing entity-member combination : \n%v\n%v", req, resp))
 
 	//duplicate email (with one member verfied and the other not)
 	api.DB.UpdateMember(entities[0].ID, &dbMembers[0].ID, &types.MemberInfo{Email: dbMembers[1].Email})
 	req.Email = dbMembers[1].Email
 	resp = wsc.Request(req, entitySigners[0])
-	t.Log(resp)
-	if resp.Ok || resp.Count != 0 {
-		t.Fatalf("sent voting link with duplicate member : \n%v\n%v", req, resp)
-	}
+	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("sent voting link with duplicate member : \n%v\n%v", req, resp))
+	c.Assert(resp.Count, qt.Equals, 0, qt.Commentf("sent voting link with duplicate member : \n%v\n%v", req, resp))
 
+	err = api.DB.DeleteEntity(entities[0].ID)
+	c.Check(err, qt.IsNil, qt.Commentf("error cleaning up"))
 }
 
 func TestImportMembers(t *testing.T) {

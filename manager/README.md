@@ -651,6 +651,7 @@ Add a census that is already published by a DvoteGW using the details provided b
             "merkleRoot": "0fa34cb...",    // hex received from gateway
             "merkleTreeUri": "ipfs://abc23454cbf",   // received from gateway
             "target": "1234", // targetId
+            "ephemeral": true, // flag that decides wether ephemeral identities are created for the non validated members or not
             "createdAt": "2000-05-14T15:52:00.741Z" 
         }
     },

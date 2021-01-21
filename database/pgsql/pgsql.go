@@ -23,6 +23,7 @@ import (
 
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
+	"gitlab.com/vocdoni/manager/manager-backend/util"
 )
 
 const connectionRetries = 5
@@ -961,8 +962,8 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 	if err != nil {
 		return fmt.Errorf("cannot initialize postgres transaction: %w", err)
 	}
-	if len(pubKey) != ethereum.PubKeyLength/2 && len(pubKey) != ethereum.PubKeyLengthUncompressed/2 {
-		return fmt.Errorf("invalid public key size")
+	if !util.ValidPubKey(fmt.Sprintf("%x", pubKey)) {
+		return fmt.Errorf("invalid public key size %d", len(pubKey))
 	}
 	_, err = d.User(pubKey)
 	if err == sql.ErrNoRows {
@@ -1466,18 +1467,27 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 		log.Warnf("expandCensusClaims: cound not retrieve target members: (%v)", err)
 		return nil, fmt.Errorf("could not retrieve target members")
 	}
-	ephemeral := false
-	// Create census_members struct and fill keys where ncessary
-	censusMembers := make([]types.CensusMember, len(members))
+
+	// Create census_members struct and fill keys where necessary
+	var censusMembers []types.CensusMember
 	signKeys := ethereum.NewSignKeys()
-	for i, member := range members {
-		censusMembers[i].CensusID = censusID
-		censusMembers[i].MemberID = member.ID
-		if len(member.PubKey) == 0 || member.PubKey == nil {
-			ephemeral = true
+	for _, member := range members {
+		if util.ValidPubKey(fmt.Sprintf("%x", member.PubKey)) {
+			// if the member has a public key registered add directly
+			// to the census
+			censusMember := types.CensusMember{
+				CensusID:       censusID,
+				MemberID:       member.ID,
+				Ephemeral:      false,
+				DigestedPubKey: snarks.Poseidon.Hash(member.PubKey),
+			}
+			censusMembers = append(censusMembers, censusMember)
+
+		} else if census.Ephemeral {
+			// if the census is ephmeral and the member has no pubkey
+			// create an ephemeral identity
 			if err := signKeys.Generate(); err != nil {
-				log.Fatalf("expandCensusClaims: cound not generate emphemeral identity: (%v)", err)
-				return nil, fmt.Errorf("could not generate emphemeral identity")
+				panic(fmt.Sprintf("expandCensusClaims: cound not generate emphemeral signkeys: (%v)", err))
 			}
 			pubKey, privKey := signKeys.HexString()
 			pubKey, err = ethereum.DecompressPubKey(pubKey)
@@ -1492,32 +1502,20 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 			if err != nil {
 				return nil, fmt.Errorf("cound not decode to bytes emphemeral identity pubKey: (%v)", err)
 			}
-			censusMembers[i].Ephemeral = true
-			censusMembers[i].PubKey = pubKeyBytes
-			censusMembers[i].PrivKey = privKeyBytes
-			censusMembers[i].DigestedPubKey = snarks.Poseidon.Hash(pubKeyBytes)
-		} else {
-			censusMembers[i].Ephemeral = false
-			censusMembers[i].DigestedPubKey = snarks.Poseidon.Hash(member.PubKey)
+			censusMembers = append(censusMembers, types.CensusMember{
+				CensusID:       censusID,
+				MemberID:       member.ID,
+				Ephemeral:      true,
+				PubKey:         pubKeyBytes,
+				PrivKey:        privKeyBytes,
+				DigestedPubKey: snarks.Poseidon.Hash(pubKeyBytes),
+			})
+
 		}
 	}
 	tx, err := d.db.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize postgres transaction: %w", err)
-	}
-	if ephemeral {
-		updateCensus := `UPDATE censuses SET ephemeral = true, size = $1  WHERE id = $2 AND entity_id = $3`
-		result, err := tx.Exec(updateCensus, len(censusMembers), censusID, entityID)
-		if err != nil {
-			return nil, fmt.Errorf("could not update census as ephemeral: %w", err)
-		}
-		updatedRows, err := result.RowsAffected()
-		if err != nil {
-			return nil, fmt.Errorf("could not verify updating census as ephemeral: (%v)", err)
-		}
-		if updatedRows != 1 {
-			return nil, fmt.Errorf("could not update census as ephemeral")
-		}
 	}
 
 	// update census members
@@ -1526,6 +1524,23 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 	if err := bulkInsert(tx, insertMembers, censusMembers, 6); err != nil {
 		return nil, fmt.Errorf("error during bulk insert: %w", err)
 	}
+	// update census size if everythin went fine
+	result, err := tx.Exec(`UPDATE censuses SET size = $1  WHERE id = $2 AND entity_id = $3`,
+		len(censusMembers),
+		censusID,
+		entityID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("could not update census as ephemeral: %w", err)
+	}
+	updatedRows, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("could not verify updating census as ephemeral: (%v)", err)
+	}
+	if updatedRows != 1 {
+		return nil, fmt.Errorf("could not update census as ephemeral")
+	}
+
 	if err = tx.Commit(); err != nil {
 		if rollErr := tx.Rollback(); err != nil {
 			return nil, fmt.Errorf("something is very wrong: error rolling back: %v after final commit to DB: %w", rollErr, err)
@@ -1565,14 +1580,11 @@ func (d *Database) EphemeralMemberInfoByEmail(entityID, censusID []byte, email s
 	if err != nil {
 		return nil, fmt.Errorf("cound not retrieve member by email: %w", err)
 	}
-	if member.PubKey != nil && len(member.PubKey) > 0 {
-		return nil, fmt.Errorf("member not ephmeral: %d %x", len(member.PubKey), member.PubKey)
-	}
 
 	selectQuery := `SELECT * FROM census_members
-					WHERE census_id = $1 AND ephemeral = true`
+					WHERE census_id = $1 AND member_id = $2 AND ephemeral = true`
 	var censusMember types.CensusMember
-	if err := d.db.Get(&censusMember, selectQuery, census.ID); err != nil {
+	if err := d.db.Get(&censusMember, selectQuery, census.ID, member.ID); err != nil {
 		return nil, fmt.Errorf("could not retrieve census members info: %w", err)
 	}
 	info := types.EphemeralMemberInfo{
@@ -1713,13 +1725,15 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID *uuid.UUID, inf
 		TargetID:   *targetID,
 		CensusInfo: *info,
 	}
-	insert := `INSERT  
-				INTO censuses
-	 			(id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri, created_at, updated_at)
-				VALUES (:id, :entity_id, :target_id, :name, :size, :merkle_root, :merkle_tree_uri, :created_at, :updated_at)`
+	// insert := `INSERT INTO censuses
+	//  			(id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri, ephemeral, created_at, updated_at)
+	// 			VALUES (:id, :entity_id, :target_id, :name, :size, :merkle_root, :merkle_tree_uri, :ephemeral, :created_at, :updated_at)`
 	var result sql.Result
-
-	if result, err = d.db.NamedExec(insert, census); err == nil {
+	if result, err = d.db.NamedExec(`INSERT INTO censuses
+		(id, entity_id, target_id, name, size, merkle_root, merkle_tree_uri, ephemeral, created_at, updated_at)
+   		VALUES (:id, :entity_id, :target_id, :name, :size, :merkle_root, :merkle_tree_uri, :ephemeral, :created_at, :updated_at)`,
+		census,
+	); err == nil {
 		if rows, err = result.RowsAffected(); err == nil && rows != 1 {
 			return fmt.Errorf("failed to add census: rows != 1")
 		}

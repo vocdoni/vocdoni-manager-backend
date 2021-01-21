@@ -594,6 +594,7 @@ func TestTarget(t *testing.T) {
 func TestCensus(t *testing.T) {
 	var root, idBytes []byte
 	var err error
+	c := qt.New(t)
 	// create entity
 	_, entities := testcommon.CreateEntities(1)
 	// add entity
@@ -724,7 +725,7 @@ func TestCensus(t *testing.T) {
 		t.Fatalf("cannot count censuses correctly: %+v", err)
 	}
 
-	// Test Ephmeral censuses
+	// Test Ephemeral censuses
 	// create members
 	_, members, _ := testcommon.CreateMembers(entities[0].ID, 2)
 	memberIDs, err := api.DB.CreateNMembers(entities[0].ID, 4)
@@ -744,19 +745,15 @@ func TestCensus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot decode random id: %s", err)
 	}
-	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: id})
-	if err != nil {
-		t.Fatalf("cannot add census: (%v)", err)
-	}
+	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: id, Ephemeral: true})
+	c.Assert(err, qt.IsNil, qt.Commentf("cannot add census"))
+
 	// Test that members without keys are not counted
 	// Verify that the corresponding members are also deleted
 	censusMembers, err := api.DB.ExpandCensusMembers(entities[0].ID, idBytes)
-	if err != nil {
-		t.Fatalf("cannot expand census claims: (%v)", err)
-	}
-	if len(censusMembers) != len(memberIDs) {
-		t.Fatalf("expected to extract %d census members but extracted %d", len(memberIDs), len(censusMembers))
-	}
+	c.Assert(err, qt.IsNil, qt.Commentf("cannot expand census claims"))
+	c.Assert(censusMembers, qt.HasLen, len(memberIDs), qt.Commentf("expected to extract %d census members but extracted %d", len(memberIDs), len(censusMembers)))
+
 	census, err = api.DB.Census(entities[0].ID, idBytes)
 	if err != nil {
 		t.Fatalf("cannot retrieve census: (%v)", err)
@@ -835,6 +832,11 @@ func TestCensus(t *testing.T) {
 	}
 	if fmt.Sprintf("%x", census.MerkleRoot) != fmt.Sprintf("%x", merkleRoot) || census.MerkleTreeURI != merkleTreeUri {
 		t.Fatalf("erroneously updated censusInfo: (%v)", err)
+	}
+
+	err = api.DB.DeleteEntity(entities[0].ID)
+	if err != nil {
+		t.Errorf("error cleaning up %v", err)
 	}
 }
 

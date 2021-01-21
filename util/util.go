@@ -35,6 +35,13 @@ func PubKeyToAddress(pubKey string) (ethcommon.Address, error) {
 	return address, nil
 }
 
+func ValidPubKey(pubKey string) bool {
+	if len(pubKey) != ethereum.PubKeyLength && len(pubKey) != ethereum.PubKeyLengthUncompressed {
+		return false
+	}
+	return true
+}
+
 func DecodeCensusID(id string, pubKey string) ([]byte, error) {
 	var censusID string
 	split := strings.Split(id, "/")
