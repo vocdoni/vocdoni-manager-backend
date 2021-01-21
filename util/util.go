@@ -8,8 +8,8 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 
-	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
-	"gitlab.com/vocdoni/go-dvote/util"
+	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/util"
 )
 
 func PubKeyToEntityID(pubKey string) ([]byte, error) {

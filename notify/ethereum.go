@@ -5,8 +5,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/crypto"
-	"gitlab.com/vocdoni/go-dvote/chain"
-	"gitlab.com/vocdoni/go-dvote/types"
+	"go.vocdoni.io/dvote/chain"
+	"go.vocdoni.io/dvote/types"
 )
 
 var ethereumEventList = []string{

@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"gitlab.com/vocdoni/go-dvote/config"
+	"go.vocdoni.io/dvote/config"
 )
 
 type Notify struct {

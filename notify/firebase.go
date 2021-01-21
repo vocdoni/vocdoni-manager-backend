@@ -11,9 +11,9 @@ import (
 	"firebase.google.com/go/v4/messaging"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/gobuffalo/packr/v2/file/resolver/encoding/hex"
-	"gitlab.com/vocdoni/go-dvote/chain/ethevents"
-	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/manager/manager-backend/util"
+	"go.vocdoni.io/dvote/chain/ethevents"
+	"go.vocdoni.io/dvote/log"
 	"google.golang.org/api/option"
 )
 

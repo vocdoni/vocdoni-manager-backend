@@ -10,9 +10,9 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"
-	"gitlab.com/vocdoni/go-dvote/crypto/snarks"
-	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
+	"go.vocdoni.io/dvote/crypto/snarks"
+	"go.vocdoni.io/dvote/util"
 )
 
 var Signers = []struct {

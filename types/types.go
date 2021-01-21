@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gitlab.com/vocdoni/go-dvote/util"
+	"go.vocdoni.io/dvote/util"
 )
 
 type CreatedUpdated struct {

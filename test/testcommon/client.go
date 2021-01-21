@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/vocdoni/go-dvote/crypto"
-	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
-	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
+	"go.vocdoni.io/dvote/crypto"
+	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/log"
 	"nhooyr.io/websocket"
 )
 

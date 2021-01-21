@@ -12,14 +12,14 @@ import (
 	"github.com/badoux/checkmail"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
-	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
-	"gitlab.com/vocdoni/go-dvote/log"
-	"gitlab.com/vocdoni/go-dvote/metrics"
-	"gitlab.com/vocdoni/go-dvote/net"
-	"gitlab.com/vocdoni/go-dvote/util"
 	"gitlab.com/vocdoni/manager/manager-backend/database"
 	"gitlab.com/vocdoni/manager/manager-backend/router"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
+	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/log"
+	"go.vocdoni.io/dvote/metrics"
+	"go.vocdoni.io/dvote/net"
+	"go.vocdoni.io/dvote/util"
 )
 
 type Registry struct {

@@ -2,7 +2,7 @@ package registry
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"gitlab.com/vocdoni/go-dvote/log"
+	"go.vocdoni.io/dvote/log"
 )
 
 // Registry collectors
