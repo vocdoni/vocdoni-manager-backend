@@ -23,7 +23,7 @@ import (
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/net"
-	dvoteUtil "go.vocdoni.io/dvote/util"
+	dvoteutil "go.vocdoni.io/dvote/util"
 )
 
 type Manager struct {
@@ -159,7 +159,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	// dvoteUtil.IsHexEncodedStringWithLength
+	// dvoteutil.IsHexEncodedStringWithLength
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
@@ -180,7 +180,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		return
 	}
 	// TODO: Receive from API census Managers addresses during signUp
-	entityAddressBytes, err := hex.DecodeString(dvoteUtil.TrimHex(entityAddress.String()))
+	entityAddressBytes, err := hex.DecodeString(dvoteutil.TrimHex(entityAddress.String()))
 	if err != nil {
 		log.Errorf("cannot decode entity address: %s", err)
 		m.Router.SendError(request, "cannot add entity to the DB")
@@ -250,7 +250,7 @@ func (m *Manager) updateEntity(request router.RouterRequest) {
 	var response types.MetaResponse
 
 	// check public key length
-	// dvoteUtil.IsHexEncodedStringWithLength
+	// dvoteutil.IsHexEncodedStringWithLength
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
 		m.Router.SendError(request, "invalid public key")
