@@ -2,45 +2,28 @@ package notify
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/crypto"
 	"go.vocdoni.io/dvote/chain"
-	"go.vocdoni.io/dvote/types"
+	"go.vocdoni.io/dvote/chain/contracts"
+	"go.vocdoni.io/dvote/log"
+	"go.vocdoni.io/proto/build/go/models"
 )
 
-var ethereumEventList = []string{
-	"ProcessCreated(address,bytes32,string)",
-	"ResultsPublished(bytes32,string)",
+var ethereumEventList = map[string]string{
+	// NewProcess(bytes32 processId, uint16 namespace)
+	"processesNewProcess": "0x2399440b5a42cbc7ba215c9c176f7cd16b511a8727c1f277635f3fce4649156e",
 }
 
-type (
-	eventProcessCreated struct {
-		EntityAddress [20]byte
-		ProcessId     [32]byte // no-lint
-		MerkleTree    string
-	}
-	resultsPublished struct {
-		ProcessId [32]byte // no-lint
-		Results   string
-	}
-)
-
-var (
-	logProcessCreated       = []byte(ethereumEventList[0])
-	logResultsPublished     = []byte(ethereumEventList[1])
-	HashLogProcessCreated   = crypto.Keccak256Hash(logProcessCreated)
-	HashLogResultsPublished = crypto.Keccak256Hash(logResultsPublished)
-)
-
 // ProcessMeta returns the info of a newly created process from the event raised and ethereum storage
-func ProcessMeta(ctx context.Context, contractABI *abi.ABI, eventData []byte, ph *chain.ProcessHandle) (*types.NewProcessTx, error) {
-	var eventProcessCreated eventProcessCreated
-	err := contractABI.Unpack(&eventProcessCreated, "ProcessCreated", eventData)
-	if err != nil {
-		return nil, err
+func ProcessMeta(ctx context.Context, contractABI *abi.ABI, eventData []byte, ph *chain.VotingHandle) (*models.NewProcessTx, error) {
+	structuredData := &contracts.ProcessesNewProcess{}
+	if err := contractABI.UnpackIntoInterface(structuredData, "NewProcess", eventData); err != nil {
+		return nil, fmt.Errorf("cannot unpack NewProcess event: %w", err)
 	}
-	return ph.ProcessTxArgs(ctx, eventProcessCreated.ProcessId)
+	log.Debugf("newProcessMeta eventData: %+v", structuredData)
+	return ph.NewProcessTxArgs(ctx, structuredData.ProcessId, structuredData.Namespace)
 }
 
 // @jordipainan TODO: func ResultsMeta()
