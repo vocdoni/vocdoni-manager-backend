@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"gitlab.com/vocdoni/manager/manager-backend/config"
-	"gitlab.com/vocdoni/manager/manager-backend/router"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/metrics"
 	"go.vocdoni.io/dvote/net"
 	"go.vocdoni.io/dvote/types"
+	"go.vocdoni.io/manager/config"
+	"go.vocdoni.io/manager/router"
 )
 
 // EndPoint handles the Websocket connection

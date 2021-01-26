@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
-	"gitlab.com/vocdoni/manager/manager-backend/database"
-	"gitlab.com/vocdoni/manager/manager-backend/types"
 	"go.vocdoni.io/dvote/chain"
 	"go.vocdoni.io/dvote/config"
 	"go.vocdoni.io/dvote/data"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/metrics"
+	"go.vocdoni.io/manager/database"
+	"go.vocdoni.io/manager/types"
 )
 
 // The IPFSFileTracker is in charge of tracking IPFS files and

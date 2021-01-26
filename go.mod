@@ -1,4 +1,4 @@
-module gitlab.com/vocdoni/manager/manager-backend
+module go.vocdoni.io/manager
 
 go 1.14
 
