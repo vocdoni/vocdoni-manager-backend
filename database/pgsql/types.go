@@ -2,7 +2,7 @@ package pgsql
 
 import (
 	"github.com/jackc/pgtype"
-	"gitlab.com/vocdoni/manager/manager-backend/types"
+	"go.vocdoni.io/manager/types"
 )
 
 type PGEntity struct {

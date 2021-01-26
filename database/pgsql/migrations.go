@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	migrate "github.com/rubenv/sql-migrate"
-	"gitlab.com/vocdoni/manager/manager-backend/database"
 	"go.vocdoni.io/dvote/log"
+	"go.vocdoni.io/manager/database"
 )
 
 // Migrations available

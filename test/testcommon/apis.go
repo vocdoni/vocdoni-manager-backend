@@ -1,18 +1,18 @@
 package testcommon
 
 import (
-	"gitlab.com/vocdoni/manager/manager-backend/config"
-	"gitlab.com/vocdoni/manager/manager-backend/database"
-	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
-	"gitlab.com/vocdoni/manager/manager-backend/database/testdb"
-	"gitlab.com/vocdoni/manager/manager-backend/manager"
-	"gitlab.com/vocdoni/manager/manager-backend/registry"
-	"gitlab.com/vocdoni/manager/manager-backend/smtpclient"
-	"gitlab.com/vocdoni/manager/manager-backend/tokenapi"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
+	"go.vocdoni.io/manager/config"
+	"go.vocdoni.io/manager/database"
+	"go.vocdoni.io/manager/database/pgsql"
+	"go.vocdoni.io/manager/database/testdb"
+	"go.vocdoni.io/manager/manager"
+	"go.vocdoni.io/manager/registry"
+	"go.vocdoni.io/manager/smtpclient"
+	"go.vocdoni.io/manager/tokenapi"
 
-	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
+	endpoint "go.vocdoni.io/manager/services/api-endpoint"
 )
 
 type TestAPI struct {

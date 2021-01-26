@@ -13,12 +13,12 @@ import (
 
 	flag "github.com/spf13/pflag"
 
-	"gitlab.com/vocdoni/manager/manager-backend/types"
-	"gitlab.com/vocdoni/manager/manager-backend/util"
 	"go.vocdoni.io/dvote/crypto"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	dvotetypes "go.vocdoni.io/dvote/types"
+	"go.vocdoni.io/manager/types"
+	"go.vocdoni.io/manager/util"
 	"nhooyr.io/websocket"
 )
 

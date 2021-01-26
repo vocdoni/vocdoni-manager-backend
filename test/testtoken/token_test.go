@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gitlab.com/vocdoni/manager/manager-backend/config"
-	"gitlab.com/vocdoni/manager/manager-backend/test/testcommon"
-	"gitlab.com/vocdoni/manager/manager-backend/types"
 	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/manager/config"
+	"go.vocdoni.io/manager/test/testcommon"
+	"go.vocdoni.io/manager/types"
 )
 
 var api testcommon.TestAPI

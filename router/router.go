@@ -8,12 +8,12 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
-	"gitlab.com/vocdoni/manager/manager-backend/types"
 	"go.vocdoni.io/dvote/crypto"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/net"
 	dvote "go.vocdoni.io/dvote/types"
+	"go.vocdoni.io/manager/types"
 )
 
 type registeredMethod struct {

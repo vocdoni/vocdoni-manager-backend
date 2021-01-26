@@ -8,9 +8,9 @@ import (
 
 	randomdata "github.com/Pallinder/go-randomdata"
 
-	"gitlab.com/vocdoni/manager/manager-backend/types"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	util "go.vocdoni.io/dvote/util"
+	"go.vocdoni.io/manager/types"
 )
 
 // CreateEntities a given number of random entities

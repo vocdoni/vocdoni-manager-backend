@@ -13,16 +13,16 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"gitlab.com/vocdoni/manager/manager-backend/config"
-	"gitlab.com/vocdoni/manager/manager-backend/database"
-	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
-	"gitlab.com/vocdoni/manager/manager-backend/notify"
-	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
 	"go.vocdoni.io/dvote/chain"
 	"go.vocdoni.io/dvote/chain/ethevents"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	log "go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/service"
+	"go.vocdoni.io/manager/config"
+	"go.vocdoni.io/manager/database"
+	"go.vocdoni.io/manager/database/pgsql"
+	"go.vocdoni.io/manager/notify"
+	endpoint "go.vocdoni.io/manager/services/api-endpoint"
 )
 
 func newConfig() (*config.Notify, config.Error) {

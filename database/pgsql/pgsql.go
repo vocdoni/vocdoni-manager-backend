@@ -21,9 +21,9 @@ import (
 	"go.vocdoni.io/dvote/crypto/snarks"
 	"go.vocdoni.io/dvote/log"
 
-	"gitlab.com/vocdoni/manager/manager-backend/config"
-	"gitlab.com/vocdoni/manager/manager-backend/types"
-	"gitlab.com/vocdoni/manager/manager-backend/util"
+	"go.vocdoni.io/manager/config"
+	"go.vocdoni.io/manager/types"
+	"go.vocdoni.io/manager/util"
 )
 
 const connectionRetries = 5

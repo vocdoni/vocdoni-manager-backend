@@ -5,12 +5,12 @@ import (
 
 	"firebase.google.com/go/v4/auth"
 	"firebase.google.com/go/v4/errorutils"
-	"gitlab.com/vocdoni/manager/manager-backend/router"
-	"gitlab.com/vocdoni/manager/manager-backend/types"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/metrics"
 	"go.vocdoni.io/dvote/net"
+	"go.vocdoni.io/manager/router"
+	"go.vocdoni.io/manager/types"
 )
 
 // API wraps the push notifications API
