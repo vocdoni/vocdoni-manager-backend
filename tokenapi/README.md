@@ -137,7 +137,7 @@ secret = "hello"
 }
 ```
 
-### import users by public keys
+### import members by public keys
 Populate the entity members/users importing based on **non-digested** public keys
 - Request
 ```json
@@ -159,6 +159,71 @@ Populate the entity members/users importing based on **non-digested** public key
     "id": "req-12345678", // ID of the originating request
     "response": {
         "ok": true,
+    },
+    "signature": "0x123456"
+}
+```
+
+### list by public keys
+List the entity's **non-digested** public keys. For the authentication the `listOptions` arguments should be added separately in the position of `l` and then, in alphabetical order between them. For the following example the sequence would be:
+`$entityID$listOptions.count$listOptions.skip$method$timestamp`
+or
+`0x12345220x123451234567890`
+
+- Request
+```json
+{
+    "id": "req-12345678",
+    "request": {
+        "method": "listKeys",
+        "entityId": "0x12345",
+        "listOptions": {
+          "skip": 2,
+          "count": 2,
+        },
+        "timestamp": 1234567890,
+        "authHash": "0x123456789"
+    },
+    "signature": "0x12345"
+}
+```
+- Response
+```json
+{
+    "id": "req-12345678", // ID of the originating request
+    "response": {
+        "ok": true,
+        "count": 1, // Number of keys deleted
+        "keys", ["590289d82938", "850c7ea5a360e599dbbd"] // list of invalid keys
+    },
+    "signature": "0x123456"
+}
+```
+
+### delete members by public keys
+Delete  entity members indentified by their **non-digested** public keys
+- Request
+```json
+{
+    "id": "req-12345678",
+    "request": {
+        "method": "deleteKeys",
+        "entityId": "0x12345",
+        "keys": ["590289d82938","850c7ea5a360e599dbbd"],
+        "timestamp": 1234567890,
+        "authHash": "0x123456789"
+    },
+    "signature": "0x12345"
+}
+```
+- Response
+```json
+{
+    "id": "req-12345678", // ID of the originating request
+    "response": {
+        "ok": true,
+        "count": 1, // Number of keys deleted
+        "invalidKeys", ["590289d82938"] // list of invalid keys
     },
     "signature": "0x123456"
 }

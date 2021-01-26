@@ -59,28 +59,32 @@ type ResponseMessage struct {
 // Fields must be in alphabetical order
 // Those fields with valid zero-values (such as bool) must be pointers
 type MetaResponse struct {
-	Census        *Census      `json:"census,omitempty"`
-	Censuses      []Census     `json:"censuses,omitempty"`
-	Claims        [][]byte     `json:"claims,omitempty"`
-	Count         int          `json:"count,omitempty"`
-	Entity        *Entity      `json:"entity,omitempty"`
-	InvalidIDs    []uuid.UUID  `json:"invalidIds,omitempty"`
+	Census     *Census     `json:"census,omitempty"`
+	Censuses   []Census    `json:"censuses,omitempty"`
+	Claims     [][]byte    `json:"claims,omitempty"`
+	Count      int         `json:"count,omitempty"`
+	Entity     *Entity     `json:"entity,omitempty"`
+	InvalidIDs []uuid.UUID `json:"invalidIds,omitempty"`
+	//TODO InvalidKeys HexBytes when API supports protobuf or similar
+	InvalidKeys   []string     `json:"invalidKeys,omitempty"`
 	Member        *Member      `json:"member,omitempty"`
 	Members       []Member     `json:"members,omitempty"`
 	MembersTokens []TokenEmail `json:"membersTokens,omitempty"`
 	Message       string       `json:"message,omitempty"`
 	Ok            bool         `json:"ok"`
 	PublicKey     string       `json:"publicKey,omitempty"`
-	Request       string       `json:"request"`
-	Status        *Status      `json:"status,omitempty"`
-	Tag           *Tag         `json:"tag,omitempty"`
-	Tags          []Tag        `json:"tags,omitempty"`
-	Target        *Target      `json:"target,omitempty"`
-	Targets       []Target     `json:"targets,omitempty"`
-	Timestamp     int32        `json:"timestamp"`
-	Token         string       `json:"token,omitempty"`
-	Tokens        []uuid.UUID  `json:"tokens,omitempty"`
-	TokenStatus   string       `json:"tokenStatus,omitempty"`
+	//TODO Keys HexBytes when API supports protobuf or similar
+	Keys        []string    `json:"keys,omitempty"`
+	Request     string      `json:"request"`
+	Status      *Status     `json:"status,omitempty"`
+	Tag         *Tag        `json:"tag,omitempty"`
+	Tags        []Tag       `json:"tags,omitempty"`
+	Target      *Target     `json:"target,omitempty"`
+	Targets     []Target    `json:"targets,omitempty"`
+	Timestamp   int32       `json:"timestamp"`
+	Token       string      `json:"token,omitempty"`
+	Tokens      []uuid.UUID `json:"tokens,omitempty"`
+	TokenStatus string      `json:"tokenStatus,omitempty"`
 }
 
 // SetError sets the MetaResponse's Ok field to false, and Message to a string

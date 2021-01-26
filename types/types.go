@@ -1,12 +1,11 @@
 package types
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
-	"go.vocdoni.io/dvote/util"
+	dvotetypes "go.vocdoni.io/dvote/types"
 )
 
 type CreatedUpdated struct {
@@ -142,21 +141,21 @@ type Census struct {
 	CensusInfo
 }
 
-type HexBytes []byte
+type HexBytes dvotetypes.HexBytes
 
-func (h *HexBytes) UnmarshalJSON(src []byte) error {
-	var s string
-	if err := json.Unmarshal(src, &s); err != nil {
-		return err
-	}
-	b, err := hex.DecodeString(util.TrimHex(s))
-	*h = b
-	return err
-}
+// func (h *HexBytes) UnmarshalJSON(src []byte) error {
+// 	var s string
+// 	if err := json.Unmarshal(src, &s); err != nil {
+// 		return err
+// 	}
+// 	b, err := hex.DecodeString(util.TrimHex(s))
+// 	*h = b
+// 	return err
+// }
 
-func (h *HexBytes) MarshalJSON() ([]byte, error) {
-	return json.Marshal("0x" + hex.EncodeToString(*h))
-}
+// func (h *HexBytes) MarshalJSON() ([]byte, error) {
+// 	return json.Marshal("0x" + hex.EncodeToString(*h))
+// }
 
 type CensusInfo struct {
 	CreatedUpdated
