@@ -18,6 +18,7 @@ import (
 	"go.vocdoni.io/dvote/crypto"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
+	dvotetypes "go.vocdoni.io/dvote/types"
 	"nhooyr.io/websocket"
 )
 
@@ -63,7 +64,7 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	if err != nil {
 		log.Fatalf("%s: %v", method, err)
 	}
-	var signature types.HexBytes
+	var signature dvotetypes.HexBytes
 	if signer != nil {
 		signature, err = signer.Sign(reqInner)
 		if err != nil {
