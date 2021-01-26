@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	qt "github.com/frankban/quicktest"
 	"github.com/google/uuid"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/manager/config"
@@ -405,7 +406,7 @@ func TestImportKeysBulk(t *testing.T) {
 	req.Keys = keysString
 	req.EntityID = fmt.Sprintf("%x", entities[0].ID)
 	req.Timestamp = int32(time.Now().Unix())
-	auth := calculateAuth(req.Keys, req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
+	auth := calculateAuth(req.Keys, req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp := wsc.Request(req, nil)
 	if !resp.Ok {
@@ -426,12 +427,172 @@ func TestImportKeysBulk(t *testing.T) {
 
 	// 1. repeated keys should fail
 	req.Timestamp = int32(time.Now().Unix())
-	auth = calculateAuth(req.Keys, req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), req.Token, entities[0].CallbackSecret)
+	auth = calculateAuth(req.Keys, req.EntityID, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
 	req.AuthHash = auth
 	resp = wsc.Request(req, nil)
 	if resp.Ok {
 		t.Errorf("succeeded to import duplicate keys: %+v", resp)
 	}
+}
+
+func TestListKeys(t *testing.T) {
+	c := qt.New(t)
+	// connect to endpoint
+	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// create entity
+	entitySigners, entities := testcommon.CreateEntities(1)
+	entities[0].CallbackSecret = "test"
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+	// create members for
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 10)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
+	memInfo := make([]types.Member, len(members))
+	for idx, mem := range members {
+		memInfo[idx] = *mem
+	}
+	// add members
+	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+
+	// 1. Test request with default values
+	var req types.MetaRequest
+	req.Method = "listKeys"
+	req.ListOptions = &types.ListOptions{}
+	req.EntityID = fmt.Sprintf("%x", entities[0].ID)
+	req.Timestamp = int32(time.Now().Unix())
+	auth := calculateAuth(req.EntityID, req.ListOptions, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
+	req.AuthHash = auth
+	// create and make request
+	resp := wsc.Request(req, entitySigners[0])
+	c.Assert(resp.Ok, qt.IsTrue)
+	c.Assert(resp.Keys, qt.HasLen, 10)
+
+	//2. Test request with ListOptions
+	req.ListOptions = &types.ListOptions{
+		Count: 10,
+		Skip:  2,
+	}
+	req.Timestamp = int32(time.Now().Unix())
+	auth = calculateAuth(req.EntityID, req.ListOptions, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
+	req.AuthHash = auth
+	resp = wsc.Request(req, entitySigners[0])
+	c.Assert(resp.Ok, qt.IsTrue)
+	c.Assert(resp.Keys, qt.HasLen, 8)
+
+	//3.  check sqli guard (protection against sqli)
+	req.ListOptions = &types.ListOptions{
+		Order: "ascend",
+	}
+	req.Timestamp = int32(time.Now().Unix())
+	auth = calculateAuth(req.EntityID, req.ListOptions, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
+	req.AuthHash = auth
+	resp = wsc.Request(req, entitySigners[0])
+	c.Assert(resp.Ok, qt.IsFalse)
+
+	req.ListOptions = &types.ListOptions{
+		SortBy: " ",
+	}
+	req.Timestamp = int32(time.Now().Unix())
+	auth = calculateAuth(req.EntityID, req.ListOptions, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
+	req.AuthHash = auth
+	resp = wsc.Request(req, entitySigners[0])
+	c.Assert(resp.Ok, qt.IsFalse)
+
+	req.ListOptions = &types.ListOptions{
+		Order:  "ascend",
+		SortBy: "(case/**/when/**/1=1/**/then/**/email/**/else/**/phone/**/end);",
+	}
+	req.Timestamp = int32(time.Now().Unix())
+	auth = calculateAuth(req.EntityID, req.ListOptions, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
+	req.AuthHash = auth
+	resp = wsc.Request(req, entitySigners[0])
+	c.Assert(resp.Ok, qt.IsFalse)
+
+	err = api.DB.DeleteEntity(entities[0].ID)
+	c.Check(err, qt.IsNil)
+
+}
+
+func TestDeleteKeys(t *testing.T) {
+	c := qt.New(t)
+	// connect to endpoint
+	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatalf("unable to connect with endpoint :%s", err)
+	}
+	// create entity
+	entitySigners, entities := testcommon.CreateEntities(2)
+	entities[0].CallbackSecret = "test"
+	entities[1].CallbackSecret = "test"
+	// add entity
+	if err := api.DB.AddEntity(entities[0].ID, &entities[0].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+	if err := api.DB.AddEntity(entities[1].ID, &entities[1].EntityInfo); err != nil {
+		t.Fatalf("cannot add created entity into database: %s", err)
+	}
+	// create members for
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 7)
+	if err != nil {
+		t.Fatalf("cannot create members: %s", err)
+	}
+	memInfo := make([]types.Member, len(members))
+	membersKeys := make([]string, len(members))
+	for i, mem := range members {
+		memInfo[i] = *mem
+		membersKeys[i] = fmt.Sprintf("%x", mem.PubKey)
+	}
+	// add members
+	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+		t.Fatalf("cannot add members into database: %s", err)
+	}
+
+	// 1. Test request with default values
+	var req types.MetaRequest
+	req.Method = "deleteKeys"
+	req.Keys = membersKeys[:5]
+	req.EntityID = fmt.Sprintf("%x", entities[0].ID)
+	req.Timestamp = int32(time.Now().Unix())
+	auth := calculateAuth(req.EntityID, req.Keys, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
+	req.AuthHash = auth
+	// create and make request
+	resp := wsc.Request(req, entitySigners[0])
+	c.Assert(resp.Ok, qt.IsTrue)
+	c.Assert(resp.Count, qt.Equals, 5)
+	c.Assert(resp.InvalidKeys, qt.HasLen, 0)
+
+	//2. Test invalid keys (using the same keys as before)
+	req.Timestamp = int32(time.Now().Unix())
+	auth = calculateAuth(req.EntityID, req.Keys, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
+	req.AuthHash = auth
+	resp = wsc.Request(req, entitySigners[0])
+	c.Assert(resp.Ok, qt.IsTrue)
+	c.Assert(resp.Count, qt.Equals, 0)
+	c.Assert(resp.InvalidKeys, qt.ContentEquals, req.Keys)
+
+	//3. Test Duplicates
+	req.Keys = []string{membersKeys[5], membersKeys[5]}
+	req.Timestamp = int32(time.Now().Unix())
+	auth = calculateAuth(req.EntityID, req.Keys, req.Method, fmt.Sprintf("%d", req.Timestamp), entities[0].CallbackSecret)
+	req.AuthHash = auth
+	resp = wsc.Request(req, entitySigners[0])
+	c.Assert(resp.Ok, qt.IsTrue)
+	c.Assert(resp.Count, qt.Equals, 1)
+	c.Assert(resp.InvalidKeys, qt.HasLen, 0)
+
+	err = api.DB.DeleteEntity(entities[0].ID)
+	c.Check(err, qt.IsNil)
 }
 
 func calculateAuth(fields ...interface{}) string {
@@ -448,7 +609,10 @@ func calculateAuth(fields ...interface{}) string {
 			for _, key := range v {
 				toHash.WriteString(key)
 			}
+		case types.ListOptions:
+			toHash.WriteString(fmt.Sprintf("%d%d%s%s", v.Skip, v.Count, v.Order, v.SortBy))
 		}
+
 	}
 	return hex.EncodeToString(ethereum.HashRaw(toHash.Bytes()))
 }
