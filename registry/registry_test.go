@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
-	"gitlab.com/vocdoni/go-dvote/net"
-	gtypes "gitlab.com/vocdoni/go-dvote/types"
 	"gitlab.com/vocdoni/manager/manager-backend/database/testdb"
 	"gitlab.com/vocdoni/manager/manager-backend/registry"
 	"gitlab.com/vocdoni/manager/manager-backend/router"
 	"gitlab.com/vocdoni/manager/manager-backend/test/testcommon"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
+	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/net"
+	gtypes "go.vocdoni.io/dvote/types"
 )
 
 var api testcommon.TestAPI

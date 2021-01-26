@@ -13,10 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/vocdoni/go-dvote/crypto"
-	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
-	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/manager/manager-backend/types"
+	"go.vocdoni.io/dvote/crypto"
+	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/log"
+	dvotetypes "go.vocdoni.io/dvote/types"
 	"nhooyr.io/websocket"
 )
 
@@ -46,7 +47,7 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	if err != nil {
 		log.Fatalf("%s: %v", method, err)
 	}
-	var signature string
+	var signature dvotetypes.HexBytes
 	if signer != nil {
 		signature, err = signer.Sign(reqInner)
 		if err != nil {
@@ -79,7 +80,7 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	if respOuter.ID != reqOuter.ID {
 		log.Fatalf("%s: %v", method, "request ID doesn'tb match")
 	}
-	if respOuter.Signature == "" {
+	if len(respOuter.Signature) == 0 {
 		log.Fatalf("%s: empty signature in response: %s", method, message)
 	}
 	var respInner types.MetaResponse
@@ -131,6 +132,8 @@ func main() {
 		}
 	} else {
 		signer.Generate()
+		_, priv := signer.HexString()
+		log.Debugf("privKey %s", priv)
 	}
 	log.Infof("connecting to %s", *host)
 	c := NewAPIConnection(*host)

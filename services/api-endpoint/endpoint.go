@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
-	"gitlab.com/vocdoni/go-dvote/log"
-	"gitlab.com/vocdoni/go-dvote/metrics"
-	"gitlab.com/vocdoni/go-dvote/net"
-	"gitlab.com/vocdoni/go-dvote/types"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/router"
+	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/log"
+	"go.vocdoni.io/dvote/metrics"
+	"go.vocdoni.io/dvote/net"
+	"go.vocdoni.io/dvote/types"
 )
 
 // EndPoint handles the Websocket connection

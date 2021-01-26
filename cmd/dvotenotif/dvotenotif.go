@@ -13,16 +13,16 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"gitlab.com/vocdoni/go-dvote/chain"
-	"gitlab.com/vocdoni/go-dvote/chain/ethevents"
-	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
-	log "gitlab.com/vocdoni/go-dvote/log"
-	"gitlab.com/vocdoni/go-dvote/service"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/database"
 	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
 	"gitlab.com/vocdoni/manager/manager-backend/notify"
 	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
+	"go.vocdoni.io/dvote/chain"
+	"go.vocdoni.io/dvote/chain/ethevents"
+	"go.vocdoni.io/dvote/crypto/ethereum"
+	log "go.vocdoni.io/dvote/log"
+	"go.vocdoni.io/dvote/service"
 )
 
 func newConfig() (*config.Notify, config.Error) {
@@ -68,7 +68,7 @@ func newConfig() (*config.Notify, config.Error) {
 	cfg.Ethereum.NodePort = *flag.Int("ethNodePort", 30303, "Ethereum p2p node port to use")
 	cfg.Ethereum.BootNodes = *flag.StringArray("ethBootNodes", []string{}, "Ethereum p2p custom bootstrap nodes (enode://<pubKey>@<ip>[:port])")
 	cfg.Ethereum.TrustedPeers = *flag.StringArray("ethTrustedPeers", []string{}, "Ethereum p2p trusted peer nodes (enode://<pubKey>@<ip>[:port])")
-	cfg.Ethereum.ProcessDomain = *flag.String("ethProcessDomain", "voting-process.vocdoni.eth", "voting contract ENS domain")
+	cfg.Ethereum.VocdoniDomains = *flag.StringArray("ethVocdoniDomains", []string{"processes.vocdoni.eth", "namespaces.vocdoni.eth", "erc20.proofs.vocdoni.eth"}, "vocdoni contracts ENS domains")
 	cfg.Ethereum.NoWaitSync = *flag.Bool("ethNoWaitSync", false, "do not wait for Ethereum to synchronize (for testing only)")
 	// ethereum events
 	cfg.EthereumEvents.CensusSync = *flag.Bool("ethCensusSync", false, "automatically import new census published on the smart contract")
@@ -319,7 +319,8 @@ func main() {
 			*initBlock = chainSpecs.StartingBlock
 		}
 	}
-	if err := service.EthEvents(ctx, cfg.Ethereum.ProcessDomain, w3uri, cfg.Ethereum.ChainType, initBlock, nil, signer, nil, evh); err != nil {
+
+	if err := service.EthEvents(ctx, cfg.Ethereum.VocdoniDomains, w3uri, cfg.Ethereum.ChainType, initBlock, nil, signer, nil, evh, nil); err != nil {
 		log.Fatal(err)
 	}
 

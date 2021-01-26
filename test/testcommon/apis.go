@@ -1,8 +1,6 @@
 package testcommon
 
 import (
-	"gitlab.com/vocdoni/go-dvote/crypto/ethereum"
-	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/manager/manager-backend/config"
 	"gitlab.com/vocdoni/manager/manager-backend/database"
 	"gitlab.com/vocdoni/manager/manager-backend/database/pgsql"
@@ -11,6 +9,8 @@ import (
 	"gitlab.com/vocdoni/manager/manager-backend/registry"
 	"gitlab.com/vocdoni/manager/manager-backend/smtpclient"
 	"gitlab.com/vocdoni/manager/manager-backend/tokenapi"
+	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/log"
 
 	endpoint "gitlab.com/vocdoni/manager/manager-backend/services/api-endpoint"
 )

@@ -10,10 +10,9 @@ import (
 	"firebase.google.com/go/v4/auth"
 	"firebase.google.com/go/v4/messaging"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/gobuffalo/packr/v2/file/resolver/encoding/hex"
-	"gitlab.com/vocdoni/go-dvote/chain/ethevents"
-	"gitlab.com/vocdoni/go-dvote/log"
 	"gitlab.com/vocdoni/manager/manager-backend/util"
+	"go.vocdoni.io/dvote/chain/ethevents"
+	"go.vocdoni.io/dvote/log"
 	"google.golang.org/api/option"
 )
 
@@ -245,7 +244,7 @@ func (fa *FirebaseAdmin) HandleEthereum(ctx context.Context, event *ethtypes.Log
 	defer cancel()
 	switch event.Topics[0].Hex() {
 	// new process
-	case HashLogProcessCreated.Hex():
+	case ethereumEventList["processesNewProcess"]:
 		notification, err = fa.handleEthereumNewProcess(timeout, event, e)
 		if err != nil {
 			log.Warnf("failed handling new process event: %s", err)
@@ -253,27 +252,25 @@ func (fa *FirebaseAdmin) HandleEthereum(ctx context.Context, event *ethtypes.Log
 		}
 		log.Infof("created notification: %+v", *notification)
 		return nil
-	// process results published
-	case HashLogResultsPublished.Hex():
-		var _ resultsPublished
-		// stub
-		// return nil
+	default:
+		return fmt.Errorf("not implemented")
 	}
-	return nil
 }
 
 func (fa *FirebaseAdmin) handleEthereumNewProcess(ctx context.Context, event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
 	// get process metadata
-	processTx, err := ProcessMeta(ctx, &e.ContractABI, event.Data, e.ProcessHandle)
+	processTx, err := ProcessMeta(ctx, &e.ContractsABI[0], event.Data, e.VotingHandle)
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("found new process on Ethereum, pushing notification for PID: %s", processTx.ProcessID)
+	log.Infof("found new process on Ethereum, pushing notification for PID: %s", processTx.Process.ProcessId)
 
 	// create notification
 	// get relevant data
 	dataMap := make(map[string]string)
-	dataMap["uri"] = fmt.Sprintf("%s%s%s/%s", httpsPrefix, fa.Routes[0], util.HexPrefixed(processTx.EntityID), util.HexPrefixed(processTx.ProcessID))
+	eid := util.HexPrefixed(fmt.Sprintf("%x", processTx.Process.EntityId))
+	pid := util.HexPrefixed(fmt.Sprintf("%x", processTx.Process.ProcessId))
+	dataMap["uri"] = fmt.Sprintf("%s%s%s/%s", httpsPrefix, fa.Routes[0], eid, pid)
 	dataMap["click_action"] = defaultClickAction
 	// add notification fields
 	fcm := &messaging.Message{
@@ -286,13 +283,9 @@ func (fa *FirebaseAdmin) handleEthereumNewProcess(ctx context.Context, event *et
 		Upstream: BasePushNotification{Platform: PlatformAll},
 		FCM:      fcm,
 	}
-	notification.FCM.Topic = util.HexPrefixed(processTx.EntityID) + "_" + defaultLangTag + defaultTopicProcessNew
+	notification.FCM.Topic = eid + "_" + defaultLangTag + defaultTopicProcessNew
 	notification.FCM.Notification.Title = defaultProcessTitle
-	eIDBytes, err := hex.DecodeString(processTx.EntityID)
-	if err != nil {
-		return nil, err
-	}
-	entity, err := fa.IPFS.database.Entity(eIDBytes)
+	entity, err := fa.IPFS.database.Entity(processTx.Process.EntityId)
 	if err != nil {
 		return nil, err
 	}
