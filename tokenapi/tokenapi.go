@@ -222,7 +222,7 @@ func (t *TokenAPI) status(request router.RouterRequest) {
 		return
 	}
 
-	if len(hex.EncodeToString(member.PubKey)) != ethereum.PubKeyLength {
+	if len(member.PubKey) != ethereum.PubKeyLengthBytes {
 		log.Debugf("status for member with token (%q) for entity (%s): ", request.Token, request.EntityID)
 		resp.TokenStatus = "available"
 		t.send(&request, &resp)
@@ -279,7 +279,7 @@ func (t *TokenAPI) generate(request router.RouterRequest) {
 		return
 	}
 
-	log.Debugf("Entity: %q generateTokens: %d tokens", request.SignaturePublicKey, len(response.Tokens))
+	log.Debugf("Entity: %x generateTokens: %d tokens", request.SignaturePublicKey, len(response.Tokens))
 	t.send(&request, &response)
 }
 
@@ -326,7 +326,7 @@ func (t *TokenAPI) importKeysBulk(request router.RouterRequest) {
 		return
 	}
 
-	log.Debugf("Entity: %q importKeysBulk: %d tokens", request.SignaturePublicKey, len(request.Keys))
+	log.Debugf("Entity: %x importKeysBulk: %d tokens", request.SignaturePublicKey, len(request.Keys))
 	t.send(&request, &response)
 }
 

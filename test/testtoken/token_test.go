@@ -199,11 +199,8 @@ func TestStatus(t *testing.T) {
 	// 1. Existing used uuid should return registered
 	s := new(ethereum.SignKeys)
 	s.Generate()
-	pubKey, _ := s.HexString()
-	pub, err := hex.DecodeString(pubKey)
-	if err != nil {
-		t.Fatalf("unable to create pubKey: (%v)", err)
-	}
+	pub := s.PublicKey()
+
 	if err = api.DB.RegisterMember(entities[0].ID, pub, &membersUids[0]); err != nil {
 		t.Fatalf("unable to register member: (%v)", err)
 	}
@@ -356,12 +353,7 @@ func TestImportKeysBulk(t *testing.T) {
 		if err := bulkSigner.Generate(); err != nil {
 			t.Fatalf("error generating ethereum keys: (%v)", err)
 		}
-		pub, _ := bulkSigner.HexString()
-		pub, _ = ethereum.DecompressPubKey(pub)
-		pubBytes, err := hex.DecodeString(pub)
-		if err != nil {
-			t.Fatal(err)
-		}
+		pubBytes := bulkSigner.PublicKey()
 		keys[i] = pubBytes
 		keysString[i] = fmt.Sprintf("%x", pubBytes)
 	}

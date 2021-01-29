@@ -211,7 +211,8 @@ func main() {
 		if len(*entityKey) == 0 {
 			signer := ethereum.NewSignKeys()
 			signer.Generate()
-			pub, priv := signer.HexString()
+			_, priv := signer.HexString()
+			pub := signer.PublicKey()
 			entityID, err := util.PubKeyToEntityID(pub)
 			if err != nil {
 				log.Errorf("cannot calculate entityID: (%v)", err)
@@ -228,7 +229,8 @@ func main() {
 			if len(*entityKey) == 0 {
 				signer := ethereum.NewSignKeys()
 				signer.Generate()
-				pub, priv := signer.HexString()
+				_, priv := signer.HexString()
+				pub := signer.PublicKey()
 				entityID, err := util.PubKeyToEntityID(pub)
 				if err != nil {
 					log.Errorf("cannot calculate entityID: (%v)", err)
@@ -310,7 +312,8 @@ func splitFile(filepath string) ([]string, error) {
 func generateEntity(entityKey *string, eid *string) {
 	signer := ethereum.NewSignKeys()
 	signer.Generate()
-	pub, priv := signer.HexString()
+	_, priv := signer.HexString()
+	pub := signer.PublicKey()
 	if entityID, err := util.PubKeyToEntityID(pub); err != nil {
 		log.Errorf("cannot calculate entityID: (%v)", err)
 	} else {

@@ -5,44 +5,33 @@ import (
 	"fmt"
 	"strings"
 
-	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/util"
 )
 
-func PubKeyToEntityID(pubKey string) ([]byte, error) {
+func PubKeyToEntityID(pubKey []byte) ([]byte, error) {
 	// retrieve entity ID
-	var address ethcommon.Address
-	var addressBytes []byte
-	var err error
-	if address, err = PubKeyToAddress(pubKey); err != nil {
+	// var address ethcommon.Address
+	// var addressBytes []byte
+	// var err error
+	address, err := ethereum.AddrFromPublicKey(pubKey)
+	if err != nil {
 		return nil, fmt.Errorf("cannot decode public key")
 	}
-	if addressBytes, err = hex.DecodeString(util.TrimHex(address.String())); err != nil {
-		return nil, fmt.Errorf("error extracting address from public key %v", err)
-	}
-	return ethereum.HashRaw(addressBytes), nil
+	// if addressBytes, err = hex.DecodeString(util.TrimHex(address.String())); err != nil {
+	// 	return nil, fmt.Errorf("error extracting address from public key %v", err)
+	// }
+	return address.Bytes(), nil
+	// return ethereum.HashRaw(addressBytes), nil
 }
 
-func PubKeyToAddress(pubKey string) (ethcommon.Address, error) {
-	var address ethcommon.Address
-	var err error
-	if address, err = ethereum.AddrFromPublicKey(pubKey); err != nil {
-		return ethcommon.Address{}, fmt.Errorf("error extracting address from public key %v", err)
-	}
-	return address, nil
+func ValidPubKey(pubKey []byte) bool {
+	return len(pubKey) == ethereum.PubKeyLengthBytes
 }
 
-func ValidPubKey(pubKey string) bool {
-	if len(pubKey) != ethereum.PubKeyLength && len(pubKey) != ethereum.PubKeyLengthUncompressed {
-		return false
-	}
-	return true
-}
-
-func DecodeCensusID(id string, pubKey string) ([]byte, error) {
+func DecodeCensusID(id string, pubKey []byte) ([]byte, error) {
 	var censusID string
 	split := strings.Split(id, "/")
 	// Check for correct format 0xffdf.../0xfdf5f...
@@ -55,6 +44,7 @@ func DecodeCensusID(id string, pubKey string) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("error decoding address: %v", err)
 		}
+		// recover address from signature
 		if recoveredAddress, err := ethereum.AddrFromPublicKey(pubKey); err != nil {
 			return nil, fmt.Errorf("cannot extract entity address %v", err)
 		} else if string(recoveredAddress.Bytes()) != string(inputAddressBytes) {

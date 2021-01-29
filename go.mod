@@ -20,8 +20,8 @@ require (
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
-	go.vocdoni.io/dvote v0.6.1-0.20210121175409-28208b613be8
-	go.vocdoni.io/proto v0.1.6
+	go.vocdoni.io/dvote v0.6.1-0.20210128173226-e9764ecfc7b5
+	go.vocdoni.io/proto v0.1.8
 	google.golang.org/api v0.36.0
 	nhooyr.io/websocket v1.8.6
 )
