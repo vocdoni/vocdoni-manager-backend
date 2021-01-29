@@ -37,11 +37,13 @@ type Manager struct {
 	SigningKey string
 	// Migration options
 	Migrate *Migrate
+	// W3Endpoint
+	W3Enpoint string
 }
 
 func (m *Manager) String() string {
-	return fmt.Sprintf("API: %+v,  DB: %+v, SMTP: %+v, LogLevel: %s, LogOutput: %s, LogErrorFile: %s,  Metrics: %+v, Mode: %s, DataDir: %s, SaveConfig: %v, SigningKey: %s, Migrate: %+v",
-		*m.API, *m.DB, *m.SMTP, m.LogLevel, m.LogOutput, m.LogErrorFile, *m.Metrics, m.Mode, m.DataDir, m.SaveConfig, m.SigningKey, *m.Migrate)
+	return fmt.Sprintf("API: %+v,  DB: %+v, SMTP: %+v, LogLevel: %s, LogOutput: %s, LogErrorFile: %s,  Metrics: %+v, Mode: %s, DataDir: %s, SaveConfig: %v, SigningKey: %s, Migrate: %+v, W3Enpoint: %s",
+		*m.API, *m.DB, *m.SMTP, m.LogLevel, m.LogOutput, m.LogErrorFile, *m.Metrics, m.Mode, m.DataDir, m.SaveConfig, m.SigningKey, *m.Migrate, m.W3Enpoint)
 }
 
 func (m *Manager) ValidMode() bool {

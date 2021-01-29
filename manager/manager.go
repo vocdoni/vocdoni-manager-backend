@@ -1,8 +1,10 @@
 package manager
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"math/big"
 	"math/rand"
 	"sync"
 
@@ -10,6 +12,9 @@ import (
 	"reflect"
 	"strings"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
 
 	"github.com/vocdoni/multirpc/transports"
@@ -24,14 +29,15 @@ import (
 )
 
 type Manager struct {
-	Router *router.Router
-	db     database.Database
-	smtp   *smtpclient.SMTP
+	Router    *router.Router
+	db        database.Database
+	smtp      *smtpclient.SMTP
+	ethclient *ethclient.Client
 }
 
 // NewManager creates a new registry handler for the Router
-func NewManager(r *router.Router, d database.Database, s *smtpclient.SMTP) *Manager {
-	return &Manager{Router: r, db: d, smtp: s}
+func NewManager(r *router.Router, d database.Database, s *smtpclient.SMTP, ethclient *ethclient.Client) *Manager {
+	return &Manager{Router: r, db: d, smtp: s, ethclient: ethclient}
 }
 
 // RegisterMethods registers all registry methods behind the given path
@@ -139,6 +145,12 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("removeTag", path+"/manager", m.removeTag, false, false); err != nil {
 		return err
 	}
+	if m.ethclient != nil {
+		// do not expose this endpoint if the manager does not have an ethereum client
+		if err := m.Router.AddHandler("requestTokens", path+"/manager", m.requestTokens, false, false); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -195,6 +207,12 @@ func (m *Manager) signUp(request router.RouterRequest) {
 
 	log.Debugf("Entity: %x signUp", request.SignaturePublicKey)
 	m.send(&request, &response)
+
+	// do not try to send tokens if ethclient is nil
+	if m.ethclient != nil {
+		// send tokens to the new created entity
+		go m.sendTokens(context.Background(), ethcommon.BytesToAddress(entityID), types.DEFAULTFAUCETAMOUNT, types.DEFAULTFAUCETGASLIMIT)
+	}
 }
 
 func (m *Manager) getEntity(request router.RouterRequest) {
@@ -1514,6 +1532,110 @@ func (m *Manager) removeTag(request router.RouterRequest) {
 
 	log.Infof("removed tag with id %d from %d members, with %d invalid IDs, of Entity %x", request.TagID, response.Count, len(response.InvalidIDs), entityID)
 	m.send(&request, &response)
+}
+
+func (m *Manager) requestTokens(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	if m.ethclient == nil {
+		log.Errorf("cannot request for tokens, ethereum client is nil")
+		m.Router.SendError(request, "internal error")
+		return
+	}
+	// check public key length
+	// dvoteutil.IsHexEncodedStringWithLength
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
+		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Errorf("cannot recover %q entityID: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID")
+		return
+	}
+
+	entityAddress := ethcommon.BytesToAddress(entityID)
+
+	// check entity exists
+	if _, err := m.db.Entity(entityID); err != nil {
+		if err == sql.ErrNoRows {
+			log.Errorf("entity not found")
+			m.Router.SendError(request, "entity not found")
+			return
+		}
+		log.Errorf("cannot retrieve details of entity %x: (%v)", entityID, err)
+		m.Router.SendError(request, "cannot retrieve entity")
+		return
+	}
+
+	// check entity balance
+	balance, err := m.ethclient.BalanceAt(context.Background(), ethcommon.BytesToAddress(entityID), nil) // nil means latest block
+	if err != nil {
+		log.Errorf("cannot check entity balance: %s", err)
+		m.Router.SendError(request, "cannot check entity balance")
+		return
+	}
+	if balance.CmpAbs(big.NewInt(types.MAXFAUCETAMOUNT)) == 1 {
+		log.Errorf("cannot send tokens, entity %s has enough balance: %d", entityAddress.String(), balance.Int64())
+		m.Router.SendError(request, fmt.Sprintf("cannot send tokens, current balance to high: %d", balance.Int64()))
+		return
+	}
+	m.sendTokens(context.Background(), entityAddress, types.DEFAULTFAUCETAMOUNT, types.DEFAULTFAUCETGASLIMIT)
+	m.send(&request, &response)
+}
+
+func (m *Manager) sendTokens(ctx context.Context, to ethcommon.Address, amount int64, gasLimit uint64) {
+	if m.ethclient == nil {
+		log.Errorf("cannot send tokens, ethereum client is nil")
+	}
+	// get signer
+	signer, err := m.Router.Signer()
+	if err != nil {
+		log.Errorf("cannot get signer for sending the tx: %s", err)
+	}
+	// get chainID
+	chainID, err := m.ethclient.NetworkID(ctx)
+	if err != nil {
+		log.Errorf("cannot get network id: %s", err)
+	}
+	// set gas price
+	var gasPrice *big.Int
+	switch chainID.Int64() {
+	// if xdai or sokol always 1 gwei
+	case 100, 77:
+		gasPrice = big.NewInt(1000000000) // 1 gwei
+	// else let the node suggest
+	default:
+		gasPrice, err = m.ethclient.SuggestGasPrice(ctx)
+		if err != nil {
+			log.Errorf("cannot suggest gas price: %s", err)
+		}
+	}
+	// get nonce for the signer
+	nonce, err := m.ethclient.PendingNonceAt(ctx, signer.Address())
+	if err != nil {
+		log.Errorf("cannot get signer account nonce: %s", err)
+	}
+
+	// create tx
+	value := big.NewInt(amount)
+	tx := ethtypes.NewTransaction(nonce, to, value, gasLimit, gasPrice, []byte{})
+	// sign tx
+	signedTx, err := ethtypes.SignTx(tx, ethtypes.NewEIP155Signer(chainID), &signer.Private)
+	if err != nil {
+		log.Errorf("cannot sign transaction: %s", err)
+	}
+	// send tx
+	err = m.ethclient.SendTransaction(ctx, signedTx)
+	if err != nil {
+		log.Errorf("cannot send signed tx: %s", err)
+	}
+	log.Infof("sended %d tokens to newly created entity %s. TxHash: %s", value, to.String(), signedTx.Hash().Hex())
 }
 
 func checkOptions(filter *types.ListOptions, method string) error {

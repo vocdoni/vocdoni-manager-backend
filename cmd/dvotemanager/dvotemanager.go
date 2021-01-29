@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
@@ -71,6 +72,7 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.SMTP.Sender = *flag.String("smtpSender", "validation@bender.vocdoni.io", "SMTP Sender address")
 	cfg.SMTP.SenderName = *flag.String("smtpSenderName", "Vocdoni", "Name that appears as sender identity in emails")
 	cfg.SMTP.Contact = *flag.String("smtpContact", "contact@vocdoni.io", "Fallback contact email address in emails")
+	cfg.W3Enpoint = *flag.String("w3Endpoint", "", "ethereum endpoint to connect with, required by the manager faucet")
 
 	// metrics
 	cfg.Metrics.Enabled = *flag.Bool("metricsEnabled", true, "enable prometheus metrics")
@@ -119,6 +121,7 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("smtp.sender", flag.Lookup("smtpSender"))
 	viper.BindPFlag("smtp.senderName", flag.Lookup("smtpSenderName"))
 	viper.BindPFlag("smtp.contact", flag.Lookup("smtpContact"))
+	viper.BindPFlag("w3Endpoint", flag.Lookup("w3Endpoint"))
 
 	// metrics
 	viper.BindPFlag("metrics.enabled", flag.Lookup("metricsEnabled"))
@@ -263,9 +266,14 @@ func main() {
 	}
 
 	// Manager
+	ethclient, err := ethclient.Dial(cfg.W3Enpoint)
+	if err != nil {
+		log.Fatalf("cannot connect to ethereum endpoint: %w", err)
+	}
+
 	if cfg.Mode == "manager" || cfg.Mode == "all" {
 		log.Infof("enabling Manager API methods")
-		mgr := manager.NewManager(ep.Router, db, smtp)
+		mgr := manager.NewManager(ep.Router, db, smtp, ethclient)
 		if err := mgr.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}

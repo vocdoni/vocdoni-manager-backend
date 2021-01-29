@@ -80,7 +80,7 @@ func (t *TestAPI) Start(dbc *config.DB, route string) error {
 			log.Fatal(err)
 		}
 		// defer s.ClosePool()
-		mgr := manager.NewManager(t.EP.Router, t.DB, s)
+		mgr := manager.NewManager(t.EP.Router, t.DB, s, nil)
 		if err := mgr.RegisterMethods(route); err != nil {
 			log.Fatal(err)
 		}
