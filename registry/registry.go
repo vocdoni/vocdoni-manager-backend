@@ -16,7 +16,6 @@ import (
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/metrics"
 	"go.vocdoni.io/dvote/net"
-	"go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/manager/database"
 	"go.vocdoni.io/manager/router"
 	"go.vocdoni.io/manager/types"
@@ -94,20 +93,26 @@ func (r *Registry) register(request router.RouterRequest) {
 	}
 
 	// check entityId exists
-	entityID, err := hex.DecodeString(util.TrimHex(request.EntityID))
-	if err != nil {
-		log.Warn(err)
-		r.Router.SendError(request, "invalid entityId")
+	entityID := request.EntityID
+	if _, err := r.db.Entity(request.EntityID); err != nil {
+		if err == sql.ErrNoRows {
+			log.Warnf("register: invalid entity ID %x", entityID)
+			r.Router.SendError(request, "invalid entityID")
+			return
+		}
+		log.Errorf("register: error retrieving entity %x", entityID)
+		r.Router.SendError(request, "error retrieving entity")
 		return
 	}
 
 	// either token or valid member info should be valid
 	if !checkMemberInfo(request.MemberInfo) {
+		log.Warnf("register: invalid member info %v", request.MemberInfo)
 		r.Router.SendError(request, "invalid member info")
 		return
 	}
 	if uid, err = r.db.AddMember(entityID, user.PubKey, request.MemberInfo); err != nil {
-		log.Warn(err)
+		log.Error(err)
 		r.Router.SendError(request, fmt.Sprintf("cannot create member: (%s)", err))
 		return
 	}
@@ -135,14 +140,6 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	}
 	log.Debugf("got validateToken request with pubKey %x", requestPubKey)
 
-	// check entityId exists
-	entityID, err := hex.DecodeString(util.TrimHex(request.EntityID))
-	if err != nil {
-		log.Warnf("invalid entityId %s : (%v)", request.EntityID, err)
-		r.Router.SendError(request, "invalid entityId")
-		return
-	}
-
 	// either token or valid member info should be valid
 	if len(request.Token) == 0 {
 		log.Warnf("empty token validation for entity %s", request.EntityID)
@@ -154,7 +151,8 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		r.Router.SendError(request, "invalid token format")
 		return
 	}
-	entity, err := r.db.Entity(entityID)
+	// check entityId exists
+	entity, err := r.db.Entity(request.EntityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_entity"}).Inc()
@@ -167,7 +165,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		r.Router.SendError(request, "error retrieving entity")
 		return
 	}
-	member, err := r.db.Member(entityID, &uid)
+	member, err := r.db.Member(request.EntityID, &uid)
 	if err != nil {
 		if err == sql.ErrNoRows { // token does not exist
 			RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_invalid_token"}).Inc()
@@ -223,7 +221,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	// 	}
 	// }
 
-	if err = r.db.RegisterMember(entityID, requestPubKey, &uid); err != nil {
+	if err = r.db.RegisterMember(request.EntityID, requestPubKey, &uid); err != nil {
 		log.Warnf("cannot register member for entity %s: (%v)", request.EntityID, err)
 		msg := "invalidToken"
 		// if err.Error() == "duplicate user" {
@@ -238,24 +236,24 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	if err == nil {
 		go callback(entity.CallbackURL, entity.CallbackSecret, "register", uid)
 	} else {
-		log.Debugf("no callback URL defined for (%x)", entityID)
+		log.Debugf("no callback URL defined for (%x)", request.EntityID)
 	}
 
 	// remove pedning tag if exists
 	tagName := "PendingValidation"
-	tag, err := r.db.TagByName(entityID, tagName)
+	tag, err := r.db.TagByName(request.EntityID, tagName)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.Errorf("error retrieving PendingValidationTag: (%v)", err)
 		}
 	}
 	if tag != nil {
-		if _, _, err := r.db.RemoveTagFromMembers(entityID, []uuid.UUID{member.ID}, tag.ID); err != nil {
+		if _, _, err := r.db.RemoveTagFromMembers(request.EntityID, []uuid.UUID{member.ID}, tag.ID); err != nil {
 			log.Errorf("error removing pendingValidationTag from member %s : (%v)", member.ID.String(), err)
 		}
 	}
 
-	log.Infof("token %s validated for Entity %x", request.Token, entityID)
+	log.Infof("token %s validated for Entity %x", request.Token, request.EntityID)
 	r.send(&request, &response)
 
 	// increase stats counter
@@ -296,16 +294,8 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 		return
 	}
 
-	// decode entityID
-	entityID, err := hex.DecodeString(util.TrimHex(request.EntityID))
-	if err != nil {
-		log.Warn(err)
-		r.Router.SendError(request, "invalid entityId")
-		RegistryRequests.With(prometheus.Labels{"method": "status_error_entity"}).Inc()
-		return
-	}
 	// check if entity exists
-	if _, err := r.db.Entity(entityID); err != nil {
+	if _, err := r.db.Entity(request.EntityID); err != nil {
 		log.Warn(err)
 		r.Router.SendError(request, "entity does not exist")
 		RegistryRequests.With(prometheus.Labels{"method": "status_error_entity"}).Inc()
@@ -313,7 +303,7 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 	}
 
 	// check if user is a member
-	if member, err = r.db.MemberPubKey(entityID, signaturePubKeyBytes); err != nil {
+	if member, err = r.db.MemberPubKey(request.EntityID, signaturePubKeyBytes); err != nil {
 		// user is not a member but exists
 		if err == sql.ErrNoRows {
 			response.Status = &types.Status{

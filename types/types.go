@@ -141,22 +141,7 @@ type Census struct {
 	CensusInfo
 }
 
-type HexBytes dvotetypes.HexBytes
-
-// func (h *HexBytes) UnmarshalJSON(src []byte) error {
-// 	var s string
-// 	if err := json.Unmarshal(src, &s); err != nil {
-// 		return err
-// 	}
-// 	b, err := hex.DecodeString(util.TrimHex(s))
-// 	*h = b
-// 	return err
-// }
-
-// func (h *HexBytes) MarshalJSON() ([]byte, error) {
-// 	return json.Marshal("0x" + hex.EncodeToString(*h))
-// }
-
+type HexBytes = dvotetypes.HexBytes
 type CensusInfo struct {
 	CreatedUpdated
 	Name          string   `json:"name,omitempty" db:"name"`

@@ -616,9 +616,7 @@ func TestCensus(t *testing.T) {
 	if idBytes, err = hex.DecodeString(util.TrimHex(id)); err != nil {
 		t.Fatalf("cannot decode random id: %s", err)
 	}
-	if root, err = hex.DecodeString(util.RandomHex(len(entities[0].ID))); err != nil {
-		t.Fatalf("cannot generate root: %s", err)
-	}
+	root = util.RandomBytes(32)
 	name := fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
 	// create census info
 	censusInfo := &types.CensusInfo{
@@ -800,12 +798,7 @@ func TestCensus(t *testing.T) {
 		t.Fatalf("retrieved wrong ephemeral member info by email: (%v)", err)
 	}
 
-	merkleRootStr := util.RandomHex(33)
-	merkleRoot, err := hex.DecodeString(merkleRootStr)
-	if err != nil {
-		t.Fatalf("error decoding merkleRoot string to bytes: (%v)", err)
-	}
-	// merkleRoot := util.RandomBytes(66)
+	merkleRoot := util.RandomBytes(32)
 	merkleTreeUri := "ipfs://..."
 	info := &types.CensusInfo{
 		MerkleRoot:    merkleRoot,

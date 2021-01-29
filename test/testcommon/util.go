@@ -43,9 +43,9 @@ func CreateEntities(size int) ([]*ethereum.SignKeys, []*types.Entity) {
 }
 
 // CreateMembers a given number of members with its entityID set to entityID
-func CreateMembers(entityID []byte, size int) ([]*ethereum.SignKeys, []*types.Member, error) {
+func CreateMembers(entityID []byte, size int) ([]*ethereum.SignKeys, []types.Member, error) {
 	signers := CreateEthRandomKeysBatch(size)
-	members := make([]*types.Member, size)
+	members := make([]types.Member, size)
 	// if membersInfo not set generate random data
 	for i := 0; i < size; i++ {
 		pub, _ := signers[i].HexString()
@@ -54,7 +54,7 @@ func CreateMembers(entityID []byte, size int) ([]*ethereum.SignKeys, []*types.Me
 		if err != nil {
 			return nil, nil, err
 		}
-		members[i] = &types.Member{
+		members[i] = types.Member{
 			EntityID: entityID,
 			PubKey:   pubBytes,
 			MemberInfo: types.MemberInfo{

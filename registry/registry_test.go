@@ -1,15 +1,18 @@
 package registry_test
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/net"
-	gtypes "go.vocdoni.io/dvote/types"
+	dvotetypes "go.vocdoni.io/dvote/types"
+	"go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/manager/database/testdb"
 	"go.vocdoni.io/manager/registry"
 	"go.vocdoni.io/manager/router"
@@ -48,14 +51,14 @@ func TestRegisterMethods(t *testing.T) {
 		t.Fatalf("cannot init proxy: %v", err)
 	}
 	// create router channel
-	listenerOutput := make(chan gtypes.Message)
+	listenerOutput := make(chan dvotetypes.Message)
 	// create ws
 	//ws := new(net.WebsocketHandle)
-	//ws.Init(new(gtypes.Connection))
+	//ws.Init(new(dvotetypes.Connection))
 	//ws.SetProxy(pxy)
 	// create http
 	http := new(net.HttpHandler)
-	if err := http.Init(new(gtypes.Connection)); err != nil {
+	if err := http.Init(new(dvotetypes.Connection)); err != nil {
 		t.Fatalf("cannot start http handler: (%s)", err)
 	}
 	http.SetProxy(pxy)
@@ -98,7 +101,7 @@ func TestRegister(t *testing.T) {
 
 	// create register request
 	req.Method = "register"
-	req.EntityID = "12345123451234"
+	req.EntityID = util.RandomBytes(ethcommon.AddressLength)
 	req.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
@@ -114,7 +117,10 @@ func TestRegister(t *testing.T) {
 	s2.Generate()
 	var req2 types.MetaRequest
 	req2.Method = "register"
-	req2.EntityID = "12345123451234"
+	req2.EntityID = util.RandomBytes(ethcommon.AddressLength)
+	if err != nil {
+		t.Fatal("error decoding string")
+	}
 	req2.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
@@ -125,23 +131,10 @@ func TestRegister(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// should fail if invalid entityID
-	req.Method = "register"
-	req.EntityID = "0xZ"
-	req.MemberInfo = &types.MemberInfo{
-		Email: "info@vocdoni.io",
-	}
-	// make request
-	resp = conn.Request(req, s)
-	// check register went successful
-	if resp.Ok {
-		t.Fatal("should fail if invalid entityID")
-	}
-
 	// should fail if add member fails
 	var req4 types.MetaRequest
 	req4.Method = "register"
-	req4.EntityID = "12345123451234"
+	req4.EntityID = util.RandomBytes(ethcommon.AddressLength)
 	req4.MemberInfo = &types.MemberInfo{
 		Email: "fail@fail.fail",
 	}
@@ -155,7 +148,10 @@ func TestRegister(t *testing.T) {
 	// should fail if entity does not exist
 	var req7 types.MetaRequest
 	req7.Method = "register"
-	req7.EntityID = "f6da3e4864d566faf82163a407e84a9001592678"
+	req7.EntityID, err = hex.DecodeString("f6da3e4864d566faf82163a407e84a9001592678")
+	if err != nil {
+		t.Fatal("error decoding string")
+	}
 	req7.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
@@ -185,7 +181,7 @@ func TestRegister(t *testing.T) {
 	constSigner := ethereum.NewSignKeys()
 	constSigner.AddHexKey(testdb.Signers[0].Priv)
 	req9.Method = "register"
-	req9.EntityID = "12345123451234"
+	req9.EntityID = util.RandomBytes(ethcommon.AddressLength)
 	req9.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
@@ -202,7 +198,7 @@ func TestRegister(t *testing.T) {
 	// constSigner2 := ethereum.NewSignKeys()
 	// constSigner2.AddHexKey(testdb.Signers[1].Priv)
 	// req10.Method = "register"
-	// req10.EntityID = "12345123451234"
+	// req10.EntityID = util.RandomBytes(ethcommon.AddressLength)
 	// req10.MemberInfo = &types.MemberInfo{
 	// 	Email: "info@vocdoni.io",
 	// }
@@ -221,7 +217,7 @@ func TestRegister(t *testing.T) {
 	// //p1, p2 := constSigner3.HexString()
 	// //t.Fatalf("%s : %s", p1, p2)
 	// req11.Method = "register"
-	// req11.EntityID = "12345123451234"
+	// req11.EntityID = util.RandomBytes(ethcommon.AddressLength)
 	// req11.MemberInfo = &types.MemberInfo{
 	// 	Email: "info@vocdoni.io",
 	// }
@@ -248,8 +244,8 @@ func TestStatus(t *testing.T) {
 
 	// Register user and add member
 	req.Method = "register"
-	req.EntityID = "12345123451234"
-	req.PubKey, _ = s.HexString()
+	req.EntityID = util.RandomBytes(ethcommon.AddressLength)
+	req.PubKey = util.RandomBytes(ethereum.PubKeyLength)
 	req.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
@@ -261,7 +257,7 @@ func TestStatus(t *testing.T) {
 	// check user is registered calling status
 	var req2 types.MetaRequest
 	req2.Method = "registrationStatus"
-	req2.EntityID = "12345123451234"
+	req2.EntityID = util.RandomBytes(ethcommon.AddressLength)
 	resp2 := wsc.Request(req2, s)
 	if !resp2.Ok {
 		t.Fatal(err)
@@ -273,19 +269,13 @@ func TestStatus(t *testing.T) {
 		t.Fatal("Status.NeedsUpdate expected to be false")
 	}
 
-	// should fail if invalid entityID
-	var req3 types.MetaRequest
-	req3.Method = "registrationStatus"
-	req3.EntityID = "0xZ"
-	resp3 := wsc.Request(req3, s)
-	if resp3.Ok {
-		t.Fatal(err)
-	}
-
 	// should fail if entity does not exist
 	var req4 types.MetaRequest
 	req4.Method = "registrationStatus"
-	req4.EntityID = "f6da3e4864d566faf82163a407e84a9001592678"
+	req4.EntityID, err = hex.DecodeString("f6da3e4864d566faf82163a407e84a9001592678")
+	if err != nil {
+		t.Fatal(err)
+	}
 	resp4 := wsc.Request(req4, s)
 	if resp4.Ok {
 		t.Fatal("should fail if entity not found")
@@ -297,7 +287,7 @@ func TestStatus(t *testing.T) {
 	// constSigner2 := ethereum.NewSignKeys()
 	// constSigner2.AddHexKey(testdb.Signers[3].Priv)
 	// req6.Method = "registrationStatus"
-	// req6.EntityID = "12345123451234"
+	// req6.EntityID = util.RandomBytes(ethcommon.AddressLength)
 	// resp6 := wsc.Request(req6, constSigner2)
 	// if resp6.Ok {
 	// 	if resp6.Status.Registered != false {
