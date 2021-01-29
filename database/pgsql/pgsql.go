@@ -471,11 +471,7 @@ func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberI
 	keys := createEthRandomKeysBatch(len(info))
 	members := []PGMember{}
 	for idx, member := range info {
-		pub, _ := keys[idx].HexString()
-		pubBytes, err := hex.DecodeString(pub)
-		if err != nil {
-			return fmt.Errorf("error decoding generated pubKey: %w", err)
-		}
+		pubBytes := keys[idx].PublicKey()
 		user := &types.User{PubKey: pubBytes}
 		err = d.AddUser(user)
 		if err != nil {
@@ -962,7 +958,7 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 	if err != nil {
 		return fmt.Errorf("cannot initialize postgres transaction: %w", err)
 	}
-	if !util.ValidPubKey(fmt.Sprintf("%x", pubKey)) {
+	if !util.ValidPubKey(pubKey) {
 		return fmt.Errorf("invalid public key size %d", len(pubKey))
 	}
 	_, err = d.User(pubKey)
@@ -1472,7 +1468,7 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 	var censusMembers []types.CensusMember
 	signKeys := ethereum.NewSignKeys()
 	for _, member := range members {
-		if util.ValidPubKey(fmt.Sprintf("%x", member.PubKey)) {
+		if util.ValidPubKey(member.PubKey) {
 			// if the member has a public key registered add directly
 			// to the census
 			censusMember := types.CensusMember{
@@ -1490,10 +1486,6 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 				panic(fmt.Sprintf("expandCensusClaims: cound not generate emphemeral signkeys: (%v)", err))
 			}
 			pubKey, privKey := signKeys.HexString()
-			pubKey, err = ethereum.DecompressPubKey(pubKey)
-			if err != nil {
-				return nil, fmt.Errorf("cound not decompress emphemeral identity pubKey: (%v)", err)
-			}
 			pubKeyBytes, err := hex.DecodeString(pubKey)
 			if err != nil {
 				return nil, fmt.Errorf("cound not decode to bytes emphemeral identity pubKey: (%v)", err)

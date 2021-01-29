@@ -146,12 +146,8 @@ func TestEntity(t *testing.T) {
 
 	entitySigner.Generate()
 
-	pub, _ := entitySigner.HexString()
-	pubString, err := hex.DecodeString(pub)
-	if err != nil {
-		t.Fatalf("error decoding pubKey: %s", err)
-	}
-	entityID1 := ethereum.HashRaw(pubString)
+	pubBytes := entitySigner.PublicKey()
+	entityID1 := ethereum.HashRaw(pubBytes)
 
 	if err := api.DB.DeleteEntity(entityID1); err == nil {
 		t.Fatalf("could delete a random entity entity: %s", err)
@@ -193,19 +189,14 @@ func TestMember(t *testing.T) {
 	// Create pubkey and Add membmer to the db
 	memberSigner := ethereum.NewSignKeys()
 	memberSigner.Generate()
-	pub, _ := memberSigner.HexString()
-	pub, _ = ethereum.DecompressPubKey(pub)
-	pubBytes, err := hex.DecodeString(pub)
-	if err != nil {
-		log.Fatalf("%s", err)
-	}
+	pubBytes := memberSigner.PublicKey()
 	memberInfo := &types.MemberInfo{}
 	memberInfo.FirstName = "Lak"
 	memberInfo.LastName = "Lik"
 	memberInfo.DateOfBirth.Round(time.Microsecond).UTC()
 	memberInfo.Verified.Round(time.Microsecond)
 	user := &types.User{PubKey: pubBytes}
-	err = api.DB.AddUser(user)
+	err := api.DB.AddUser(user)
 	if err != nil {
 		t.Fatalf("cannot add user to the Postgres DB (pgsql.go:addUser) %s", err)
 	}
@@ -478,12 +469,7 @@ func TestMember(t *testing.T) {
 		if err = bulkSigner.Generate(); err != nil {
 			t.Fatalf("error generating ethereum keys: (%v)", err)
 		}
-		pub, _ = bulkSigner.HexString()
-		pub, _ = ethereum.DecompressPubKey(pub)
-		pubBytes, err = hex.DecodeString(pub)
-		if err != nil {
-			t.Fatalf("%s", err)
-		}
+		pubBytes := bulkSigner.PublicKey()
 		bulkMembers[i].PubKey = pubBytes
 		bulkKeys[i] = pubBytes
 	}

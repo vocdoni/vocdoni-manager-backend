@@ -269,8 +269,6 @@ func TestGetMember(t *testing.T) {
 	// should fail if listTargets fail
 	s4 := ethereum.NewSignKeys()
 	s4.AddHexKey(testdb.Signers[3].Priv)
-	//eid, err := util.PubKeyToEntityID(testdb.Signers[3].Pub)
-	//t.Fatalf("%s", hex.EncodeToString(eid))
 	var req4 types.MetaRequest
 	req4.Method = "getMember"
 	u = uuid.New()

@@ -30,7 +30,7 @@ type RouterRequest struct {
 	id                 string
 	Authenticated      bool
 	Address            ethcommon.Address
-	SignaturePublicKey string
+	SignaturePublicKey []byte
 	private            bool
 }
 
@@ -124,11 +124,7 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 		if request.SignaturePublicKey, err = ethereum.PubKeyFromSignature(reqOuter.MetaRequest, reqOuter.Signature); err != nil {
 			return request, err
 		}
-		// TBD: remove when everything is compressed only
-		//	if request.SignaturePublicKey, err = ethereum.CompressPubKey(request.SignaturePublicKey); err != nil {
-		//		return request, err
-		//	}
-		if len(request.SignaturePublicKey) == 0 {
+		if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 			return request, fmt.Errorf("could not extract public key from signature")
 		}
 		if request.Address, err = ethereum.AddrFromPublicKey(request.SignaturePublicKey); err != nil {

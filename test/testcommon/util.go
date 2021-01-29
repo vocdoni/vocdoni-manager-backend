@@ -1,7 +1,6 @@
 package testcommon
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"math/rand"
 	"time"
@@ -9,25 +8,22 @@ import (
 	randomdata "github.com/Pallinder/go-randomdata"
 
 	"go.vocdoni.io/dvote/crypto/ethereum"
-	util "go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/manager/types"
 )
 
 // CreateEntities a given number of random entities
 func CreateEntities(size int) ([]*ethereum.SignKeys, []*types.Entity) {
-	var entityID, entityAddress []byte
 	var err error
 	signers := CreateEthRandomKeysBatch(size)
 	mp := make([]*types.Entity, size)
 	for i := 0; i < size; i++ {
 		// retrieve entity ID
-		entityAddress, err = hex.DecodeString(util.TrimHex(signers[i].Address().String()))
+		entityAddress := signers[i].Address().Bytes()
 		if err != nil {
 			return nil, nil
 		}
-		entityID = ethereum.HashRaw(entityAddress)
 		mp[i] = &types.Entity{
-			ID: entityID,
+			ID: entityAddress,
 			EntityInfo: types.EntityInfo{
 				Address:                 entityAddress,
 				Email:                   randomdata.Email(),
@@ -48,12 +44,7 @@ func CreateMembers(entityID []byte, size int) ([]*ethereum.SignKeys, []types.Mem
 	members := make([]types.Member, size)
 	// if membersInfo not set generate random data
 	for i := 0; i < size; i++ {
-		pub, _ := signers[i].HexString()
-		pub, _ = ethereum.DecompressPubKey(pub)
-		pubBytes, err := hex.DecodeString(pub)
-		if err != nil {
-			return nil, nil, err
-		}
+		pubBytes := signers[i].PublicKey()
 		members[i] = types.Member{
 			EntityID: entityID,
 			PubKey:   pubBytes,

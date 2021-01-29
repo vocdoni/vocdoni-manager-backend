@@ -63,14 +63,14 @@ func (n *API) register(request router.RouterRequest) {
 	var err error
 
 	// check public key length
-	if len(request.SignaturePublicKey) != ethereum.PubKeyLength && len(request.SignaturePublicKey) != ethereum.PubKeyLengthUncompressed {
-		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
+		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
 		n.Router.SendError(request, "invalid public key")
 		return
 	}
 
 	// check user
-	if u, err = n.PushNotifier.GetUser(request.SignaturePublicKey); err != nil {
+	if u, err = n.PushNotifier.GetUser(string(request.SignaturePublicKey)); err != nil {
 		// firebase specific
 		if n.PushNotifier.Service() == Firebase {
 			// if err is user not found continue, else return error
@@ -83,7 +83,7 @@ func (n *API) register(request router.RouterRequest) {
 				// create if user does not exist
 				// set info
 				params := (&auth.UserToCreate{}).
-					UID(request.SignaturePublicKey).
+					UID(string(request.SignaturePublicKey)).
 					Disabled(false)
 				// make firebase request
 				u, err = n.PushNotifier.CreateUser(FirebaseUser{UserToCreate: params})
@@ -101,7 +101,7 @@ func (n *API) register(request router.RouterRequest) {
 		}
 	} else {
 		// found user
-		if u.UID() != request.SignaturePublicKey {
+		if u.UID() != string(request.SignaturePublicKey) {
 			log.Warnf("cannot register user, uid and signature mismatch. uid: %s pubkey: %s", u.UID(), request.SignaturePublicKey)
 			n.Router.SendError(request, fmt.Sprintf("cannot register user, uid and signature mismatch. uid: %s pubkey: %s", u.UID(), request.SignaturePublicKey))
 			return

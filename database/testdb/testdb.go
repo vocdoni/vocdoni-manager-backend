@@ -85,21 +85,21 @@ func (d *Database) EntityOrigins(entityID []byte) ([]types.Origin, error) {
 }
 
 func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
-	if fmt.Sprintf("%x", entityID) == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if fmt.Sprintf("%x", entityID) == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return fmt.Errorf("error adding entity with id: %x", entityID)
 	}
 	return nil
 }
 
 func (d *Database) DeleteEntity(entityID []byte) error {
-	if fmt.Sprintf("%x", entityID) == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if fmt.Sprintf("%x", entityID) == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return fmt.Errorf("error deleting entity with id: %x", entityID)
 	}
 	return nil
 }
 
 func (d *Database) AuthorizeEntity(entityID []byte) error {
-	if fmt.Sprintf("%x", entityID) == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if fmt.Sprintf("%x", entityID) == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return fmt.Errorf("error adding entity with id: %x", entityID)
 	}
 	return nil
@@ -107,7 +107,7 @@ func (d *Database) AuthorizeEntity(entityID []byte) error {
 
 func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return fmt.Errorf("error updating entity with id: %s", failEid)
 	}
 	return nil
@@ -115,10 +115,10 @@ func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
 
 func (d *Database) Member(entityID []byte, memberID *uuid.UUID) (*types.Member, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if failEid == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return nil, sql.ErrNoRows
 	}
-	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return nil, fmt.Errorf("cannot get member")
 	}
 	var member types.Member
@@ -168,7 +168,7 @@ func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) 
 
 func (d *Database) CountMembers(entityID []byte) (int, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return 0, fmt.Errorf("error counting members of entity: %s", failEid)
 	}
 	return 0, nil
@@ -176,10 +176,10 @@ func (d *Database) CountMembers(entityID []byte) (int, error) {
 
 func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if failEid == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return nil, sql.ErrNoRows
 	}
-	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return nil, fmt.Errorf("cannot list members")
 	}
 	return nil, nil
@@ -187,7 +187,7 @@ func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]ty
 
 func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if failEid == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return nil, fmt.Errorf("error getting census of entity: %s", failEid)
 	}
 	var census types.Census
@@ -197,17 +197,17 @@ func (d *Database) Census(entityID, censusID []byte) (*types.Census, error) {
 
 func (d *Database) CountCensus(entityID []byte) (int, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if failEid == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return 0, fmt.Errorf("error counting census of entity: %s", failEid)
 	}
 	return 0, nil
 }
 
 func (d *Database) ListCensus(entityID []byte, filter *types.ListOptions) ([]types.Census, error) {
-	if fmt.Sprintf("%x", entityID) == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if fmt.Sprintf("%x", entityID) == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return nil, sql.ErrNoRows
 	}
-	if fmt.Sprintf("%x", entityID) == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if fmt.Sprintf("%x", entityID) == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return nil, fmt.Errorf("cannot list census from entity: %x", entityID)
 	}
 	return nil, nil
@@ -215,7 +215,7 @@ func (d *Database) ListCensus(entityID []byte, filter *types.ListOptions) ([]typ
 
 func (d *Database) AddCensus(entityID, censusID []byte, targetID *uuid.UUID, info *types.CensusInfo) error {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "91d078ba8ee8d10c3ee85b712bfdcb8dfa257599ae4fa74cabc365e25b001b14" {
+	if failEid == "c87363d9919daef530bf19e907df7f2d8920be75" {
 		return fmt.Errorf("cannot add census to entity: %s", failEid)
 	}
 	return nil
@@ -223,7 +223,7 @@ func (d *Database) AddCensus(entityID, censusID []byte, targetID *uuid.UUID, inf
 
 func (d *Database) DeleteCensus(entityID []byte, censusID []byte) error {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "91d078ba8ee8d10c3ee85b712bfdcb8dfa257599ae4fa74cabc365e25b001b14" {
+	if failEid == "c87363d9919daef530bf19e907df7f2d8920be75" {
 		return fmt.Errorf("cannot add census to entity: %s", failEid)
 	}
 	return nil
@@ -231,7 +231,7 @@ func (d *Database) DeleteCensus(entityID []byte, censusID []byte) error {
 
 func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uuid.UUID, info *types.CensusInfo) (int64, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "91d078ba8ee8d10c3ee85b712bfdcb8dfa257599ae4fa74cabc365e25b001b14" {
+	if failEid == "c87363d9919daef530bf19e907df7f2d8920be75" {
 		return 0, fmt.Errorf("cannot add census members to entity: %s", failEid)
 	}
 	return 0, nil
@@ -258,7 +258,7 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 
 func (d *Database) DeleteMember(entityID []byte, memberID *uuid.UUID) error {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return fmt.Errorf("error deleting member of entity: %s", failEid)
 	}
 	return nil
@@ -266,7 +266,7 @@ func (d *Database) DeleteMember(entityID []byte, memberID *uuid.UUID) error {
 
 func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int, []uuid.UUID, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return 0, nil, fmt.Errorf("error deleting members of entity: %s", failEid)
 	}
 	return len(members), []uuid.UUID{}, nil
@@ -274,7 +274,7 @@ func (d *Database) DeleteMembers(entityID []byte, members []uuid.UUID) (int, []u
 
 func (d *Database) DeleteMembersByKeys(entityID []byte, memberKeys [][]byte) (int, [][]byte, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return 0, nil, fmt.Errorf("error deleting members of entity: %s", failEid)
 	}
 	return len(memberKeys), [][]byte{}, nil
@@ -282,7 +282,7 @@ func (d *Database) DeleteMembersByKeys(entityID []byte, memberKeys [][]byte) (in
 
 func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberInfo) error {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if failEid == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return fmt.Errorf("error importing members of entity: %s", failEid)
 	}
 	return nil
@@ -290,7 +290,7 @@ func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberI
 
 func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if failEid == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return fmt.Errorf("error importing members of entity: %s", failEid)
 	}
 	return nil
@@ -302,7 +302,7 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 
 func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *types.MemberInfo) error {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return fmt.Errorf("error updating member of entity: %s", failEid)
 	}
 	return nil
@@ -335,7 +335,7 @@ func (d *Database) RemoveTagFromMembers(entityID []byte, members []uuid.UUID, ta
 
 func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) error {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if failEid == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return fmt.Errorf("cannot create members")
 	}
 	return nil
@@ -343,7 +343,7 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 
 func (d *Database) CreateNMembers(entityID []byte, n int) ([]uuid.UUID, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if failEid == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return nil, fmt.Errorf("cannot create members")
 	}
 	return nil, nil
@@ -351,7 +351,7 @@ func (d *Database) CreateNMembers(entityID []byte, n int) ([]uuid.UUID, error) {
 
 func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) error {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if failEid == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return fmt.Errorf("cannot create members")
 	}
 	return nil
@@ -359,10 +359,10 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 
 func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if failEid == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return nil, sql.ErrNoRows
 	}
-	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return nil, fmt.Errorf("error exporting members of entity: %s", failEid)
 	}
 	return nil, nil
@@ -393,17 +393,17 @@ func (d *Database) UpdateCensus(entityID, censusID []byte, info *types.CensusInf
 
 func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if failEid == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return uuid.Nil, fmt.Errorf("cannot add target: %+v", target)
 	}
 	return uuid.Nil, nil
 }
 func (d *Database) Target(entityID []byte, targetID *uuid.UUID) (*types.Target, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return nil, fmt.Errorf("error getting target from entity: %s", failEid)
 	}
-	if failEid == "da4d07b964e488b740e2336b5bb563fff69d1f6f80e3e8595f9d07c05741c0b1" {
+	if failEid == "6d3e07d7d1dd84469cc3adf49fa83daf2678b4c9" {
 		t1 := types.Target{}
 		return &t1, fmt.Errorf("error listing targets of entity: %s", failEid)
 	}
@@ -411,10 +411,10 @@ func (d *Database) Target(entityID []byte, targetID *uuid.UUID) (*types.Target, 
 }
 func (d *Database) ListTargets(entityID []byte) ([]types.Target, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "91d078ba8ee8d10c3ee85b712bfdcb8dfa257599ae4fa74cabc365e25b001b14" {
+	if failEid == "c87363d9919daef530bf19e907df7f2d8920be75" {
 		return nil, sql.ErrNoRows
 	}
-	if failEid == "da4d07b964e488b740e2336b5bb563fff69d1f6f80e3e8595f9d07c05741c0b1" {
+	if failEid == "6d3e07d7d1dd84469cc3adf49fa83daf2678b4c9" {
 		t1 := make([]types.Target, 1)
 		t1[0] = types.Target{}
 		return t1, fmt.Errorf("error listing targets of entity: %s", failEid)
@@ -423,14 +423,14 @@ func (d *Database) ListTargets(entityID []byte) ([]types.Target, error) {
 }
 func (d *Database) CountTargets(entityID []byte) (int, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8e367f4c5361d1ffd78c436690fa4e9f96e4e1dbde26a6e6e1c1649f12e85a1c" {
+	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
 		return 0, fmt.Errorf("error counting targets of entity: %s", failEid)
 	}
 	return 0, nil
 }
 func (d *Database) TargetMembers(entityID []byte, targetID *uuid.UUID) ([]types.Member, error) {
 	failEid := hex.EncodeToString(entityID)
-	if failEid == "8122c4d8288c3222289c1832c600cc8bb95caa41e53107aadd23f7e092a77a27" {
+	if failEid == "5fa506aa68191bcc657795e57f080472e712c27d" {
 		return nil, fmt.Errorf("error targeting members of entity: %s", failEid)
 	}
 	return nil, nil

@@ -2,7 +2,6 @@ package registry
 
 import (
 	"database/sql"
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -86,11 +85,7 @@ func (r *Registry) register(request router.RouterRequest) {
 	// increase stats counter
 	RegistryRequests.With(prometheus.Labels{"method": "register"}).Inc()
 
-	if user.PubKey, err = hex.DecodeString(request.SignaturePublicKey); err != nil {
-		log.Warn(err)
-		r.Router.SendError(request, "cannot decode public key")
-		return
-	}
+	user.PubKey = request.SignaturePublicKey
 
 	// check entityId exists
 	entityID := request.EntityID
@@ -131,14 +126,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 
 	// increase stats counter
 	RegistryRequests.With(prometheus.Labels{"method": "validateToken"}).Inc()
-
-	requestPubKey, err := hex.DecodeString(request.SignaturePublicKey)
-	if err != nil {
-		log.Errorf("cannot decode user public key: (%v)", err)
-		r.Router.SendError(request, "cannot decode user public key")
-		return
-	}
-	log.Debugf("got validateToken request with pubKey %x", requestPubKey)
+	log.Debugf("got validateToken request with pubKey %x", request.SignaturePublicKey)
 
 	// either token or valid member info should be valid
 	if len(request.Token) == 0 {
@@ -146,6 +134,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		r.Router.SendError(request, "invalid token")
 		return
 	}
+	var err error
 	if uid, err = uuid.Parse(request.Token); err != nil {
 		log.Warnf("invalid token id format %s for entity %s: (%v)", request.Token, request.EntityID, err)
 		r.Router.SendError(request, "invalid token format")
@@ -179,7 +168,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	}
 
 	// 1.
-	if string(member.PubKey) == string(requestPubKey) {
+	if string(member.PubKey) == string(request.SignaturePublicKey) {
 		RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_already_registered"}).Inc()
 		log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
 		r.Router.SendError(request, "duplicate user already registered")
@@ -221,7 +210,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	// 	}
 	// }
 
-	if err = r.db.RegisterMember(request.EntityID, requestPubKey, &uid); err != nil {
+	if err = r.db.RegisterMember(request.EntityID, request.SignaturePublicKey, &uid); err != nil {
 		log.Warnf("cannot register member for entity %s: (%v)", request.EntityID, err)
 		msg := "invalidToken"
 		// if err.Error() == "duplicate user" {
@@ -230,7 +219,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		r.Router.SendError(request, msg)
 		return
 	}
-	log.Debugf("new user registered with pubKey: %x", requestPubKey)
+	log.Debugf("new user registered with pubKey: %x", request.SignaturePublicKey)
 
 	_, err = url.ParseRequestURI(entity.CallbackURL)
 	if err == nil {
@@ -284,15 +273,7 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 
 	// increase stats counter
 	RegistryRequests.With(prometheus.Labels{"method": "status"}).Inc()
-
-	log.Debugf("got registrationStatus request with pubKey %s", request.SignaturePublicKey)
-
-	signaturePubKeyBytes, err := hex.DecodeString(request.SignaturePublicKey)
-	if err != nil {
-		log.Warn(err)
-		r.Router.SendError(request, "cannot decode public key")
-		return
-	}
+	log.Debugf("got registrationStatus request with pubKey %x", request.SignaturePublicKey)
 
 	// check if entity exists
 	if _, err := r.db.Entity(request.EntityID); err != nil {
@@ -303,7 +284,8 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 	}
 
 	// check if user is a member
-	if member, err = r.db.MemberPubKey(request.EntityID, signaturePubKeyBytes); err != nil {
+	var err error
+	if member, err = r.db.MemberPubKey(request.EntityID, request.SignaturePublicKey); err != nil {
 		// user is not a member but exists
 		if err == sql.ErrNoRows {
 			response.Status = &types.Status{

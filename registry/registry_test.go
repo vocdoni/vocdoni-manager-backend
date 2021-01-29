@@ -245,7 +245,7 @@ func TestStatus(t *testing.T) {
 	// Register user and add member
 	req.Method = "register"
 	req.EntityID = util.RandomBytes(ethcommon.AddressLength)
-	req.PubKey = util.RandomBytes(ethereum.PubKeyLength)
+	req.PubKey = util.RandomBytes(ethereum.PubKeyLengthBytes)
 	req.MemberInfo = &types.MemberInfo{
 		Email: "info@vocdoni.io",
 	}
