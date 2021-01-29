@@ -322,3 +322,11 @@ func getHealth() (int32, error) {
 	}
 	return result, nil
 }
+
+// Signer returns the router signer
+func (r *Router) Signer() (*ethereum.SignKeys, error) {
+	if r.signer != nil {
+		return r.signer, nil
+	}
+	return nil, fmt.Errorf("nil signer")
+}
