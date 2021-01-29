@@ -811,7 +811,7 @@ func (m *Manager) dumpCensus(request router.RouterRequest) {
 
 func (m *Manager) sendVotingLinks(request router.RouterRequest) {
 
-	if len(request.MemberID) == 0 || request.ProcessID == "" {
+	if len(request.MemberID) == 0 || len(request.ProcessID) == 0 {
 		m.Router.SendError(request, "invalid arguments")
 		return
 	}

@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	qt "github.com/frankban/quicktest"
 	"github.com/google/uuid"
 	"go.vocdoni.io/dvote/crypto"
@@ -164,7 +165,7 @@ func TestUpdateEntity(t *testing.T) {
 	}
 
 	// should not update data that are not allowed to be updated
-	address := util.RandomBytes(10)
+	address := util.RandomBytes(ethcommon.AddressLength)
 	req.Entity = &types.EntityInfo{
 		Name:    "New",
 		Email:   "New",
@@ -204,12 +205,8 @@ func TestListMembers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 	// create and make request
@@ -241,12 +238,8 @@ func TestListMembers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo = make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[1].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[1].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 
@@ -555,12 +548,8 @@ func TestExportTokens(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to create testing members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Error(err)
 	}
 
@@ -681,12 +670,8 @@ func TestDumpTarget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 
@@ -920,7 +905,7 @@ func TestSendVotingLinks(t *testing.T) {
 		t.Fatalf("cannot add created target into database: %s", err)
 	}
 
-	processID := util.RandomHex(len(entities[0].ID))
+	processID := util.RandomBytes(ethcommon.HashLength)
 	censusID := util.RandomHex(len(entities[0].ID))
 	idBytes, err := hex.DecodeString(util.TrimHex(censusID))
 	if err != nil {
@@ -1080,12 +1065,8 @@ func TestAddCensus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 
@@ -1094,10 +1075,7 @@ func TestAddCensus(t *testing.T) {
 	if idBytes, err = hex.DecodeString(util.TrimHex(id)); err != nil {
 		t.Fatalf("cannot decode randpom id: %s", err)
 	}
-
-	if root, err = hex.DecodeString(util.RandomHex(len(entities[0].ID))); err != nil {
-		t.Fatalf("cannot generate root: %s", err)
-	}
+	root = util.RandomBytes(32)
 	name := fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
 	// create census info
 	censusInfo = &types.CensusInfo{
@@ -1141,9 +1119,7 @@ func TestAddCensus(t *testing.T) {
 
 	// Genreate ID and root
 	id = util.RandomHex(len(entities[0].ID))
-	if root, err = hex.DecodeString(util.RandomHex(len(entities[0].ID))); err != nil {
-		t.Fatalf("cannot generate root: %s", err)
-	}
+	root = util.RandomBytes(32)
 	name = fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
 	// create census info
 	censusInfo = &types.CensusInfo{
@@ -1192,10 +1168,7 @@ func TestUpdateCensus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot decode randpom id: %s", err)
 	}
-	root, err := hex.DecodeString(util.RandomHex(len(entities[0].ID)))
-	if err != nil {
-		t.Fatalf("cannot generate root: %s", err)
-	}
+	root := util.RandomBytes(32)
 	name := fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
 
 	err = api.DB.AddCensus(entities[0].ID, idBytes, &targetID, &types.CensusInfo{Name: name})
@@ -1282,9 +1255,7 @@ func TestGetCensus(t *testing.T) {
 	if idBytes, err = hex.DecodeString(util.TrimHex(id)); err != nil {
 		t.Fatalf("cannot decode randpom id: %s", err)
 	}
-	if root, err = hex.DecodeString(util.RandomHex(len(entities[0].ID))); err != nil {
-		t.Fatalf("cannot generate root: %s", err)
-	}
+	root = util.RandomBytes(32)
 	name := fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
 	// create census info
 	censusInfo = &types.CensusInfo{
@@ -1366,9 +1337,7 @@ func TestListCensus(t *testing.T) {
 	if idBytes, err = hex.DecodeString(util.TrimHex(id)); err != nil {
 		t.Fatalf("cannot decode randpom id: %s", err)
 	}
-	if root, err = hex.DecodeString(util.RandomHex(len(entities[0].ID))); err != nil {
-		t.Fatalf("cannot generate root: %s", err)
-	}
+	root = util.RandomBytes(32)
 	name := fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
 	// create census info
 	censusInfo = &types.CensusInfo{
@@ -1474,9 +1443,7 @@ func TestDeleteCensus(t *testing.T) {
 	if idBytes, err = hex.DecodeString(util.TrimHex(id)); err != nil {
 		t.Fatalf("cannot decode randpom id: %s", err)
 	}
-	if root, err = hex.DecodeString(util.RandomHex(len(entities[0].ID))); err != nil {
-		t.Fatalf("cannot generate root: %s", err)
-	}
+	root = util.RandomBytes(32)
 	name := fmt.Sprintf("census%s", strconv.Itoa(rand.Int()))
 	// create census info
 	censusInfo = &types.CensusInfo{
@@ -1640,12 +1607,8 @@ func TestCreateTag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 
@@ -1742,12 +1705,8 @@ func TestDeleteTag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 	listedMembers, err := api.DB.ListMembers(entities[0].ID, nil)
@@ -1832,12 +1791,8 @@ func TestAddTag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 	listedMembers, err := api.DB.ListMembers(entities[0].ID, nil)
@@ -1944,12 +1899,8 @@ func TestRemoveTag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
-	memInfo := make([]types.Member, len(members))
-	for idx, mem := range members {
-		memInfo[idx] = *mem
-	}
 	// add members
-	if err := api.DB.AddMemberBulk(entities[0].ID, memInfo); err != nil {
+	if err := api.DB.AddMemberBulk(entities[0].ID, members); err != nil {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 	listedMembers, err := api.DB.ListMembers(entities[0].ID, nil)

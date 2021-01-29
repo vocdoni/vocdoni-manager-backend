@@ -5,14 +5,13 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	dvotetypes "go.vocdoni.io/dvote/types"
 )
 
 type RequestMessage struct {
 	MetaRequest json.RawMessage `json:"request"`
 
-	ID        string              `json:"id"`
-	Signature dvotetypes.HexBytes `json:"signature"`
+	ID        string   `json:"id"`
+	Signature HexBytes `json:"signature"`
 }
 
 type MetaRequest struct {
@@ -23,7 +22,7 @@ type MetaRequest struct {
 	//TODO Keys HexBytes when API supports protobuf or similar
 	Keys          []string     `json:"keys,omitempty"` // claim Keys
 	Email         string       `json:"email,omitempty"`
-	EntityID      string       `json:"entityId,omitempty"`
+	EntityID      HexBytes     `json:"entityId,omitempty"`
 	Entity        *EntityInfo  `json:"entity,omitempty"`
 	Filter        *Target      `json:"filter,omitempty"`
 	ListOptions   *ListOptions `json:"listOptions,omitempty"`
@@ -34,8 +33,8 @@ type MetaRequest struct {
 	MembersInfo   []MemberInfo `json:"membersInfo,omitempty"`
 	Method        string       `json:"method"`
 	InvalidClaims [][]byte     `json:"invalidClaims"`
-	PubKey        string       `json:"publicKey,omitempty"`
-	ProcessID     string       `json:"processId,omitempty"`
+	PubKey        HexBytes     `json:"publicKey,omitempty"`
+	ProcessID     HexBytes     `json:"processId,omitempty"`
 	Signature     string       `json:"signature,omitempty"`
 	Scope         string       `json:"scope,omitempty"`
 	Status        *Status      `json:"status,omitempty"`
@@ -51,8 +50,8 @@ type MetaRequest struct {
 type ResponseMessage struct {
 	MetaResponse json.RawMessage `json:"response"`
 
-	ID        string              `json:"id"`
-	Signature dvotetypes.HexBytes `json:"signature"`
+	ID        string   `json:"id"`
+	Signature HexBytes `json:"signature"`
 }
 
 // MetaResponse contains all of the possible request fields.

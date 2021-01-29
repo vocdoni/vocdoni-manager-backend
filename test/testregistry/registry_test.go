@@ -1,7 +1,6 @@
 package testregistry
 
 import (
-	"encoding/hex"
 	"fmt"
 	"log"
 	"math/rand"
@@ -64,7 +63,7 @@ func TestRegister(t *testing.T) {
 	var req types.MetaRequest
 	// create register request
 	req.Method = "register"
-	req.EntityID = hex.EncodeToString(entities[0].ID)
+	req.EntityID = entities[0].ID
 	req.MemberInfo = &members[0].MemberInfo
 	// make request
 	resp := wsc.Request(req, membersSigners[0])
@@ -99,7 +98,7 @@ func TestRegister(t *testing.T) {
 				api.DB.CreateMembersWithTokens(entities[0].ID, []uuid.UUID{token1})
 				req2.Token = strings.ReplaceAll(token1.String(), "-", "")
 				req2.Method = "register"
-				req2.EntityID = hex.EncodeToString(entities[0].ID)
+				req2.EntityID = entities[0].ID
 				req2.Member = &types.Member{
 					MemberInfo: members[1].MemberInfo,
 				}
@@ -202,7 +201,7 @@ func TestValidateToken(t *testing.T) {
 	var req types.MetaRequest
 	// create register request
 	req.Method = "validateToken"
-	req.EntityID = hex.EncodeToString(entities[0].ID)
+	req.EntityID = entities[0].ID
 	req.Token = tokens[0].String()
 	// make request
 	resp := wsc.Request(req, membersSigners[0])
@@ -247,7 +246,7 @@ func TestValidateToken(t *testing.T) {
 
 	// 5. check cannot validate correct token in non-existing entity (with new signer)
 	req.Token = tokens[1].String()
-	req.EntityID = hex.EncodeToString(entities[1].ID)
+	req.EntityID = entities[1].ID
 	resp = wsc.Request(req, membersSigners[1])
 	// check register failed
 	if resp.Ok {
@@ -257,7 +256,7 @@ func TestValidateToken(t *testing.T) {
 	// 6. check cannot validate correct token in existing non-corresponding entity (with new signer)
 	// add entity
 	req.Token = tokens[1].String()
-	req.EntityID = hex.EncodeToString(entities[1].ID)
+	req.EntityID = entities[1].ID
 	resp = wsc.Request(req, membersSigners[1])
 	// check register failed
 	if resp.Ok {
@@ -265,7 +264,7 @@ func TestValidateToken(t *testing.T) {
 	}
 
 	// 7. check cannot reuse the same pubKey to validate a new token
-	req.EntityID = hex.EncodeToString(entities[0].ID)
+	req.EntityID = entities[0].ID
 	req.Token = tokens[3].String()
 	resp = wsc.Request(req, membersSigners[0])
 	// check register failed
@@ -299,7 +298,7 @@ func TestValidateToken(t *testing.T) {
 	}
 
 	req.Token = tokens[2].String()
-	req.EntityID = hex.EncodeToString(entities[0].ID)
+	req.EntityID = entities[0].ID
 	s := testcommon.TestCallbackServer(t, port, params)
 	resp = wsc.Request(req, membersSigners[2])
 	s.Close()
@@ -332,7 +331,7 @@ func TestValidateToken(t *testing.T) {
 	// }
 
 	// 11. check can reuse the same pubKey to validate a new token for another entity
-	req.EntityID = hex.EncodeToString(entities[1].ID)
+	req.EntityID = entities[1].ID
 	req.Token = tokens2[0].String()
 	resp = wsc.Request(req, membersSigners[0])
 	// check register failed
@@ -366,7 +365,7 @@ func TestStatus(t *testing.T) {
 	// check status added and linked member
 	var req types.MetaRequest
 	req.Method = "registrationStatus"
-	req.EntityID = hex.EncodeToString(entities[0].ID)
+	req.EntityID = entities[0].ID
 	resp := wsc.Request(req, membersSigners[0])
 	if !resp.Ok {
 		t.Fatal()
@@ -385,7 +384,7 @@ func TestStatus(t *testing.T) {
 	// check status added and linked member
 	// var req types.MetaRequest
 	req.Method = "registrationStatus"
-	req.EntityID = hex.EncodeToString(entities[0].ID)
+	req.EntityID = entities[0].ID
 	resp = wsc.Request(req, membersSigners[0])
 	if !resp.Ok {
 		t.Fatal()
@@ -400,7 +399,7 @@ func TestStatus(t *testing.T) {
 	// check user not registered
 	var req2 types.MetaRequest
 	req2.Method = "registrationStatus"
-	req2.EntityID = hex.EncodeToString(entities[0].ID)
+	req2.EntityID = entities[0].ID
 	resp2 := wsc.Request(req2, membersSigners[1])
 	if !resp2.Ok {
 		t.Fatal()
