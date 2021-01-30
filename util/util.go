@@ -11,20 +11,13 @@ import (
 	"go.vocdoni.io/dvote/util"
 )
 
+// PubKeyToEntityID retrieves entity ID from a public key
 func PubKeyToEntityID(pubKey []byte) ([]byte, error) {
-	// retrieve entity ID
-	// var address ethcommon.Address
-	// var addressBytes []byte
-	// var err error
 	address, err := ethereum.AddrFromPublicKey(pubKey)
 	if err != nil {
-		return nil, fmt.Errorf("cannot decode public key")
+		return nil, fmt.Errorf("cannot get entityID: %w", err)
 	}
-	// if addressBytes, err = hex.DecodeString(util.TrimHex(address.String())); err != nil {
-	// 	return nil, fmt.Errorf("error extracting address from public key %v", err)
-	// }
 	return address.Bytes(), nil
-	// return ethereum.HashRaw(addressBytes), nil
 }
 
 func ValidPubKey(pubKey []byte) bool {

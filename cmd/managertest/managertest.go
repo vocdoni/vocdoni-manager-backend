@@ -211,16 +211,10 @@ func main() {
 		if len(*entityKey) == 0 {
 			signer := ethereum.NewSignKeys()
 			signer.Generate()
-			_, priv := signer.HexString()
+			_, *entityKey = signer.HexString()
+			*eid = fmt.Sprintf("%x", signer.Address().Bytes())
 			pub := signer.PublicKey()
-			entityID, err := util.PubKeyToEntityID(pub)
-			if err != nil {
-				log.Errorf("cannot calculate entityID: (%v)", err)
-			} else {
-				*eid = fmt.Sprintf("%x", entityID)
-			}
-			*entityKey = priv
-			log.Infof("entity pub key: %s\n entity priv key %s\n entity id %s", pub, priv, *eid)
+			log.Infof("entity pub key: %x\n entity id %s", pub, *eid)
 		}
 		generateTokens(cmgr, *usersNumber, *entityKey, dir)
 
@@ -229,16 +223,10 @@ func main() {
 			if len(*entityKey) == 0 {
 				signer := ethereum.NewSignKeys()
 				signer.Generate()
-				_, priv := signer.HexString()
+				_, *entityKey = signer.HexString()
+				*eid = fmt.Sprintf("%x", signer.Address().Bytes())
 				pub := signer.PublicKey()
-				entityID, err := util.PubKeyToEntityID(pub)
-				if err != nil {
-					log.Errorf("cannot calculate entityID: (%v)", err)
-				} else {
-					*eid = fmt.Sprintf("%x", entityID)
-				}
-				*entityKey = priv
-				log.Infof("entity pub key: %s\n entity priv key %s\n entity id %s", pub, priv, *eid)
+				log.Infof("entity pub key: %x\n entity priv key %s\n entity id %s", pub, *entityKey, *eid)
 			}
 		}
 		if len(*eid) < 20 {

@@ -13,19 +13,14 @@ import (
 
 // CreateEntities a given number of random entities
 func CreateEntities(size int) ([]*ethereum.SignKeys, []*types.Entity) {
-	var err error
 	signers := CreateEthRandomKeysBatch(size)
 	mp := make([]*types.Entity, size)
 	for i := 0; i < size; i++ {
 		// retrieve entity ID
-		entityAddress := signers[i].Address().Bytes()
-		if err != nil {
-			return nil, nil
-		}
 		mp[i] = &types.Entity{
-			ID: entityAddress,
+			ID: signers[i].Address().Bytes(),
 			EntityInfo: types.EntityInfo{
-				Address:                 entityAddress,
+				Address:                 signers[i].Address().Bytes(),
 				Email:                   randomdata.Email(),
 				Name:                    randomdata.FirstName(2),
 				CensusManagersAddresses: [][]byte{{1, 2, 3}},
@@ -44,10 +39,9 @@ func CreateMembers(entityID []byte, size int) ([]*ethereum.SignKeys, []types.Mem
 	members := make([]types.Member, size)
 	// if membersInfo not set generate random data
 	for i := 0; i < size; i++ {
-		pubBytes := signers[i].PublicKey()
 		members[i] = types.Member{
 			EntityID: entityID,
-			PubKey:   pubBytes,
+			PubKey:   signers[i].PublicKey(),
 			MemberInfo: types.MemberInfo{
 				DateOfBirth:   RandDate(),
 				Email:         randomdata.Email(),
