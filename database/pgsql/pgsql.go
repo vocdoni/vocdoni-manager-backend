@@ -471,13 +471,12 @@ func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberI
 	keys := createEthRandomKeysBatch(len(info))
 	members := []PGMember{}
 	for idx, member := range info {
-		pubBytes := keys[idx].PublicKey()
-		user := &types.User{PubKey: pubBytes}
+		user := &types.User{PubKey: keys[idx].PublicKey()}
 		err = d.AddUser(user)
 		if err != nil {
 			return fmt.Errorf("error creating generated user for imported member: %w", err)
 		}
-		newMember := &types.Member{EntityID: entityID, PubKey: pubBytes, MemberInfo: member}
+		newMember := &types.Member{EntityID: entityID, PubKey: user.PubKey, MemberInfo: member}
 		pgMember, err := ToPGMember(newMember)
 		if err != nil {
 			return fmt.Errorf("cannot convert member data types to postgres types: %w", err)

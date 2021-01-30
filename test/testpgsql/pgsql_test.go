@@ -145,11 +145,7 @@ func TestEntity(t *testing.T) {
 	}
 
 	entitySigner.Generate()
-
-	pubBytes := entitySigner.PublicKey()
-	entityID1 := ethereum.HashRaw(pubBytes)
-
-	if err := api.DB.DeleteEntity(entityID1); err == nil {
+	if err := api.DB.DeleteEntity(ethereum.HashRaw(entitySigner.PublicKey())); err == nil {
 		t.Fatalf("could delete a random entity entity: %s", err)
 	}
 
@@ -469,9 +465,8 @@ func TestMember(t *testing.T) {
 		if err = bulkSigner.Generate(); err != nil {
 			t.Fatalf("error generating ethereum keys: (%v)", err)
 		}
-		pubBytes := bulkSigner.PublicKey()
-		bulkMembers[i].PubKey = pubBytes
-		bulkKeys[i] = pubBytes
+		bulkMembers[i].PubKey = bulkSigner.PublicKey()
+		bulkKeys[i] = bulkSigner.PublicKey()
 	}
 
 	if err := api.DB.AddMemberBulk(entities[0].ID, bulkMembers); err != nil {

@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -168,7 +169,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	}
 
 	// 1.
-	if string(member.PubKey) == string(request.SignaturePublicKey) {
+	if bytes.Equal(member.PubKey, request.SignaturePublicKey) {
 		RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_already_registered"}).Inc()
 		log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
 		r.Router.SendError(request, "duplicate user already registered")
