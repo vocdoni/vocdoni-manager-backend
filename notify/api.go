@@ -5,10 +5,10 @@ import (
 
 	"firebase.google.com/go/v4/auth"
 	"firebase.google.com/go/v4/errorutils"
+	"github.com/vocdoni/multirpc/transports"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/metrics"
-	"go.vocdoni.io/dvote/net"
 	"go.vocdoni.io/manager/router"
 	"go.vocdoni.io/manager/types"
 )
@@ -27,7 +27,7 @@ func NewAPI(r *router.Router, pn PushNotifier, ma *metrics.Agent) *API {
 
 // RegisterMethods registers all registry methods behind the given path
 func (n *API) RegisterMethods(path string) error {
-	var transport net.Transport
+	var transport transports.Transport
 	if t, ok := n.Router.Transports["httpws"]; ok {
 		transport = t
 	} else if t, ok = n.Router.Transports["http"]; ok {

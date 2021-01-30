@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/vocdoni/multirpc/transports"
+	"github.com/vocdoni/multirpc/transports/mhttp"
 	"go.vocdoni.io/dvote/crypto/ethereum"
-	"go.vocdoni.io/dvote/net"
-	gtypes "go.vocdoni.io/dvote/types"
 	"go.vocdoni.io/manager/database/testdb"
 	"go.vocdoni.io/manager/manager"
 	"go.vocdoni.io/manager/router"
@@ -38,28 +38,22 @@ func TestRegisterMethods(t *testing.T) {
 		t.Fatalf("cannot generate signer: %v", err)
 	}
 	// create proxy
-	pxy := net.NewProxy()
-	pxy.C.Address = "127.0.0.1"
-	pxy.C.Port = 0
+	pxy := mhttp.NewProxy()
+	pxy.Conn.Address = "127.0.0.1"
+	pxy.Conn.Port = 0
 	// init proxy
 	if err := pxy.Init(); err != nil {
 		t.Fatalf("cannot init proxy: %v", err)
 	}
 	// create router channel
-	listenerOutput := make(chan gtypes.Message)
+	listenerOutput := make(chan transports.Message)
 	// create ws
-	ws := new(net.WebsocketHandle)
-	ws.Init(new(gtypes.Connection))
+	ws := new(mhttp.WebsocketHandle)
+	ws.Init(new(transports.Connection))
 	ws.SetProxy(pxy)
-	// create http
-	//http := new(net.HttpHandler)
-	//http.Init(new(gtypes.Connection))
-	//http.SetProxy(pxy)
-	//go http.Listen(listenerOutput)
 	// create transports map
-	ts := make(map[string]net.Transport)
+	ts := make(map[string]transports.Transport)
 	ts["ws"] = ws
-	//ts["http"] = http
 	// init router
 	r := router.InitRouter(listenerOutput, ts, signer)
 	// create database

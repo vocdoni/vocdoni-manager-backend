@@ -14,9 +14,9 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 
+	"github.com/vocdoni/multirpc/transports"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
-	"go.vocdoni.io/dvote/net"
 	dvoteutil "go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/manager/database"
 	"go.vocdoni.io/manager/database/pgsql"
@@ -39,7 +39,7 @@ func NewManager(r *router.Router, d database.Database, s *smtpclient.SMTP) *Mana
 
 // RegisterMethods registers all registry methods behind the given path
 func (m *Manager) RegisterMethods(path string) error {
-	var transport net.Transport
+	var transport transports.Transport
 	if tr, ok := m.Router.Transports["httpws"]; ok {
 		transport = tr
 	} else if tr, ok = m.Router.Transports["ws"]; ok {

@@ -8,11 +8,10 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 
+	"github.com/vocdoni/multirpc/transports"
 	"go.vocdoni.io/dvote/crypto"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
-	"go.vocdoni.io/dvote/net"
-	dvote "go.vocdoni.io/dvote/types"
 	"go.vocdoni.io/manager/types"
 )
 
@@ -24,7 +23,7 @@ type registeredMethod struct {
 
 type RouterRequest struct {
 	types.MetaRequest
-	dvote.MessageContext
+	transports.MessageContext
 
 	method             string
 	id                 string
@@ -36,14 +35,14 @@ type RouterRequest struct {
 
 // Router holds a router object
 type Router struct {
-	Transports map[string]net.Transport
+	Transports map[string]transports.Transport
 	methods    map[string]registeredMethod
-	inbound    <-chan dvote.Message
+	inbound    <-chan transports.Message
 	signer     *ethereum.SignKeys
 }
 
 // NewRouter creates a router multiplexer instance
-func NewRouter(inbound <-chan dvote.Message, transports map[string]net.Transport, signer *ethereum.SignKeys) *Router {
+func NewRouter(inbound <-chan transports.Message, transports map[string]transports.Transport, signer *ethereum.SignKeys) *Router {
 	r := new(Router)
 	r.methods = make(map[string]registeredMethod)
 	r.inbound = inbound
@@ -53,7 +52,7 @@ func NewRouter(inbound <-chan dvote.Message, transports map[string]net.Transport
 }
 
 // InitRouter sets up a Router object which can then be used to route requests
-func InitRouter(inbound <-chan dvote.Message, transports map[string]net.Transport, signer *ethereum.SignKeys) *Router {
+func InitRouter(inbound <-chan transports.Message, transports map[string]transports.Transport, signer *ethereum.SignKeys) *Router {
 	return NewRouter(inbound, transports, signer)
 }
 
@@ -92,7 +91,7 @@ func (r *Router) Route() {
 	}
 }
 
-func (r *Router) getRequest(namespace string, payload []byte, context dvote.MessageContext) (request RouterRequest, err error) {
+func (r *Router) getRequest(namespace string, payload []byte, context transports.MessageContext) (request RouterRequest, err error) {
 	// First unmarshal the outer layer, to obtain the request ID, the signed
 	// request, and the signature.
 	var reqOuter types.RequestMessage
@@ -144,7 +143,7 @@ func (r *Router) getRequest(namespace string, payload []byte, context dvote.Mess
 	return request, err
 }
 
-func (r *Router) BuildReply(request *RouterRequest, resp *types.MetaResponse) dvote.Message {
+func (r *Router) BuildReply(request *RouterRequest, resp *types.MetaResponse) transports.Message {
 	// Add any last fields to the inner response, and marshal it with sorted
 	// fields for signing.
 	resp.Ok = true
@@ -155,7 +154,7 @@ func (r *Router) BuildReply(request *RouterRequest, resp *types.MetaResponse) dv
 		// This should never happen. If it does, return a very simple
 		// plaintext error, and log the error.
 		log.Error(err)
-		return dvote.Message{
+		return transports.Message{
 			TimeStamp: int32(time.Now().Unix()),
 			Context:   request.MessageContext,
 			Data:      []byte(err.Error()),
@@ -183,7 +182,7 @@ func (r *Router) BuildReply(request *RouterRequest, resp *types.MetaResponse) dv
 		// This should never happen. If it does, return a very simple
 		// plaintext error, and log the error.
 		log.Error(err)
-		return dvote.Message{
+		return transports.Message{
 			TimeStamp: int32(time.Now().Unix()),
 			Context:   request.MessageContext,
 			Data:      []byte(err.Error()),
@@ -192,7 +191,7 @@ func (r *Router) BuildReply(request *RouterRequest, resp *types.MetaResponse) dv
 	if len(respData) < 10000 {
 		log.Debugf("response: %s", respData)
 	}
-	return dvote.Message{
+	return transports.Message{
 		TimeStamp: int32(time.Now().Unix()),
 		Context:   request.MessageContext,
 		Data:      respData,
@@ -248,7 +247,7 @@ func (r *Router) SendError(request RouterRequest, errMsg string) {
 		if err != nil {
 			log.Warnf("error marshaling response body: %s", err)
 		}
-		msg := dvote.Message{
+		msg := transports.Message{
 			TimeStamp: int32(time.Now().Unix()),
 			Context:   request.MessageContext,
 			Data:      data,

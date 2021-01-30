@@ -9,9 +9,10 @@ import (
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/vocdoni/multirpc/transports"
+	"github.com/vocdoni/multirpc/transports/mhttp"
 	"go.vocdoni.io/dvote/crypto/ethereum"
-	"go.vocdoni.io/dvote/net"
-	dvotetypes "go.vocdoni.io/dvote/types"
+
 	"go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/manager/database/testdb"
 	"go.vocdoni.io/manager/registry"
@@ -43,28 +44,28 @@ func TestRegisterMethods(t *testing.T) {
 		t.Fatalf("cannot generate signer: %v", err)
 	}
 	// create proxy
-	pxy := net.NewProxy()
-	pxy.C.Address = "127.0.0.1"
-	pxy.C.Port = 0
+	pxy := mhttp.NewProxy()
+	pxy.Conn.Address = "127.0.0.1"
+	pxy.Conn.Port = 0
 	// init proxy
 	if err := pxy.Init(); err != nil {
 		t.Fatalf("cannot init proxy: %v", err)
 	}
 	// create router channel
-	listenerOutput := make(chan dvotetypes.Message)
+	listenerOutput := make(chan transports.Message)
 	// create ws
 	//ws := new(net.WebsocketHandle)
 	//ws.Init(new(dvotetypes.Connection))
 	//ws.SetProxy(pxy)
 	// create http
-	http := new(net.HttpHandler)
-	if err := http.Init(new(dvotetypes.Connection)); err != nil {
+	http := new(mhttp.HttpHandler)
+	if err := http.Init(new(transports.Connection)); err != nil {
 		t.Fatalf("cannot start http handler: (%s)", err)
 	}
 	http.SetProxy(pxy)
 	go http.Listen(listenerOutput)
 	// create transports map
-	ts := make(map[string]net.Transport)
+	ts := make(map[string]transports.Transport)
 	//ts["ws"] = ws
 	ts["http"] = http
 	// init router

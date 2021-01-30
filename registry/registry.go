@@ -12,10 +12,11 @@ import (
 	"github.com/badoux/checkmail"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/vocdoni/multirpc/transports"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/metrics"
-	"go.vocdoni.io/dvote/net"
+
 	"go.vocdoni.io/manager/database"
 	"go.vocdoni.io/manager/router"
 	"go.vocdoni.io/manager/types"
@@ -34,7 +35,7 @@ func NewRegistry(r *router.Router, d database.Database, ma *metrics.Agent) *Regi
 
 // RegisterMethods registers all registry methods behind the given path
 func (r *Registry) RegisterMethods(path string) error {
-	var transport net.Transport
+	var transport transports.Transport
 	if tr, ok := r.Router.Transports["httpws"]; ok {
 		transport = tr
 	} else if tr, ok = r.Router.Transports["http"]; ok {
