@@ -8,7 +8,7 @@ require (
 	github.com/badoux/checkmail v0.0.0-20181210160741-9661bd69e9ad
 	github.com/ethereum/go-ethereum v1.9.26-0.20201212163632-00d10e610f9f
 	github.com/frankban/quicktest v1.11.3
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.2.0
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgtype v1.3.1-0.20200521144610-9d847241cb8f
 	github.com/jackc/pgx v3.6.2+incompatible
@@ -20,7 +20,8 @@ require (
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
-	go.vocdoni.io/dvote v0.6.1-0.20210128173226-e9764ecfc7b5
+	github.com/vocdoni/multirpc v0.1.10
+	go.vocdoni.io/dvote v0.6.1-0.20210130094936-75dbb92de3f0
 	go.vocdoni.io/proto v0.1.8
 	google.golang.org/api v0.36.0
 	nhooyr.io/websocket v1.8.6

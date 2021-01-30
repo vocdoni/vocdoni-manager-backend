@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/vocdoni/multirpc/transports"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/metrics"
-	"go.vocdoni.io/dvote/net"
 	dvoteutil "go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/manager/database"
 	"go.vocdoni.io/manager/router"
@@ -35,7 +35,7 @@ func NewTokenAPI(r *router.Router, d database.Database, ma *metrics.Agent) *Toke
 
 // RegisterMethods registers all tokenAPI methods behind the given path
 func (t *TokenAPI) RegisterMethods(path string) error {
-	var transport net.Transport
+	var transport transports.Transport
 	if tr, ok := t.Router.Transports["httpws"]; ok {
 		transport = tr
 	} else if tr, ok = t.Router.Transports["http"]; ok {
