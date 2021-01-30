@@ -1,6 +1,13 @@
 # Vocdoni Manager Backend
 
-The manager is a private service providing organizations with a UI to manage their community and edit their public content. This involved news feeds, voting processes, assemblies, events, etc.
+[![GoDoc](https://godoc.org/go.vocdoni.io/manager?status.svg)](https://godoc.org/go.vocdoni.io/manager)
+[![Go Report Card](https://goreportcard.com/badge/go.vocdoni.io/manager)](https://goreportcard.com/report/go.vocdoni.io/manager)
+[![Coverage Status](https://coveralls.io/repos/github/vocdoni/vocdoni-manager-backend/badge.svg)](https://coveralls.io/github/vocdoni/vocdoni-manager-backend)
+
+[![Join Discord](https://img.shields.io/badge/discord-join%20chat-blue.svg)](https://discord.gg/4hKeArDaU2)
+[![Twitter Follow](https://img.shields.io/twitter/follow/vocdoni.svg?style=social&label=Follow)](https://twitter.com/vocdoni)
+
+The vocdoni manager is a private service providing organizations with a UI to manage their community and edit their public content. This involved news feeds, voting processes, assemblies, events, etc.
 
 It also allows to manage the members and their attributes (for example, age or payment status). Such data typically lives on a private database that will compute updated snapshots of the census at a given point in time.
 
