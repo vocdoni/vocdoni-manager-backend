@@ -86,6 +86,7 @@ type PGMember struct {
 	types.Member
 	CustomFields pgtype.JSONB     `json:"customFields" db:"pg_custom_fields"`
 	Tags         pgtype.Int4Array `json:"tags" db:"pg_tags"`
+	Email        pgtype.Text      `json:"email" db:"pg_email"`
 }
 
 func ToPGMember(x *types.Member) (*PGMember, error) {
@@ -104,6 +105,13 @@ func ToPGMember(x *types.Member) (*PGMember, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(x.Email) > 0 {
+		y.Email.Set(x.Email)
+		y.Email.Status = pgtype.Null + 1
+	} else {
+		y.Email.Set(pgtype.Null)
+		y.Email.Status = pgtype.Null
+	}
 	// y.CustomFields = pgtype.JSONB{Bytes: x.MemberInfo.CustomFields, Status: pgtype.Present}
 	return y, nil
 }
@@ -113,6 +121,38 @@ func ToMember(x *PGMember) *types.Member {
 	// y.MemberInfo.CustomFields = x.CustomFields.Bytes
 	x.CustomFields.AssignTo(y.MemberInfo.CustomFields)
 	x.Tags.AssignTo(&y.MemberInfo.Tags)
+	if x.Email.Status != pgtype.Null || len(x.Email.String) > 0 {
+		y.Email = x.Email.String
+	} else {
+		y.Email = ""
+	}
+	return &y
+}
+
+type PGEphemeralMemberInfo struct {
+	types.EphemeralMemberInfo
+	Email pgtype.Text `json:"email" db:"pg_email"`
+}
+
+func ToPGEphemeralMemberInfo(x *types.EphemeralMemberInfo) *PGEphemeralMemberInfo {
+	y := &PGEphemeralMemberInfo{EphemeralMemberInfo: *x}
+	if len(x.Email) > 0 {
+		y.Email.Set(x.Email)
+		y.Email.Status = pgtype.Null + 1
+	} else {
+		y.Email.Set(pgtype.Null)
+		y.Email.Status = pgtype.Null
+	}
+	return y
+}
+
+func ToEphemeralMemberInfo(x *PGEphemeralMemberInfo) *types.EphemeralMemberInfo {
+	y := x.EphemeralMemberInfo
+	if x.Email.Status != pgtype.Null || len(x.Email.String) > 0 {
+		y.Email = x.Email.String
+	} else {
+		y.Email = ""
+	}
 	return &y
 }
 

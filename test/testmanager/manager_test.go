@@ -135,7 +135,7 @@ func TestUpdateEntity(t *testing.T) {
 	// Create and add entity
 	signers, entities := testcommon.CreateEntities(1)
 	// add entity
-	if err := api.DB.AddEntity(entities[0].ID, &types.EntityInfo{Address: entities[0].Address, CensusManagersAddresses: entities[0].CensusManagersAddresses}); err != nil {
+	if err := api.DB.AddEntity(entities[0].ID, &types.EntityInfo{CensusManagersAddresses: entities[0].CensusManagersAddresses}); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
 	}
 	// update without data should fail
@@ -165,11 +165,11 @@ func TestUpdateEntity(t *testing.T) {
 	}
 
 	// should not update data that are not allowed to be updated
-	address := util.RandomBytes(ethcommon.AddressLength)
+	censusManagersAddresses := util.RandomBytes(ethcommon.AddressLength)
 	req.Entity = &types.EntityInfo{
-		Name:    "New",
-		Email:   "New",
-		Address: address,
+		Name:                    "New",
+		Email:                   "New",
+		CensusManagersAddresses: [][]byte{censusManagersAddresses},
 	}
 	resp = wsc.Request(req, signers[0])
 	if !resp.Ok {
@@ -180,7 +180,7 @@ func TestUpdateEntity(t *testing.T) {
 	if err != nil {
 		t.Fatal("error retrieving entity after signUp")
 	}
-	if bytes.Equal(entity.Address, address) {
+	if bytes.Equal(entity.CensusManagersAddresses[0], censusManagersAddresses) {
 		t.Fatalf("entity data were updated while they should not")
 	}
 
@@ -342,6 +342,7 @@ func TestGetMember(t *testing.T) {
 }
 
 func TestUpdateMember(t *testing.T) {
+	c := qt.New(t)
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
@@ -357,13 +358,16 @@ func TestUpdateMember(t *testing.T) {
 
 	// add members
 	// create members
-	_, members, err := testcommon.CreateMembers(entities[0].ID, 1)
+	_, members, err := testcommon.CreateMembers(entities[0].ID, 2)
 	if err != nil {
 		t.Fatalf("cannot create members: %s", err)
 	}
 
 	// add member
 	if members[0].ID, err = api.DB.AddMember(entities[0].ID, members[0].PubKey, &members[0].MemberInfo); err != nil {
+		t.Fatalf("cannot add member into database: %s", err)
+	}
+	if members[1].ID, err = api.DB.AddMember(entities[0].ID, members[1].PubKey, &members[1].MemberInfo); err != nil {
 		t.Fatalf("cannot add member into database: %s", err)
 	}
 
@@ -399,6 +403,13 @@ func TestUpdateMember(t *testing.T) {
 		t.Fatalf("updating non corresponding fields")
 	}
 
+	members[1].Email = "upd"
+	req.Member = &members[1]
+	resp = wsc.Request(req, entitySigners[0])
+	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("updated member with duplicate email : \n%v\n%v", req, resp))
+
+	err = api.DB.DeleteEntity(entities[0].ID)
+	c.Check(err, qt.IsNil, qt.Commentf("error cleaning up"))
 }
 
 func TestDeleteMembers(t *testing.T) {
@@ -981,13 +992,6 @@ func TestSendVotingLinks(t *testing.T) {
 	resp = wsc.Request(req, entitySigners[1])
 	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("did not fail to send validation link to member of non-existing entity-member combination : \n%v\n%v", req, resp))
 
-	//duplicate email (with one member verfied and the other not)
-	api.DB.UpdateMember(entities[0].ID, &dbMembers[0].ID, &types.MemberInfo{Email: dbMembers[1].Email})
-	req.Email = dbMembers[1].Email
-	resp = wsc.Request(req, entitySigners[0])
-	c.Assert(resp.Ok, qt.IsFalse, qt.Commentf("sent voting link with duplicate member : \n%v\n%v", req, resp))
-	c.Assert(resp.Count, qt.Equals, 0, qt.Commentf("sent voting link with duplicate member : \n%v\n%v", req, resp))
-
 	err = api.DB.DeleteEntity(entities[0].ID)
 	c.Check(err, qt.IsNil, qt.Commentf("error cleaning up"))
 }
@@ -1149,7 +1153,7 @@ func TestUpdateCensus(t *testing.T) {
 	// Create and add entity
 	signers, entities := testcommon.CreateEntities(1)
 	// add entity
-	if err := api.DB.AddEntity(entities[0].ID, &types.EntityInfo{Address: entities[0].Address, CensusManagersAddresses: entities[0].CensusManagersAddresses}); err != nil {
+	if err := api.DB.AddEntity(entities[0].ID, &types.EntityInfo{CensusManagersAddresses: entities[0].CensusManagersAddresses}); err != nil {
 		t.Fatalf("cannot add created entity into database: %s", err)
 	}
 

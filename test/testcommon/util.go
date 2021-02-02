@@ -20,10 +20,9 @@ func CreateEntities(size int) ([]*ethereum.SignKeys, []*types.Entity) {
 		mp[i] = &types.Entity{
 			ID: signers[i].Address().Bytes(),
 			EntityInfo: types.EntityInfo{
-				Address:                 signers[i].Address().Bytes(),
 				Email:                   randomdata.Email(),
 				Name:                    randomdata.FirstName(2),
-				CensusManagersAddresses: [][]byte{{1, 2, 3}},
+				CensusManagersAddresses: [][]byte{signers[i].Address().Bytes()},
 				Origins:                 []types.Origin{types.Token},
 				CallbackURL:             "",
 				CallbackSecret:          "",

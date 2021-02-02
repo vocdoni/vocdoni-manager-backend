@@ -16,6 +16,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	migrate "github.com/rubenv/sql-migrate"
 
+	"github.com/jackc/pgtype"
 	_ "github.com/jackc/pgx/stdlib"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/crypto/snarks"
@@ -83,9 +84,6 @@ func (d *Database) Close() error {
 
 func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	var err error
-	if info.Address == nil {
-		return fmt.Errorf("entity address not found")
-	}
 	if info.CensusManagersAddresses == nil {
 		return fmt.Errorf("census manager addresses not found")
 	}
@@ -107,8 +105,8 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	}
 	// TODO: Calculate EntityID (consult go-dvote)
 	insert := `INSERT INTO entities
-			(id, is_authorized, address, email, name, callback_url, callback_secret, census_managers_addresses, created_at, updated_at)
-			VALUES (:id, :is_authorized, :address, :email, :name, :callback_url, :callback_secret, :pg_census_managers_addresses, :created_at, :updated_at)`
+			(id, is_authorized, email, name, callback_url, callback_secret, census_managers_addresses, created_at, updated_at)
+			VALUES (:id, :is_authorized, :email, :name, :callback_url, :callback_secret, :pg_census_managers_addresses, :created_at, :updated_at)`
 	_, err = tx.NamedExec(insert, pgEntity)
 	if err != nil {
 		return fmt.Errorf("cannot add insert query in the transaction: %w", err)
@@ -133,7 +131,7 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 
 func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	var pgEntity PGEntity
-	selectEntity := `SELECT id, is_authorized, address, email, name, callback_url, callback_secret, census_managers_addresses as "pg_census_managers_addresses"  
+	selectEntity := `SELECT id, is_authorized, email, name, callback_url, callback_secret, census_managers_addresses as "pg_census_managers_addresses"  
 						FROM entities WHERE id=$1`
 	row := d.db.QueryRowx(selectEntity, entityID)
 	err := row.StructScan(&pgEntity)
@@ -226,15 +224,13 @@ func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
 	}
 	// TODO: Implement Update CensusManagerAddresses (table)
 	update := `UPDATE entities SET
-				address = COALESCE(NULLIF(:address, decode('','hex')), address),
 				name = COALESCE(NULLIF(:name, ''), name),
 				callback_url = :callback_url,
 				callback_secret = :callback_secret,
 				email = COALESCE(NULLIF(:email, ''), email),
 				updated_at = now()
 				WHERE (id = :id )
-				AND  (:address IS DISTINCT FROM address OR
-				:name IS DISTINCT FROM name OR
+				AND  (:name IS DISTINCT FROM name OR
 				:callback_url IS DISTINCT FROM callback_url OR
 				:callback_secret IS DISTINCT FROM callback_secret OR
 				:email IS DISTINCT FROM email)`
@@ -321,11 +317,13 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 				ID:         tokens[idx],
 				EntityID:   entityID,
 				MemberInfo: types.MemberInfo{},
+
 				CreatedUpdated: types.CreatedUpdated{
 					CreatedAt: time.Now(),
 					UpdatedAt: time.Now(),
 				},
 			},
+			Email: pgtype.Text{},
 		}
 	}
 
@@ -334,8 +332,8 @@ func (d *Database) CreateMembersWithTokens(entityID []byte, tokens []uuid.UUID) 
 		return fmt.Errorf("cannot initialize postgres transaction: %w", err)
 	}
 	insert := `INSERT INTO members
-				(id,entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, created_at, updated_at)
-				VALUES (:id, :entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :created_at, :updated_at)`
+				(id,entity_id, public_key, street_address, first_name, last_name, phone, date_of_birth, verified, created_at, updated_at)
+				VALUES (:id, :entity_id, :public_key, :street_address, :first_name, :last_name, :phone, :date_of_birth, :verified, :created_at, :updated_at)`
 	if err := bulkInsert(tx, insert, pgmembers, 12); err != nil {
 		return fmt.Errorf("error during bulk insert: %w", err)
 	}
@@ -409,7 +407,7 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 	}
 	insert := `INSERT INTO members
 	 			(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
-				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)
+				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :pg_email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)
 				RETURNING id`
 	// no err is returned if tx violated a db constraint,
 	// but we need the result in order to get the created id.
@@ -492,7 +490,7 @@ func (d *Database) ImportMembersWithPubKey(entityID []byte, info []types.MemberI
 	}
 	insert := `INSERT INTO members
 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
-				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
+				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :pg_email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
 	if err := bulkInsert(tx, insert, members, 12); err != nil {
 		return fmt.Errorf("error during bulk insert: %w", err)
 	}
@@ -521,6 +519,7 @@ func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error
 		}
 		pgMember.CreatedAt = time.Now()
 		pgMember.UpdatedAt = time.Now()
+		log.Debugf("%v", pgMember.Email)
 		members = append(members, *pgMember)
 	}
 	// Effort to use COPY FROM with pgx
@@ -557,7 +556,7 @@ func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error
 	}
 	insert := `INSERT INTO members
 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
-				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
+				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :pg_email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
 	if err := bulkInsert(tx, insert, members, 12); err != nil {
 		return fmt.Errorf("error during bulk insert: %w", err)
 	}
@@ -623,7 +622,7 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 
 	insert := `INSERT INTO members
 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
-				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
+				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :pg_email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
 	if err := bulkInsert(tx, insert, pgMembers, 12); err != nil {
 		return fmt.Errorf("error during bulk insert: %w", err)
 	}
@@ -648,7 +647,7 @@ func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *type
 				street_address = COALESCE(NULLIF(:street_address, ''),  street_address),
 				first_name = COALESCE(NULLIF(:first_name, ''), first_name),
 				last_name = COALESCE(NULLIF(:last_name, ''), last_name),
-				email = COALESCE(NULLIF(:email, ''), email),
+				email = COALESCE(:pg_email, email),
 				date_of_birth = COALESCE(NULLIF(:date_of_birth, date_of_birth), date_of_birth),
 				tags = COALESCE(:pg_tags, CAST(tags as int[])),
 				updated_at = now()
@@ -656,7 +655,7 @@ func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *type
 				AND  (:street_address IS DISTINCT FROM street_address OR
 				:first_name IS DISTINCT FROM first_name OR
 				:last_name IS DISTINCT FROM last_name OR
-				:email IS DISTINCT FROM email OR
+				:pg_email IS DISTINCT FROM email OR
 				:date_of_birth IS DISTINCT FROM date_of_birth OR
 				:pg_tags  IS DISTINCT FROM tags)`
 	var result sql.Result
@@ -1030,7 +1029,7 @@ func (d *Database) Member(entityID []byte, memberID *uuid.UUID) (*types.Member, 
 	}
 	var pgMember PGMember
 	selectQuery := `SELECT
-	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented, tags as "pg_tags"
+	 				id, entity_id, public_key, street_address, first_name, last_name, email as "pg_email", phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented, tags as "pg_tags"
 					FROM members WHERE id = $1 and entity_id =$2`
 	row := d.db.QueryRowx(selectQuery, memberID, entityID)
 	if err := row.StructScan(&pgMember); err != nil {
@@ -1046,7 +1045,7 @@ func (d *Database) MemberByEmail(entityID []byte, email string) (*types.Member, 
 	}
 	var pgMembers []PGMember
 	selectQuery := `SELECT
-	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented, tags as "pg_tags"
+	 				id, entity_id, public_key, street_address, first_name, last_name, email as "pg_email", phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented, tags as "pg_tags"
 					FROM members WHERE entity_id =$1 AND email LIKE $2`
 	err := d.db.Select(&pgMembers, selectQuery, entityID, email)
 	if err != nil {
@@ -1084,7 +1083,7 @@ func (d *Database) Members(entityID []byte, memberIDs []uuid.UUID) ([]types.Memb
 		}
 	}
 
-	update := `SELECT id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented, tags as "pg_tags"
+	update := `SELECT id, entity_id, public_key, street_address, first_name, last_name, email as "pg_email", phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented, tags as "pg_tags"
 				FROM members 
 				WHERE id IN (
 					SELECT CAST(member_id AS uuid) FROM (VALUES 
@@ -1138,7 +1137,7 @@ func (d *Database) MembersKeys(entityID []byte, memberKeys [][]byte) ([]types.Me
 			MemberKey: fmt.Sprintf("%x", memberKey),
 		}
 	}
-	update := `SELECT id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented, tags as "pg_tags"
+	update := `SELECT id, entity_id, public_key, street_address, first_name, last_name, email as "pg_email", phone, date_of_birth, verified, custom_fields as "pg_custom_fields", consented, tags as "pg_tags"
 				FROM members 
 				WHERE id IN (
 					SELECT encode(member_key,'hex') FROM (VALUES 
@@ -1322,7 +1321,7 @@ func (d *Database) DeleteMembersByKeys(entityID []byte, memberKeys [][]byte) (in
 func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) {
 	var pgMember PGMember
 	selectQuery := `SELECT
-	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
+	 				id, entity_id, public_key, street_address, first_name, last_name, email as "pg_email", phone, date_of_birth, verified, custom_fields as "pg_custom_fields"
 					FROM members WHERE public_key =$1 AND entity_id =$2`
 	row := d.db.QueryRowx(selectQuery, pubKey, entityID)
 	if err := row.StructScan(&pgMember); err != nil {
@@ -1334,7 +1333,7 @@ func (d *Database) MemberPubKey(entityID, pubKey []byte) (*types.Member, error) 
 
 func (d *Database) MembersTokensEmails(entityID []byte) ([]types.Member, error) {
 	selectQuery := `SELECT
-	 				id, email
+	 				id, email as "pg_email"
 					FROM members WHERE entity_id = $1 AND public_key is null`
 
 	var pgMembers []PGMember
@@ -1364,7 +1363,7 @@ func (d *Database) ListMembers(entityID []byte, filter *types.ListOptions) ([]ty
 	// TODO: Replace limit offset with better strategy, can slow down DB
 	// would nee to now last value from previous query
 	selectQuery := `SELECT
-	 				id, entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields as "pg_custom_fields", tags as "pg_tags"
+	 				id, entity_id, public_key, street_address, first_name, last_name, email as "pg_email", phone, date_of_birth, verified, custom_fields as "pg_custom_fields", tags as "pg_tags"
 					FROM members WHERE entity_id =$1
 					ORDER BY %s %s LIMIT $2 OFFSET $3`
 	// Define default values for arguments
@@ -1549,13 +1548,17 @@ func (d *Database) ListEphemeralMemberInfo(entityID, censusID []byte) ([]types.E
 		log.Warnf("listEphemeralMemberInfo: cound not retrieve census: (%v)", err)
 		return nil, fmt.Errorf("could not retrieve census")
 	}
-	selectQuery := `SELECT id, first_name, last_name, email, private_key, c.digested_public_key as "digested_public_key"
+	selectQuery := `SELECT id, first_name, last_name, email as "pg_email", private_key, c.digested_public_key as "digested_public_key"
 					FROM  census_members c
 					INNER JOIN members m  ON m.id = c.member_id
 					WHERE c.census_id = $1 AND c.ephemeral = true`
-	var info []types.EphemeralMemberInfo
-	if err := d.db.Select(&info, selectQuery, census.ID); err != nil {
+	var pgInfo []PGEphemeralMemberInfo
+	if err := d.db.Select(&pgInfo, selectQuery, census.ID); err != nil {
 		return nil, fmt.Errorf("could not retrieve census members info: (%v)", err)
+	}
+	info := make([]types.EphemeralMemberInfo, len(pgInfo))
+	for i, inf := range pgInfo {
+		info[i] = *ToEphemeralMemberInfo(&inf)
 	}
 	return info, nil
 }

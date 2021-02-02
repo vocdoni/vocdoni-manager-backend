@@ -31,6 +31,11 @@ var Migrations = migrate.MemoryMigrationSource{
 			Up:   []string{migration4up},
 			Down: []string{migration4down},
 		},
+		{
+			Id:   "5",
+			Up:   []string{migration5up},
+			Down: []string{migration5down},
+		},
 	},
 }
 
@@ -296,8 +301,27 @@ ALTER TABLE ONLY census_members
     DROP COLUMN private_key;
 `
 
-// ALTER TABLE ONLY members
-// DROP CONSTRAINT members_entity_id_email_unique;
+const migration5up = `
+ALTER TABLE ONLY members
+    DROP CONSTRAINT members_public_key_fkey,
+    ADD CONSTRAINT members_public_key_fkey FOREIGN KEY (public_key) REFERENCES users(public_key) ON DELETE CASCADE,
+    DROP COLUMN email,
+    ADD COLUMN email text,
+    ADD CONSTRAINT members_entity_id_email_unique UNIQUE (entity_id, email);
+ALTER TABLE ONLY entities
+    DROP COLUMN address;
+ALTER TYPE origins ADD VALUE IF NOT EXISTS 'API';
+ALTER TABLE ONLY entities_origins ALTER COLUMN origin SET DEFAULT 'Token';
+`
+
+const migration5down = `
+ALTER TABLE ONLY members
+    DROP CONSTRAINT members_public_key_fkey,
+    ADD CONSTRAINT members_public_key_fkey FOREIGN KEY (public_key) REFERENCES users(public_key),
+    DROP CONSTRAINT members_entity_id_email_unique;
+ALTER TABLE ONLY entities
+    ADD COLUMN address bytea;
+`
 
 func Migrator(action string, db database.Database) error {
 	switch action {
