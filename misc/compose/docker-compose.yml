@@ -39,7 +39,7 @@ services:
       - db
     labels:
       traefik.enable: true
-      traefik.frontend.rule: "PathPrefix:/api"
+      traefik.frontend.rule: "PathPrefix:/"
       traefik.default.port: 8000
       traefik.default.protocol: http
     <<: *log-config
