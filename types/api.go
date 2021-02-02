@@ -58,11 +58,13 @@ type ResponseMessage struct {
 // Fields must be in alphabetical order
 // Those fields with valid zero-values (such as bool) must be pointers
 type MetaResponse struct {
+	APIList    []string    `json:"apiList,omitempty"`
 	Census     *Census     `json:"census,omitempty"`
 	Censuses   []Census    `json:"censuses,omitempty"`
 	Claims     [][]byte    `json:"claims,omitempty"`
 	Count      int         `json:"count,omitempty"`
 	Entity     *Entity     `json:"entity,omitempty"`
+	Health     int32       `json:"health,omitempty"`
 	InvalidIDs []uuid.UUID `json:"invalidIds,omitempty"`
 	//TODO InvalidKeys HexBytes when API supports protobuf or similar
 	InvalidKeys   []string     `json:"invalidKeys,omitempty"`

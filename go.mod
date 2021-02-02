@@ -17,6 +17,7 @@ require (
 	github.com/lib/pq v1.8.0
 	github.com/prometheus/client_golang v1.9.0
 	github.com/rubenv/sql-migrate v0.0.0-20200616145509-8d140a17f351
+	github.com/shirou/gopsutil v3.20.12+incompatible
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1

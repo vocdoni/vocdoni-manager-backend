@@ -52,6 +52,9 @@ func (m *Manager) RegisterMethods(path string) error {
 
 	log.Infof("adding namespace manager %s", path+"/manager")
 	transport.AddNamespace(path + "/manager")
+	if err := m.Router.AddHandler("getInfo", path+"/manager", m.Router.Info, false, true); err != nil {
+		return err
+	}
 	if err := m.Router.AddHandler("signUp", path+"/manager", m.signUp, false, false); err != nil {
 		return err
 	}
