@@ -21,7 +21,6 @@ type Entity struct {
 }
 
 type EntityInfo struct {
-	Address                 []byte   `json:"address" db:"address"`
 	CallbackURL             string   `json:"callbackUrl" db:"callback_url"`
 	CallbackSecret          string   `json:"callbackSecret" db:"callback_secret"`
 	Email                   string   `json:"email,omitempty" db:"email"`
@@ -37,6 +36,7 @@ const (
 	Token Origin = iota
 	Form
 	DB
+	API
 )
 
 func ToOrigin(origin string) Origin {
@@ -47,8 +47,10 @@ func ToOrigin(origin string) Origin {
 		return Form
 	case "DB":
 		return DB
+	case "API":
+		return API
 	default:
-		return -1
+		return Token
 	}
 }
 
@@ -136,7 +138,7 @@ type User struct {
 
 type Census struct {
 	EntityID []byte    `json:"entityId" db:"entity_id"`
-	ID       HexBytes  `json:"id" db:"id"`
+	ID       []byte    `json:"id" db:"id"`
 	TargetID uuid.UUID `json:"targetId" db:"target_id"`
 	CensusInfo
 }
@@ -144,17 +146,17 @@ type Census struct {
 type HexBytes = dvotetypes.HexBytes
 type CensusInfo struct {
 	CreatedUpdated
-	Name          string   `json:"name,omitempty" db:"name"`
-	MerkleRoot    HexBytes `json:"merkleRoot,omitempty" db:"merkle_root"`
-	MerkleTreeURI string   `json:"merkleTreeUri,omitempty" db:"merkle_tree_uri"`
-	Size          int      `json:"size" db:"size"`
-	Ephemeral     bool     `json:"ephemeral" db:"ephemeral"`
-	ProcessID     HexBytes `json:"processId,omitempty" db:"process_id"`
+	Name          string `json:"name,omitempty" db:"name"`
+	MerkleRoot    []byte `json:"merkleRoot,omitempty" db:"merkle_root"`
+	MerkleTreeURI string `json:"merkleTreeUri,omitempty" db:"merkle_tree_uri"`
+	Size          int    `json:"size" db:"size"`
+	Ephemeral     bool   `json:"ephemeral" db:"ephemeral"`
+	ProcessID     []byte `json:"processId,omitempty" db:"process_id"`
 }
 
 type CensusMember struct {
 	MemberID       uuid.UUID `json:"memberId,omitempty" db:"member_id"`
-	CensusID       HexBytes  `json:"censusId,omitempty" db:"census_id"`
+	CensusID       []byte    `json:"censusId,omitempty" db:"census_id"`
 	Ephemeral      bool      `json:"ephemeral" db:"ephemeral"`
 	PrivKey        []byte    `json:"privateKey,omitempty" db:"private_key"`
 	PubKey         []byte    `json:"publicKey,omitempty" db:"public_key"`

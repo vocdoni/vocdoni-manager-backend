@@ -11,7 +11,6 @@ import (
 	_ "github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"
 	"go.vocdoni.io/dvote/crypto/snarks"
-	"go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/manager/types"
 )
 
@@ -51,11 +50,6 @@ func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 
 	var entity types.Entity
 	entity.ID = entityID
-	eid, err := hex.DecodeString(util.TrimHex("b662e6ac6e8300f0a03b33c4f8510121ba2d5bde"))
-	if err != nil {
-		return nil, fmt.Errorf("error decoding entity address: %s", err)
-	}
-	entity.Address = eid
 	managerAddresses, err := hex.DecodeString("02ed03e6408e34af72a0e062a50cd9e77997c6c0eded5835b7367bb5695e844bf4")
 	if err != nil {
 		return nil, fmt.Errorf("error decoding manager address: %s", err)
@@ -125,10 +119,6 @@ func (d *Database) Member(entityID []byte, memberID *uuid.UUID) (*types.Member, 
 	if memberID != nil {
 		member.ID = *memberID
 	}
-	// eid, err := hex.DecodeString(util.TrimHex("b662e6ac6e8300f0a03b33c4f8510121ba2d5bde"))
-	// if err != nil {
-	// 	return nil, fmt.Errorf("error decoding entity address: %s", err)
-	// }
 	member.EntityID = entityID
 	member.Email = "hello@vocdoni.io"
 	member.FirstName = "Julian"

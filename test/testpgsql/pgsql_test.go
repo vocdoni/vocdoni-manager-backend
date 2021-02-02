@@ -56,7 +56,6 @@ func TestEntity(t *testing.T) {
 	t.Log(entityIDStr)
 
 	info := &types.EntityInfo{
-		Address: eid,
 		// Email:                   "entity@entity.org",
 		Name:                    "test entity",
 		CensusManagersAddresses: [][]byte{{1, 2, 3}},
@@ -89,7 +88,6 @@ func TestEntity(t *testing.T) {
 	}
 
 	updateInfo := &types.EntityInfo{
-		Address:                 eid,                         //same
 		CensusManagersAddresses: [][]byte{{1, 2, 3}},         //same
 		Origins:                 []types.Origin{types.Token}, //same
 		Name:                    "test1 entity",

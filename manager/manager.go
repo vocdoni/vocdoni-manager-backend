@@ -2,7 +2,6 @@ package manager
 
 import (
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"math/rand"
 	"sync"
@@ -11,13 +10,11 @@ import (
 	"reflect"
 	"strings"
 
-	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 
 	"github.com/vocdoni/multirpc/transports"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
-	dvoteutil "go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/manager/database"
 	"go.vocdoni.io/manager/database/pgsql"
 	"go.vocdoni.io/manager/router"
@@ -156,7 +153,6 @@ func (m *Manager) send(req *router.RouterRequest, resp *types.MetaResponse) {
 func (m *Manager) signUp(request router.RouterRequest) {
 	var entityID []byte
 	var entityInfo *types.EntityInfo
-	var entityAddress ethcommon.Address
 	var target *types.Target
 	var err error
 	var response types.MetaResponse
@@ -176,19 +172,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		return
 	}
 
-	// retrieve entity Address
-	if entityAddress, err = ethereum.AddrFromPublicKey(request.SignaturePublicKey); err != nil {
-		log.Errorf("cannot recover entity %x address: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entity address")
-		return
-	}
-	// TODO: Receive from API census Managers addresses during signUp
-	entityAddressBytes, err := hex.DecodeString(dvoteutil.TrimHex(entityAddress.String()))
-	if err != nil {
-		log.Errorf("cannot decode entity address: %s", err)
-		m.Router.SendError(request, "cannot add entity to the DB")
-	}
-	entityInfo = &types.EntityInfo{Address: entityAddressBytes, CensusManagersAddresses: [][]byte{entityAddressBytes}, Origins: []types.Origin{types.Token}}
+	entityInfo = &types.EntityInfo{CensusManagersAddresses: [][]byte{entityID}, Origins: []types.Origin{types.Token}}
 	if request.Entity != nil {
 		// For now control which EntityInfo fields end up to the DB
 		entityInfo.Name = request.Entity.Name

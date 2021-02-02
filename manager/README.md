@@ -10,7 +10,7 @@ Available by default under `/manager`
 
 ## Entities
 ### sign Up
-Registers an entity to the backend. The address of the Entity is calculated by the signature of the request.
+Registers an entity to the backend. The address/ID of the Entity is calculated by the signature of the request.
 - Request
 ```json
 {    
@@ -54,7 +54,6 @@ Registers an entity to the backend. The address of the Entity is calculated by t
     "response": {
         "ok": true,
         "entity": {
-            "address": "0x.....",
             "callbackUrl": "http",
             "callbackSecret": "x45gse53wedfg",
             "email": "mail@entity.org",
@@ -74,7 +73,6 @@ Registers an entity to the backend. The address of the Entity is calculated by t
     "request": {
         "method": "updateEntity",
         "entity": {
-            "address": "0x.....",
             "callbackUrl": "http",
             "callbackSecret": "x45gse53wedfg",
             "email": "mail@entity.org",
