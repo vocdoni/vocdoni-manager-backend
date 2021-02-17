@@ -14,7 +14,7 @@ type Database interface {
 	DeleteEntity(entityID []byte) error
 	EntitiesID() ([]string, error)
 	AuthorizeEntity(entityID []byte) error
-	UpdateEntity(entityID []byte, info *types.EntityInfo) error
+	UpdateEntity(entityID []byte, info *types.EntityInfo) (int, error)
 	EntityOrigins(entityID []byte) ([]types.Origin, error)
 	EntityHas(entityID []byte, memberID *uuid.UUID) bool
 	AddMember(entityID []byte, pubKey []byte, info *types.MemberInfo) (uuid.UUID, error)
@@ -30,7 +30,7 @@ type Database interface {
 	MemberPubKey(entityID, pubKey []byte) (*types.Member, error)
 	CountMembers(entityID []byte) (int, error)
 	ListMembers(entityID []byte, filter *types.ListOptions) ([]types.Member, error)
-	UpdateMember(entityID []byte, memberID *uuid.UUID, info *types.MemberInfo) error
+	UpdateMember(entityID []byte, memberID *uuid.UUID, info *types.MemberInfo) (int, error)
 	AddTag(entityID []byte, tagName string) (int32, error)
 	DeleteTag(entityID []byte, tagID int32) error
 	Tag(entityID []byte, tagID int32) (*types.Tag, error)
@@ -55,7 +55,7 @@ type Database interface {
 	ListEphemeralMemberInfo(entityID, censusID []byte) ([]types.EphemeralMemberInfo, error)
 	EphemeralMemberInfoByEmail(entityID, censusID []byte, email string) (*types.EphemeralMemberInfo, error)
 	Census(entityID, censusID []byte) (*types.Census, error)
-	UpdateCensus(entityID, censusID []byte, info *types.CensusInfo) error
+	UpdateCensus(entityID, censusID []byte, info *types.CensusInfo) (int, error)
 	AddCensus(entityID, censusID []byte, targetID *uuid.UUID, info *types.CensusInfo) error
 	AddCensusWithMembers(entityID, censusID []byte, targetID *uuid.UUID, info *types.CensusInfo) (int64, error)
 	CountCensus(entityID []byte) (int, error)

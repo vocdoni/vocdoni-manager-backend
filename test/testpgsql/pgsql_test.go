@@ -94,8 +94,12 @@ func TestEntity(t *testing.T) {
 		CallbackURL:             "http://127.0.0.1/extapi",
 		CallbackSecret:          "asdafgewgrf",
 	}
-	if err := api.DB.UpdateEntity(entityID, updateInfo); err != nil {
+	count, err := api.DB.UpdateEntity(entityID, updateInfo)
+	if err != nil {
 		t.Fatalf("cannot update entity Entity info: (%s)", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected to update one row but updated %d", count)
 	}
 	updatedEntity, err := api.DB.Entity(entityID)
 	if err != nil {
@@ -263,9 +267,12 @@ func TestMember(t *testing.T) {
 
 	// Test SetMemberInfo
 	newInfo := &types.MemberInfo{Email: "updated@mail.com", FirstName: ""}
-	err = api.DB.UpdateMember(entities[0].ID, &member.ID, newInfo)
+	count, err = api.DB.UpdateMember(entities[0].ID, &member.ID, newInfo)
 	if err != nil {
 		t.Fatalf("cannot update user info to the Postgres DB (pgsql.go:updateMember): %s", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected to update one row but updated %d", count)
 	}
 	newMember, err := db.Member(entities[0].ID, &member.ID)
 	if err != nil {
@@ -766,8 +773,12 @@ func TestCensus(t *testing.T) {
 		t.Fatalf("expected to find 2 ephemeral members but found %d", len(ephemeralMembers))
 	}
 	email := "test@mail.com"
-	if err = api.DB.UpdateMember(entities[0].ID, &memberIDs[2], &types.MemberInfo{Email: email}); err != nil {
+	count, err := api.DB.UpdateMember(entities[0].ID, &memberIDs[2], &types.MemberInfo{Email: email})
+	if err != nil {
 		t.Fatalf("cannot update member: (%v)", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected to update one row but updated %d", count)
 	}
 	ephemeralMember, err := api.DB.EphemeralMemberInfoByEmail(entities[0].ID, idBytes, email)
 	if err != nil {
@@ -783,8 +794,12 @@ func TestCensus(t *testing.T) {
 		MerkleRoot:    merkleRoot,
 		MerkleTreeURI: merkleTreeUri,
 	}
-	if err := api.DB.UpdateCensus(entities[0].ID, idBytes, info); err != nil {
+	count, err = api.DB.UpdateCensus(entities[0].ID, idBytes, info)
+	if err != nil {
 		t.Fatalf("cannot update census: (%v)", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected to update one row but updated %d", count)
 	}
 	census, err = api.DB.Census(entities[0].ID, idBytes)
 	if err != nil {
@@ -795,8 +810,12 @@ func TestCensus(t *testing.T) {
 	}
 	// merkleTreeUri = "ipfs://new"
 	info = &types.CensusInfo{}
-	if err := api.DB.UpdateCensus(entities[0].ID, idBytes, info); err != nil {
+	count, err = api.DB.UpdateCensus(entities[0].ID, idBytes, info)
+	if err != nil {
 		t.Fatalf("cannot update census: (%v)", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected to update one row but updated %d", count)
 	}
 	census, err = api.DB.Census(entities[0].ID, idBytes)
 	if err != nil {

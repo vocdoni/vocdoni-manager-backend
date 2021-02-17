@@ -89,7 +89,8 @@ Registers an entity to the backend. The address/ID of the Entity is calculated b
 {
     "id": "req-12345678",
     "response": {
-        "ok": true
+        "ok": true,
+        "count": 1,
     },
      "signature": "0x12345"
 }
@@ -255,7 +256,8 @@ Retrieve a list of members with the given constraints.
 {
     "id": "req-12345678",
     "response": {
-        "ok": true
+        "ok": true,
+        "count": 1,
     },
      "signature": "0x123456"
 }
@@ -692,6 +694,7 @@ Updates the census info
     "id": "req-12345678",
     "response": {
         "ok": true,
+        "count": 1,
     },
     "signature": "0x123456"
 }

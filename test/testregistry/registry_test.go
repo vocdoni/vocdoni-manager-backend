@@ -219,9 +219,12 @@ func TestValidateToken(t *testing.T) {
 		CallbackSecret: secret,
 	}
 
-	err = api.DB.UpdateEntity(entities[0].ID, updatedInfo)
+	count, err := api.DB.UpdateEntity(entities[0].ID, updatedInfo)
 	if err != nil {
 		t.Fatalf("cannot fetch validated member from the database: %s", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected to update one row but updated %d", count)
 	}
 
 	params := map[string]string{
