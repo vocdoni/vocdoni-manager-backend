@@ -272,7 +272,7 @@ func (m *Manager) updateEntity(request router.RouterRequest) {
 	}
 
 	// Add Entity
-	if err = m.db.UpdateEntity(entityID, entityInfo); err != nil {
+	if response.Count, err = m.db.UpdateEntity(entityID, entityInfo); err != nil {
 		log.Errorf("cannot update entity %x to the DB: (%v)", entityID, err)
 		m.Router.SendError(request, "cannot update entity")
 		return
@@ -400,7 +400,7 @@ func (m *Manager) updateMember(request router.RouterRequest) {
 	}
 
 	// If a string Member property is sent as "" then it is not updated
-	if err = m.db.UpdateMember(entityID, &request.Member.ID, &request.Member.MemberInfo); err != nil {
+	if response.Count, err = m.db.UpdateMember(entityID, &request.Member.ID, &request.Member.MemberInfo); err != nil {
 		log.Errorf("cannot update member %q for entity %x: (%v)", request.Member.ID.String(), request.SignaturePublicKey, err)
 		m.Router.SendError(request, "cannot update member")
 		return
@@ -1031,7 +1031,7 @@ func (m *Manager) updateCensus(request router.RouterRequest) {
 		log.Warnf("invalid claims: %v", request.InvalidClaims)
 	}
 
-	if err := m.db.UpdateCensus(entityID, censusID, request.Census); err != nil {
+	if response.Count, err = m.db.UpdateCensus(entityID, censusID, request.Census); err != nil {
 		log.Errorf("cannot update census %q for %x: (%v)", request.CensusID, entityID, err)
 		m.Router.SendError(request, "cannot update census")
 		return

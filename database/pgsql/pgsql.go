@@ -216,11 +216,11 @@ func (d *Database) AuthorizeEntity(entityID []byte) error {
 	return nil
 }
 
-func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
+func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) (int, error) {
 	entity := &types.Entity{ID: entityID, EntityInfo: *info}
 	pgentity, err := ToPGEntity(entity)
 	if err != nil {
-		return fmt.Errorf("cannot convert member data types to postgres types: %w", err)
+		return 0, fmt.Errorf("cannot convert member data types to postgres types: %w", err)
 	}
 	// TODO: Implement Update CensusManagerAddresses (table)
 	update := `UPDATE entities SET
@@ -236,17 +236,15 @@ func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
 				:email IS DISTINCT FROM email)`
 	result, err := d.db.NamedExec(update, pgentity)
 	if err != nil {
-		return fmt.Errorf("error updating entity: %w", err)
+		return 0, fmt.Errorf("error updating entity: %w", err)
 	}
 	var rows int64
 	if rows, err = result.RowsAffected(); err != nil {
-		return fmt.Errorf("cannot get affected rows: %w", err)
-	} else if rows == 0 { /* Nothing to update? */
-		return fmt.Errorf("nothing to update")
-	} else if rows != 1 { /* Nothing to update? */
-		return fmt.Errorf("could not update")
+		return 0, fmt.Errorf("cannot get affected rows: %w", err)
+	} else if rows != 1 && rows != 0 { /* Nothing to update? */
+		return int(rows), fmt.Errorf("expected to update 0 or 1 rows, but updated %d rows", rows)
 	}
-	return nil
+	return int(rows), nil
 }
 
 func (d *Database) EntityOrigins(entityID []byte) ([]types.Origin, error) {
@@ -634,14 +632,14 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 	return nil
 }
 
-func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *types.MemberInfo) error {
+func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *types.MemberInfo) (int, error) {
 	if memberID == nil {
-		return fmt.Errorf("memberID is nil")
+		return 0, fmt.Errorf("memberID is nil")
 	}
 	member := &types.Member{ID: *memberID, EntityID: entityID, MemberInfo: *info}
 	pgmember, err := ToPGMember(member)
 	if err != nil {
-		return fmt.Errorf("cannot convert member data types to postgres types: %w", err)
+		return 0, fmt.Errorf("cannot convert member data types to postgres types: %w", err)
 	}
 	update := `UPDATE members SET
 				street_address = COALESCE(NULLIF(:street_address, ''),  street_address),
@@ -660,15 +658,15 @@ func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *type
 				:pg_tags  IS DISTINCT FROM tags)`
 	var result sql.Result
 	if result, err = d.db.NamedExec(update, pgmember); err != nil {
-		return fmt.Errorf("error updating member: %w", err)
+		return 0, fmt.Errorf("error updating member: %w", err)
 	}
 	var rows int64
 	if rows, err = result.RowsAffected(); err != nil {
-		return fmt.Errorf("cannot get affected rows: %w", err)
-	} else if rows != 1 { /* Nothing to update? */
-		return fmt.Errorf("nothing to update: %w", err)
+		return 0, fmt.Errorf("cannot get affected rows: %w", err)
+	} else if rows != 1 && rows != 0 { /* Nothing to update? */
+		return int(rows), fmt.Errorf("expected to update 0 or 1 rows, but updated %d rows", rows)
 	}
-	return nil
+	return int(rows), nil
 }
 
 func (d *Database) AddTag(entityID []byte, tagName string) (int32, error) {
@@ -1818,10 +1816,10 @@ func (d *Database) AddCensusWithMembers(entityID, censusID []byte, targetID *uui
 	return int64(len(censusMembers)), nil
 }
 
-func (d *Database) UpdateCensus(entityID, censusID []byte, info *types.CensusInfo) error {
+func (d *Database) UpdateCensus(entityID, censusID []byte, info *types.CensusInfo) (int, error) {
 	var err error
 	if len(entityID) == 0 || len(censusID) == 0 || info == nil {
-		return fmt.Errorf("invalid arguments")
+		return 0, fmt.Errorf("invalid arguments")
 	}
 	// TODO check valid target selecting
 	if info.MerkleRoot == nil {
@@ -1841,15 +1839,15 @@ func (d *Database) UpdateCensus(entityID, censusID []byte, info *types.CensusInf
 				WHERE id = :id AND entity_id = :entity_id`
 	var result sql.Result
 	if result, err = d.db.NamedExec(update, census); err != nil {
-		return fmt.Errorf("error updating census: %w", err)
+		return 0, fmt.Errorf("error updating census: %w", err)
 	}
 	var rows int64
 	if rows, err = result.RowsAffected(); err != nil {
-		return fmt.Errorf("cannot get affected rows: %w", err)
-	} else if rows != 1 { /* Nothing to update? */
-		return fmt.Errorf("nothing to update: %w", err)
+		return 0, fmt.Errorf("cannot get affected rows: %w", err)
+	} else if rows != 1 && rows != 0 { /* Nothing to update? */
+		return int(rows), fmt.Errorf("expected to update 0 or 1 rows, but updated %d rows", rows)
 	}
-	return nil
+	return int(rows), nil
 }
 
 func (d *Database) CountCensus(entityID []byte) (int, error) {

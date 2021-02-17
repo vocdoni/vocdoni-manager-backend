@@ -99,12 +99,12 @@ func (d *Database) AuthorizeEntity(entityID []byte) error {
 	return nil
 }
 
-func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) error {
+func (d *Database) UpdateEntity(entityID []byte, info *types.EntityInfo) (int, error) {
 	failEid := hex.EncodeToString(entityID)
 	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
-		return fmt.Errorf("error updating entity with id: %s", failEid)
+		return 0, fmt.Errorf("error updating entity with id: %s", failEid)
 	}
-	return nil
+	return 1, nil
 }
 
 func (d *Database) Member(entityID []byte, memberID *uuid.UUID) (*types.Member, error) {
@@ -290,12 +290,12 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 	return nil
 }
 
-func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *types.MemberInfo) error {
+func (d *Database) UpdateMember(entityID []byte, memberID *uuid.UUID, info *types.MemberInfo) (int, error) {
 	failEid := hex.EncodeToString(entityID)
 	if failEid == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
-		return fmt.Errorf("error updating member of entity: %s", failEid)
+		return 0, fmt.Errorf("error updating member of entity: %s", failEid)
 	}
-	return nil
+	return 1, nil
 }
 
 func (d *Database) AddTag(entityID []byte, tagName string) (int32, error) {
@@ -377,8 +377,8 @@ func (d *Database) EphemeralMemberInfoByEmail(entityID, censusID []byte, email s
 	return nil, nil
 }
 
-func (d *Database) UpdateCensus(entityID, censusID []byte, info *types.CensusInfo) error {
-	return nil
+func (d *Database) UpdateCensus(entityID, censusID []byte, info *types.CensusInfo) (int, error) {
+	return 1, nil
 }
 
 func (d *Database) AddTarget(entityID []byte, target *types.Target) (uuid.UUID, error) {
