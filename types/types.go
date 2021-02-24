@@ -138,7 +138,7 @@ type User struct {
 
 type Census struct {
 	EntityID []byte    `json:"entityId" db:"entity_id"`
-	ID       []byte    `json:"id" db:"id"`
+	ID       HexBytes  `json:"id" db:"id"`
 	TargetID uuid.UUID `json:"targetId" db:"target_id"`
 	CensusInfo
 }
