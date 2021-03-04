@@ -84,7 +84,7 @@ func (s *SMTP) SendValidationLink(member *types.Member, entity *types.Entity) er
 		return fmt.Errorf("invalid member email")
 	}
 
-	link := fmt.Sprintf("%s/0x%x/%s", s.config.ValidationURL, entity.ID, member.ID.String())
+	link := fmt.Sprintf("%s/%x/%s", s.config.ValidationURL, entity.ID, member.ID.String())
 	data := struct {
 		Name           string
 		OrgName        string
@@ -155,7 +155,7 @@ func (s *SMTP) SendVotingLink(ephemeralMember *types.EphemeralMemberInfo, entity
 		return fmt.Errorf("missing privKey")
 	}
 
-	link := fmt.Sprintf("%s/0x%x/%x/0x%x", s.config.WebpollURL, entity.ID, processID, ephemeralMember.PrivKey)
+	link := fmt.Sprintf("%s/%x/%x/%x", s.config.WebpollURL, entity.ID, processID, ephemeralMember.PrivKey)
 	data := struct {
 		Name       string
 		OrgName    string
