@@ -21,9 +21,9 @@ require (
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
-	github.com/vocdoni/multirpc v0.1.10
-	go.vocdoni.io/dvote v0.6.1-0.20210130094936-75dbb92de3f0
-	go.vocdoni.io/proto v0.1.8
+	github.com/vocdoni/multirpc v0.1.21
+	go.vocdoni.io/dvote v0.6.1-0.20210312101632-cb2c5bbac87e
+	go.vocdoni.io/proto v0.1.9-0.20210304214308-6f7363b52750
 	google.golang.org/api v0.36.0
 	nhooyr.io/websocket v1.8.6
 )

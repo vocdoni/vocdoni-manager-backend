@@ -68,7 +68,6 @@ func newConfig() (*config.Notify, config.Error) {
 	cfg.Ethereum.NodePort = *flag.Int("ethNodePort", 30303, "Ethereum p2p node port to use")
 	cfg.Ethereum.BootNodes = *flag.StringArray("ethBootNodes", []string{}, "Ethereum p2p custom bootstrap nodes (enode://<pubKey>@<ip>[:port])")
 	cfg.Ethereum.TrustedPeers = *flag.StringArray("ethTrustedPeers", []string{}, "Ethereum p2p trusted peer nodes (enode://<pubKey>@<ip>[:port])")
-	cfg.Ethereum.VocdoniDomains = *flag.StringArray("ethVocdoniDomains", []string{"processes.vocdoni.eth", "namespaces.vocdoni.eth", "erc20.proofs.vocdoni.eth"}, "vocdoni contracts ENS domains")
 	cfg.Ethereum.NoWaitSync = *flag.Bool("ethNoWaitSync", false, "do not wait for Ethereum to synchronize (for testing only)")
 	// ethereum events
 	cfg.EthereumEvents.CensusSync = *flag.Bool("ethCensusSync", false, "automatically import new census published on the smart contract")
@@ -130,7 +129,6 @@ func newConfig() (*config.Notify, config.Error) {
 	viper.BindPFlag("ethereum.nodePort", flag.Lookup("ethNodePort"))
 	viper.BindPFlag("ethereum.bootNodes", flag.Lookup("ethBootNodes"))
 	viper.BindPFlag("ethereum.trustedPeers", flag.Lookup("ethTrustedPeers"))
-	viper.BindPFlag("ethereum.processDomain", flag.Lookup("ethProcessDomain"))
 	viper.BindPFlag("ethereum.noWaitSync", flag.Lookup("ethNoWaitSync"))
 	viper.BindPFlag("ethereumEvents.censusSync", flag.Lookup("ethCensusSync"))
 	viper.BindPFlag("ethereumEvents.subscribeOnly", flag.Lookup("ethSubscribeOnly"))
@@ -272,7 +270,7 @@ func main() {
 	var fa notify.PushNotifier
 	if len(cfg.Notifications.KeyFile) > 0 {
 		// create file tracker
-		ipfsFileTracker := notify.NewIPFSFileTracker(cfg.IPFS, ep.MetricsAgent, db, chainSpecs.ENSregistryAddr, cfg.Web3.W3External)
+		ipfsFileTracker := notify.NewIPFSFileTracker(cfg.IPFS, ep.MetricsAgent, db, chainSpecs.ENSregistryAddr, cfg.Web3.W3External, chainSpecs.ENSdomains[5])
 		switch cfg.Notifications.Service {
 		case notify.Firebase:
 			fa = notify.NewFirebaseAdmin(cfg.Notifications.KeyFile, cfg.Env, ipfsFileTracker)
@@ -320,7 +318,7 @@ func main() {
 		}
 	}
 
-	if err := service.EthEvents(ctx, cfg.Ethereum.VocdoniDomains, w3uri, cfg.Ethereum.ChainType, initBlock, nil, signer, nil, evh, nil); err != nil {
+	if err := service.EthEvents(ctx, w3uri, chainSpecs.Name, initBlock, nil, signer, nil, evh, nil, []string{}); err != nil {
 		log.Fatal(err)
 	}
 

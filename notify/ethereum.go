@@ -12,8 +12,8 @@ import (
 )
 
 var ethereumEventList = map[string]string{
-	// NewProcess(bytes32 processId, uint16 namespace)
-	"processesNewProcess": "0x2399440b5a42cbc7ba215c9c176f7cd16b511a8727c1f277635f3fce4649156e",
+	// NewProcess(bytes32 processId, uint32 namespace)
+	"processesNewProcess": "0x3b1cc0fc696cbe654bd83494847cc7890f2ae0e05a79dfbd6c1892061fbf3404",
 }
 
 // ProcessMeta returns the info of a newly created process from the event raised and ethereum storage
