@@ -44,6 +44,9 @@ func (d *Database) Close() error {
 }
 
 func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
+	if fmt.Sprintf("%x", entityID) == "09fa012e40f844b073fab7fcbd7f7a5716c1a365" {
+		return nil, fmt.Errorf("error adding entity with id: %x", entityID)
+	}
 	if fmt.Sprintf("%x", entityID) == "f6da3e4864d566faf82163a407e84a9001592678" {
 		return nil, fmt.Errorf("cannot fetch entity with ID: %x", entityID)
 	}
