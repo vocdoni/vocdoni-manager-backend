@@ -63,12 +63,13 @@ type IPFSFileTracker struct {
 	EntitiesTrackingStatus *sync.Map
 	database               database.Database
 	ensRegistryAddress     string
+	resolverDomain         string
 	metricsAgent           *metrics.Agent
 	w3endpoint             string
 }
 
 // NewIPFSFileTracker creates a new IPFSFileTracker
-func NewIPFSFileTracker(config *config.IPFSCfg, ma *metrics.Agent, db database.Database, ensRegistry, w3endpoint string) *IPFSFileTracker {
+func NewIPFSFileTracker(config *config.IPFSCfg, ma *metrics.Agent, db database.Database, ensRegistry, w3endpoint, resolverDomain string) *IPFSFileTracker {
 	return &IPFSFileTracker{
 		IPFS:                   new(data.IPFSHandle),
 		IPFSConfig:             config,
@@ -79,6 +80,7 @@ func NewIPFSFileTracker(config *config.IPFSCfg, ma *metrics.Agent, db database.D
 		database:               db,
 		ensRegistryAddress:     ensRegistry,
 		w3endpoint:             w3endpoint,
+		resolverDomain:         resolverDomain,
 	}
 }
 
@@ -132,8 +134,8 @@ func (ft *IPFSFileTracker) getEntities() ([]string, error) {
 	return entities, nil
 }
 
-func (ft *IPFSFileTracker) getEntityMetadataURL(ctx context.Context, eID string) (string, error) {
-	return chain.ResolveEntityMetadataURL(ctx, ft.ensRegistryAddress, eID, ft.w3endpoint)
+func (ft *IPFSFileTracker) getEntityMetadataURL(ctx context.Context, eID, resolverDomain string) (string, error) {
+	return chain.ResolveEntityMetadataURL(ctx, ft.ensRegistryAddress, resolverDomain, eID, ft.w3endpoint)
 }
 
 func (ft *IPFSFileTracker) refreshEntities(ctx context.Context) error {
@@ -158,7 +160,7 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, key string) e
 	// retrieve new metadata URL
 	timeout, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	eURL, err := ft.getEntityMetadataURL(timeout, key)
+	eURL, err := ft.getEntityMetadataURL(timeout, key, ft.resolverDomain)
 	if err != nil {
 		// return error
 		return err
