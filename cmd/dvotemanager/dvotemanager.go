@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -8,10 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ethereum/go-ethereum/ethclient"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.vocdoni.io/manager/ethclient"
+	"go.vocdoni.io/manager/types"
 
+	"go.vocdoni.io/dvote/chain"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	log "go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/manager/config"
@@ -72,8 +75,11 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.SMTP.Sender = *flag.String("smtpSender", "validation@bender.vocdoni.io", "SMTP Sender address")
 	cfg.SMTP.SenderName = *flag.String("smtpSenderName", "Vocdoni", "Name that appears as sender identity in emails")
 	cfg.SMTP.Contact = *flag.String("smtpContact", "contact@vocdoni.io", "Fallback contact email address in emails")
-	cfg.W3Enpoint = *flag.String("w3Endpoint", "", "ethereum endpoint to connect with, required by the manager faucet")
-
+	cfg.EthNetwork.Name = *flag.String("ethNetworkName", "goerli", fmt.Sprintf("Ethereum blockchain to use: %s", chain.AvailableChains))
+	cfg.EthNetwork.Provider = *flag.String("ethNetworkProvider", "", "Ethereum network gateway")
+	cfg.EthNetwork.GasLimit = *flag.Uint64("ethNetworkGasLimit", 0, "Gas limit for sending an EVM transaction in units")
+	cfg.EthNetwork.FaucetAmount = *flag.Int("ethNetworkFaucetAmount", 0*types.Finney, "Amount of eth or similar to be provided upon an entity sign up (in milliEther)")
+	cfg.EthNetwork.Timeout = *flag.Duration("ethNetworkTimeout", 60*time.Second, "Timeout for ethereum transactions (default: 60s) ")
 	// metrics
 	cfg.Metrics.Enabled = *flag.Bool("metricsEnabled", true, "enable prometheus metrics")
 	cfg.Metrics.RefreshInterval = *flag.Int("metricsRefreshInterval", 10, "metrics refresh interval in seconds")
@@ -121,8 +127,11 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("smtp.sender", flag.Lookup("smtpSender"))
 	viper.BindPFlag("smtp.senderName", flag.Lookup("smtpSenderName"))
 	viper.BindPFlag("smtp.contact", flag.Lookup("smtpContact"))
-	viper.BindPFlag("w3Endpoint", flag.Lookup("w3Endpoint"))
-
+	viper.BindPFlag("ethNetworkName", flag.Lookup("ethNetworkName"))
+	viper.BindPFlag("ethNetworkProvider", flag.Lookup("ethNetworkProvider"))
+	viper.BindPFlag("ethNetworkGasLimit", flag.Lookup("ethNetworkGasLimit"))
+	viper.BindPFlag("ethNetworkFaucetAmount", flag.Lookup("ethNetworkFaucetAmount"))
+	viper.BindPFlag("ethNetworkTimeout", flag.Lookup("ethNetworkTimeout"))
 	// metrics
 	viper.BindPFlag("metrics.enabled", flag.Lookup("metricsEnabled"))
 	viper.BindPFlag("metrics.refreshInterval", flag.Lookup("metricsRefreshInterval"))
@@ -219,6 +228,7 @@ func main() {
 	}
 	pub, _ := signer.HexString()
 	log.Infof("my public key: %s", pub)
+	log.Infof("my address: %s", signer.AddressString())
 
 	// WS Endpoint and Router
 	ep, err := endpoint.NewEndpoint(cfg, signer)
@@ -226,6 +236,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	ctx := context.Background()
 	// Database Interface
 	var db database.Database
 
@@ -266,14 +277,22 @@ func main() {
 	}
 
 	// Manager
-	ethclient, err := ethclient.Dial(cfg.W3Enpoint)
-	if err != nil {
-		log.Fatalf("cannot connect to ethereum endpoint: %w", err)
+	var ethClient *ethclient.Eth
+	if len(cfg.EthNetwork.Name) != 0 {
+		ethClient, err = ethclient.New(ctx, cfg.EthNetwork, signer)
+		if err != nil {
+			log.Fatalf("cannot connect to ethereum endpoint: %w", err)
+		}
+		balance, err := ethClient.BalanceAt(context.Background(), signer.Address(), nil)
+		if err != nil {
+			log.Errorf("cannot get signer balance: (%v)", err)
+		}
+		log.Infof("my %s balance is %s", cfg.EthNetwork.Name, balance.String())
 	}
 
 	if cfg.Mode == "manager" || cfg.Mode == "all" {
 		log.Infof("enabling Manager API methods")
-		mgr := manager.NewManager(ep.Router, db, smtp, ethclient)
+		mgr := manager.NewManager(ep.Router, db, smtp, ethClient)
 		if err := mgr.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}

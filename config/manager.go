@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 )
 
 var Modes = map[string]bool{
@@ -37,13 +38,13 @@ type Manager struct {
 	SigningKey string
 	// Migration options
 	Migrate *Migrate
-	// W3Endpoint
-	W3Enpoint string
+	// Web3 connection options
+	EthNetwork *EthNetwork
 }
 
 func (m *Manager) String() string {
-	return fmt.Sprintf("API: %+v,  DB: %+v, SMTP: %+v, LogLevel: %s, LogOutput: %s, LogErrorFile: %s,  Metrics: %+v, Mode: %s, DataDir: %s, SaveConfig: %v, SigningKey: %s, Migrate: %+v, W3Enpoint: %s",
-		*m.API, *m.DB, *m.SMTP, m.LogLevel, m.LogOutput, m.LogErrorFile, *m.Metrics, m.Mode, m.DataDir, m.SaveConfig, m.SigningKey, *m.Migrate, m.W3Enpoint)
+	return fmt.Sprintf("API: %+v,  DB: %+v, SMTP: %+v, LogLevel: %s, LogOutput: %s, LogErrorFile: %s,  Metrics: %+v, Mode: %s, DataDir: %s, SaveConfig: %v, SigningKey: %s,  SMTP: %v, Migrate: %+v, Eth: %v",
+		*m.API, *m.DB, *m.SMTP, m.LogLevel, m.LogOutput, m.LogErrorFile, *m.Metrics, m.Mode, m.DataDir, m.SaveConfig, m.SigningKey, *m.SMTP, *m.Migrate, *m.EthNetwork)
 }
 
 func (m *Manager) ValidMode() bool {
@@ -53,11 +54,12 @@ func (m *Manager) ValidMode() bool {
 // NewManagerConfig initializes the fields in the config stuct
 func NewManagerConfig() *Manager {
 	return &Manager{
-		API:     new(API),
-		DB:      new(DB),
-		Migrate: new(Migrate),
-		SMTP:    new(SMTP),
-		Metrics: new(MetricsCfg),
+		API:        new(API),
+		DB:         new(DB),
+		Migrate:    new(Migrate),
+		SMTP:       new(SMTP),
+		Metrics:    new(MetricsCfg),
+		EthNetwork: new(EthNetwork),
 	}
 }
 
@@ -78,4 +80,21 @@ type SMTP struct {
 type Migrate struct {
 	// Action defines the migration action to be taken (up, down, status)
 	Action string
+}
+
+type EthNetwork struct {
+	// NetworkName is the Ethereum Network Name
+	// currently supported: "mainnet", "sokol", goerli", "xdai",
+	// more info in:
+	// https://github.com/vocdoni/vocdoni-node/blob/8b5a1fbc161603b96831fed7b0748190afff0bff/chain/blockchains.go
+	Name string
+	// Provider is the Ethereum gateway host
+	Provider string
+	// GasLimit is the deafult gas limit for sending an EVM transaction
+	GasLimit uint64
+	// FaucetAmount is the default amount of xdai/gas to send to entities
+	// 1 XDAI/ETH (as xDAI is the native token for xDAI chain)
+	FaucetAmount int
+	// Timeout applied to the ethereum transactions
+	Timeout time.Duration
 }

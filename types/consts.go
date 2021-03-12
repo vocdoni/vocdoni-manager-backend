@@ -1,12 +1,33 @@
 package types
 
+import "errors"
+
 const (
-	// DEFAULTFAUCETAMOUNT is the default amount of xdai to send to entities
-	// 1 XDAI/ETH (as xDAI is the native token for xDAI chain)
-	DEFAULTFAUCETAMOUNT = 1000000000000000000
-	// DEFAULTFAUCETGASLIMIT is the deafult gas limit for sending an EVM transaction
-	DEFAULTFAUCETGASLIMIT = 1000000 // 1M
-	// MAXFAUCETAMOUNT is the maximum balance an entity can have for requesting more
-	// tokens to the manager faucet
-	MAXFAUCETAMOUNT = 2000000000
+	// Eth
+
+	Finney = 1000000000000000 // Milliether in wei
+	// Default faucet Amounts
+	MainnetDefaultFaucetAmount = Finney
+	GoerliDefaultFaucetAmount  = Finney * 1500
+	XDAIDefaultFaucetAmount    = Finney * 100
+
+	// DefaultGasLimit is the default gas limit for sending an EVM transaction
+	DefaultGasLimit = 1000000 // 1M
 )
+
+func DefaultFaucetAmount(name string) (int, error) {
+	switch name {
+	case "mainnet":
+		return MainnetDefaultFaucetAmount, nil
+	case "goerli":
+		return GoerliDefaultFaucetAmount, nil
+	case "xdai":
+		return XDAIDefaultFaucetAmount, nil
+	case "xdaistage":
+		return XDAIDefaultFaucetAmount, nil
+	case "sokol":
+		return GoerliDefaultFaucetAmount, nil
+	default:
+		return 0, errors.New("chain name not found")
+	}
+}

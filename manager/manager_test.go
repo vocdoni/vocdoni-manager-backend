@@ -129,6 +129,46 @@ func TestSignUp(t *testing.T) {
 	}
 }
 
+func TestGetEntity(t *testing.T) {
+	// connect to endpoint
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// should fail if Entity fails
+	var req types.MetaRequest
+	// generate signing keys
+	s := ethereum.NewSignKeys()
+	s.AddHexKey(testdb.Signers[0].Priv)
+	//eid, err := util.PubKeyToEntityID(testdb.Signers[0].Pub)
+	//t.Fatalf("%s", hex.EncodeToString(eid))
+	req.Method = "getEntity"
+	// make request
+	resp := wsc.Request(req, s)
+	// check register went successful
+	if resp.Ok {
+		t.Fatal("should fail if entity does not exist")
+	}
+
+	// should success if entity and target can be added
+	// should fail if AddTarget fails
+	var req3 types.MetaRequest
+	// generate signing keys
+	s3 := ethereum.NewSignKeys()
+	s3.AddHexKey(testdb.Signers[2].Priv)
+	//eid, err := util.PubKeyToEntityID(testdb.Signers[1].Pub)
+	//t.Fatalf("%s", hex.EncodeToString(eid))
+	req3.Method = "getEntity"
+	// make request
+	resp3 := wsc.Request(req3, s3)
+	// check register went successful
+	if !resp3.Ok {
+		t.Fatal("should signUp successful")
+	}
+}
+
 func TestListMembers(t *testing.T) {
 	// connect to endpoint
 	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
@@ -978,5 +1018,24 @@ func TestListCensus(t *testing.T) {
 	// check register went successful
 	if !resp4.Ok {
 		t.Fatal("should success")
+	}
+}
+
+func TestRequestGas(t *testing.T) {
+	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	// check connected successfully
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := ethereum.NewSignKeys()
+	s.AddHexKey(testdb.Signers[1].Priv)
+	var req types.MetaRequest
+	req.Method = "requestGas"
+	// make request
+	resp := wsc.Request(req, s)
+	// check register went successful
+	if resp.Ok {
+		t.Fatal("should fail if no ethclient provided")
 	}
 }
