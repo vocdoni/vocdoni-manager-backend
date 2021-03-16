@@ -259,7 +259,7 @@ func (fa *FirebaseAdmin) HandleEthereum(ctx context.Context, event *ethtypes.Log
 
 func (fa *FirebaseAdmin) handleEthereumNewProcess(ctx context.Context, event *ethtypes.Log, e *ethevents.EthereumEvents) (*FirebasePushNotification, error) {
 	// get process metadata
-	processTx, err := ProcessMeta(ctx, &e.ContractsABI[0], event.Data, e.VotingHandle)
+	processTx, err := ProcessMeta(ctx, &e.ContractsInfo["processes"].ABI, event.Data, e.VotingHandle)
 	if err != nil {
 		return nil, err
 	}
