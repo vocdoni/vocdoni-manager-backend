@@ -270,7 +270,9 @@ func main() {
 	var fa notify.PushNotifier
 	if len(cfg.Notifications.KeyFile) > 0 {
 		// create file tracker
-		ipfsFileTracker := notify.NewIPFSFileTracker(cfg.IPFS, ep.MetricsAgent, db, chainSpecs.ENSregistryAddr, cfg.Web3.W3External, chainSpecs.ENSdomains[5])
+		chainSpecs.Contracts["processes"].SetABI("processes")
+		chainSpecs.Contracts["entities"].SetABI("entities")
+		ipfsFileTracker := notify.NewIPFSFileTracker(cfg.IPFS, ep.MetricsAgent, db, chainSpecs.ENSregistryAddr, cfg.Web3.W3External, chainSpecs.Contracts["entities"].Domain)
 		switch cfg.Notifications.Service {
 		case notify.Firebase:
 			fa = notify.NewFirebaseAdmin(cfg.Notifications.KeyFile, cfg.Env, ipfsFileTracker)
