@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	migrate "github.com/rubenv/sql-migrate"
 
 	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx"
 	_ "github.com/jackc/pgx/stdlib"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/crypto/snarks"
@@ -556,6 +558,13 @@ func (d *Database) ImportMembers(entityID []byte, info []types.MemberInfo) error
 				(entity_id, public_key, street_address, first_name, last_name, email, phone, date_of_birth, verified, custom_fields, created_at, updated_at)
 				VALUES (:entity_id, :public_key, :street_address, :first_name, :last_name, :pg_email, :phone, :date_of_birth, :verified, :pg_custom_fields, :created_at, :updated_at)`
 	if err := bulkInsert(tx, insert, members, 12); err != nil {
+		var pgError pgx.PgError
+		u := errors.Unwrap(err)
+		if errors.As(u, &pgError) {
+			if pgError.ConstraintName == "members_entity_id_email_unique" {
+				return fmt.Errorf("error during bulk insert: duplicate email")
+			}
+		}
 		return fmt.Errorf("error during bulk insert: %w", err)
 	}
 	if err = tx.Commit(); err != nil {
