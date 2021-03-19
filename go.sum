@@ -2081,8 +2081,8 @@ go.vocdoni.io/dvote v0.6.1-0.20210129144810-e6ce68464ed2/go.mod h1:7yTzMiJiZY3E9
 go.vocdoni.io/dvote v0.6.1-0.20210130094936-75dbb92de3f0 h1:V2cUEQQ+YGI9xWxSgYO6UCAq+XcBA4kzOK90ikEeXS8=
 go.vocdoni.io/dvote v0.6.1-0.20210130094936-75dbb92de3f0/go.mod h1:NJyERGs2LmEvlevZUtOl36MI0HlOUh0d2I0vJcYh5RE=
 go.vocdoni.io/dvote v0.6.1-0.20210206210936-a0407e833753/go.mod h1:HhMMtdnkLI3ujk+zcL1frzFg5S7SbvxWtis7RZTq1dA=
-go.vocdoni.io/dvote v0.6.1-0.20210316164922-7b508c381f4c h1:K2LCcX/GU7VN3ibL4c20s9akQ7ocUktBr3KIYIHLl7o=
-go.vocdoni.io/dvote v0.6.1-0.20210316164922-7b508c381f4c/go.mod h1:C9wjSWCzy33Bl2sNiF/2ie/oxcERR3uRD2G2c/NDeH0=
+go.vocdoni.io/dvote v0.6.1-0.20210318173124-5c42e6fbf488 h1:YRp5XYJbp/nfv8pUSkwice8sMdYEtcZipjLOaOzoVeM=
+go.vocdoni.io/dvote v0.6.1-0.20210318173124-5c42e6fbf488/go.mod h1:C9wjSWCzy33Bl2sNiF/2ie/oxcERR3uRD2G2c/NDeH0=
 go.vocdoni.io/proto v0.1.7/go.mod h1:cyITrt7+sHmUJH06WLu69xB7LBY9c9FakFaBOe8gs/M=
 go.vocdoni.io/proto v0.1.8 h1:WUsshi+7A+RFLd0IbQWmkJiQXPRjxHRbONIg1pDsSHs=
 go.vocdoni.io/proto v0.1.8/go.mod h1:cyITrt7+sHmUJH06WLu69xB7LBY9c9FakFaBOe8gs/M=
