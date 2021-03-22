@@ -30,7 +30,8 @@ Registers an entity to the backend. The address/ID of the Entity is calculated b
 {
     "id": "req-12345678",
     "response": {
-        "ok": true
+        "ok": true,
+        "count": 15000000,  // gas provided by faucet, if any
     },
      "signature": "0x12345"
 }

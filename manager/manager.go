@@ -206,11 +206,17 @@ func (m *Manager) signUp(request router.RouterRequest) {
 	entityAddress := ethcommon.BytesToAddress(entityID)
 	// do not try to send tokens if ethclient is nil
 	if m.eth != nil {
-		if err := m.eth.SendTokens(context.Background(), entityAddress, 0, 0); err != nil {
-			log.Errorf("error sending tokens to entity %s : %v", entityAddress.String(), err)
-			m.Router.SendError(request, "error sending tokens")
-			return
+		// send the default amount of faucet tokens iff wallet balance is zero
+		sent, err := m.eth.SendTokens(context.Background(), entityAddress, 0, 0)
+		if err != nil {
+			if !strings.Contains(err.Error(), "maxAcceptedBalance") {
+				log.Errorf("error sending tokens to entity %s : %v", entityAddress.String(), err)
+				m.Router.SendError(request, "could not send tokens to empty wallet")
+				return
+			}
+			log.Warnf("signUp not sending tokens to entity %s : %v", entityAddress.String(), err)
 		}
+		response.Count = int(sent.Int64())
 	}
 
 	log.Debugf("Entity: %s signUp", entityAddress.String())
@@ -1575,11 +1581,14 @@ func (m *Manager) requestGas(request router.RouterRequest) {
 		return
 	}
 
-	if err := m.eth.SendTokens(context.Background(), entityAddress, 0, 0); err != nil {
+	sent, err := m.eth.SendTokens(context.Background(), entityAddress, 0, 0)
+	if err != nil {
 		log.Errorf("error sending tokens to entity %s : %v", entityAddress.String(), err)
 		m.Router.SendError(request, "error sending tokens")
 		return
 	}
+
+	response.Count = int(sent.Int64())
 	m.send(&request, &response)
 }
 

@@ -21,7 +21,7 @@ type Eth struct {
 	networkID           *big.Int
 	provider            string
 	gasLimit            uint64
-	defaultFaucetAmount *big.Int
+	DefaultFaucetAmount *big.Int
 	client              *ethclient.Client
 	signer              *ethereum.SignKeys
 	timeout             time.Duration
@@ -78,7 +78,7 @@ func New(ctx context.Context, ethc *config.EthNetwork, signer *ethereum.SignKeys
 	log.Debugf("%s", faucetAmount.String())
 	log.Debugf("%s", timeout.String())
 
-	return &Eth{client: ethclient, signer: signer, networkName: ethc.Name, networkID: chainID, provider: provider, gasLimit: gasLimit, defaultFaucetAmount: faucetAmount, timeout: timeout}, nil
+	return &Eth{client: ethclient, signer: signer, networkName: ethc.Name, networkID: chainID, provider: provider, gasLimit: gasLimit, DefaultFaucetAmount: faucetAmount, timeout: timeout}, nil
 }
 
 func (eth *Eth) Close() {
@@ -94,9 +94,10 @@ func (eth *Eth) BalanceAt(ctx context.Context, address ethcommon.Address, blockN
 // SendTokens sends gas to an address
 // if the destination address has balance higher than maxAcceptedBalance the gas is not sent
 // if the amount provided is 0 the the default amount of gas is used
-func (eth *Eth) SendTokens(ctx context.Context, to ethcommon.Address, maxAcceptedBalance int64, amount int64) error {
+func (eth *Eth) SendTokens(ctx context.Context, to ethcommon.Address, maxAcceptedBalance int64, amount int64) (*big.Int, error) {
+	sent := &big.Int{}
 	if eth.client == nil {
-		return fmt.Errorf("cannot send tokens, ethereum client is nil")
+		return sent, fmt.Errorf("cannot send tokens, ethereum client is nil")
 	}
 
 	// Check to address does not exceed maxAcceptedBalance
@@ -104,11 +105,11 @@ func (eth *Eth) SendTokens(ctx context.Context, to ethcommon.Address, maxAccepte
 	defer cancel()
 	toBalance, err := eth.BalanceAt(tctx, to, nil) // nil means latest block
 	if err != nil {
-		return fmt.Errorf("cannot check entity balance")
+		return sent, fmt.Errorf("cannot check entity balance")
 	}
 
 	if toBalance.CmpAbs(big.NewInt(maxAcceptedBalance)) == 1 {
-		return fmt.Errorf("not sending tokens, entity %s has already a balance of : %d", eth.signer.Address().String(), toBalance.Int64())
+		return sent, fmt.Errorf("entity %s has already a balance of : %d, greater than the maxAcceptedBalance", to.String(), toBalance.Int64())
 	}
 
 	// Check manager has enough balance for the transfer
@@ -116,18 +117,18 @@ func (eth *Eth) SendTokens(ctx context.Context, to ethcommon.Address, maxAccepte
 	defer cancel1()
 	fromBalance, err := eth.BalanceAt(tctx1, eth.signer.Address(), nil) // nil means latest block
 	if err != nil {
-		return fmt.Errorf("cannot check manager balance")
+		return sent, fmt.Errorf("cannot check manager balance")
 	}
 
 	var value *big.Int
 	if amount == 0 {
-		value = eth.defaultFaucetAmount
+		value = eth.DefaultFaucetAmount
 	} else {
 		value = big.NewInt(amount)
 	}
 
 	if fromBalance.CmpAbs(value) == -1 {
-		return fmt.Errorf("cannot send tokens, wallet does not have enough balance: %d", fromBalance.Int64())
+		return sent, fmt.Errorf("wallet does not have enough balance: %d", fromBalance.Int64())
 	}
 
 	// set gas price
@@ -142,7 +143,7 @@ func (eth *Eth) SendTokens(ctx context.Context, to ethcommon.Address, maxAccepte
 		defer cancel2()
 		gasPrice, err = eth.client.SuggestGasPrice(tctx2)
 		if err != nil {
-			return fmt.Errorf("cannot suggest gas price: %s", err)
+			return sent, fmt.Errorf("cannot suggest gas price: %s", err)
 		}
 	}
 	// get nonce for the signer
@@ -150,7 +151,7 @@ func (eth *Eth) SendTokens(ctx context.Context, to ethcommon.Address, maxAccepte
 	defer cancel3()
 	nonce, err := eth.client.PendingNonceAt(tctx3, eth.signer.Address())
 	if err != nil {
-		return fmt.Errorf("cannot get signer account nonce: %s", err)
+		return sent, fmt.Errorf("cannot get signer account nonce: %s", err)
 	}
 
 	// create tx
@@ -158,15 +159,15 @@ func (eth *Eth) SendTokens(ctx context.Context, to ethcommon.Address, maxAccepte
 	// sign tx
 	signedTx, err := ethtypes.SignTx(tx, ethtypes.NewEIP155Signer(eth.networkID), &eth.signer.Private)
 	if err != nil {
-		return fmt.Errorf("cannot sign transaction: %s", err)
+		return sent, fmt.Errorf("cannot sign transaction: %s", err)
 	}
 	// send tx
 	tctx4, cancel4 := context.WithTimeout(ctx, eth.timeout)
 	defer cancel4()
 	err = eth.client.SendTransaction(tctx4, signedTx)
 	if err != nil {
-		return fmt.Errorf("cannot send signed tx: %s", err)
+		return sent, fmt.Errorf("cannot send signed tx: %s", err)
 	}
 	log.Infof("send %d tokens to newly created entity %s. TxHash: %s", value, to.String(), signedTx.Hash().Hex())
-	return nil
+	return value, nil
 }

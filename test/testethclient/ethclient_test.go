@@ -66,8 +66,9 @@ func TestSendTokens(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unable to connect to default %s provider: (%v)", ethc.Name, err)
 			}
-			err = e.SendTokens(context.Background(), signer.Address(), 0, 0)
-			qt.Assert(t, err, qt.ErrorMatches, `cannot send tokens, wallet does not have enough balance.*`)
+			count, err := e.SendTokens(context.Background(), signer.Address(), 0, 0)
+			qt.Assert(t, err, qt.ErrorMatches, `wallet does not have enough balance.*`)
+			qt.Assert(t, count.Int64(), qt.Equals, int64(0), qt.Commentf("expected to have send 0 tokens but sent %d", count.Int64()))
 			e.Close()
 		})
 	}
