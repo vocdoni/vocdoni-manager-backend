@@ -1,6 +1,6 @@
 module go.vocdoni.io/manager
 
-go 1.14
+go 1.16
 
 require (
 	firebase.google.com/go/v4 v4.0.0
