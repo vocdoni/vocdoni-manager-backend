@@ -173,7 +173,7 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, key string) e
 	}
 	log.Debugf("fetched entity %s metadata url %s", key, eURL)
 	// get file
-	contentBytes, err := ft.IPFS.Retrieve(ctx, eURL)
+	contentBytes, err := ft.IPFS.Retrieve(ctx, eURL, 0)
 	if err != nil {
 		return err
 	}
@@ -232,7 +232,7 @@ func (ft *IPFSFileTracker) refreshFileContent(ctx context.Context, key string) e
 // url can be the hash or the url prefixed with ipfs://
 func (ft *IPFSFileTracker) fetchNewsFeedContent(ctx context.Context, url string) (*types.NewsFeed, error) {
 	// get file
-	contentBytes, err := ft.IPFS.Retrieve(ctx, url)
+	contentBytes, err := ft.IPFS.Retrieve(ctx, url, 0)
 	if err != nil {
 		return nil, err
 	}
