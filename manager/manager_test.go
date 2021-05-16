@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/vocdoni/multirpc/transports"
-	"github.com/vocdoni/multirpc/transports/mhttp"
 	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/multirpc/transports"
+	"go.vocdoni.io/dvote/multirpc/transports/mhttp"
 	"go.vocdoni.io/manager/database/testdb"
 	"go.vocdoni.io/manager/manager"
 	"go.vocdoni.io/manager/router"

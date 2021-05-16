@@ -15,9 +15,9 @@ import (
 	"github.com/google/uuid"
 	"go.vocdoni.io/manager/ethclient"
 
-	"github.com/vocdoni/multirpc/transports"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
+	"go.vocdoni.io/dvote/multirpc/transports"
 	"go.vocdoni.io/manager/database"
 	"go.vocdoni.io/manager/database/pgsql"
 	"go.vocdoni.io/manager/router"

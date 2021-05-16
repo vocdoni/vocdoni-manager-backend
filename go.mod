@@ -7,7 +7,7 @@ require (
 	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/badoux/checkmail v0.0.0-20181210160741-9661bd69e9ad
 	github.com/ethereum/go-ethereum v1.9.26-0.20201212163632-00d10e610f9f
-	github.com/frankban/quicktest v1.11.3
+	github.com/frankban/quicktest v1.13.0
 	github.com/google/uuid v1.2.0
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgtype v1.3.1-0.20200521144610-9d847241cb8f
@@ -21,9 +21,17 @@ require (
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
-	github.com/vocdoni/multirpc v0.1.21
-	go.vocdoni.io/dvote v0.6.1-0.20210318173124-5c42e6fbf488
-	go.vocdoni.io/proto v0.1.9-0.20210304214308-6f7363b52750
+	go.vocdoni.io/dvote v0.6.1-0.20210514134400-c79a951a36e2
+	go.vocdoni.io/proto v1.0.3-0.20210427102429-33cf17b307f0
 	google.golang.org/api v0.36.0
 	nhooyr.io/websocket v1.8.6
 )
+
+// Newer versions of the fuse module removed support for MacOS.
+// Unfortunately, its downstream users don't handle this properly,
+// so our builds simply break for GOOS=darwin.
+// Until either upstream or downstream solve this properly,
+// force a downgrade to the commit right before support was dropped.
+// It's also possible to use downstream's -tags=nofuse, but that's manual.
+// TODO(mvdan): remove once we've untangled module dep loops.
+replace bazil.org/fuse => bazil.org/fuse v0.0.0-20200407214033-5883e5a4b512
