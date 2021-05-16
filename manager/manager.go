@@ -191,9 +191,11 @@ func (m *Manager) signUp(request router.RouterRequest) {
 
 	// Add Entity
 	if err = m.db.AddEntity(entityID, entityInfo); err != nil {
-		log.Errorf("cannot add entity %x to the DB: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot add entity to the DB")
-		return
+		if !strings.Contains(err.Error(), "entities_pkey") {
+			log.Errorf("cannot add entity %x to the DB: (%v)", request.SignaturePublicKey, err)
+			m.Router.SendError(request, "cannot add entity to the DB")
+			return
+		}
 	}
 
 	target = &types.Target{EntityID: entityID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
