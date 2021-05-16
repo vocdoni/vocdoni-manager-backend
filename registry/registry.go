@@ -12,10 +12,10 @@ import (
 	"github.com/badoux/checkmail"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/vocdoni/multirpc/transports"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/metrics"
+	"go.vocdoni.io/dvote/multirpc/transports"
 
 	"go.vocdoni.io/manager/database"
 	"go.vocdoni.io/manager/router"

@@ -5,10 +5,10 @@ import (
 
 	"firebase.google.com/go/v4/auth"
 	"firebase.google.com/go/v4/errorutils"
-	"github.com/vocdoni/multirpc/transports"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/metrics"
+	"go.vocdoni.io/dvote/multirpc/transports"
 	"go.vocdoni.io/manager/router"
 	"go.vocdoni.io/manager/types"
 )
