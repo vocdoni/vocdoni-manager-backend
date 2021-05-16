@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"math/rand"
+	"net/http"
 	"os"
 	"reflect"
 	"strings"
@@ -23,19 +25,45 @@ import (
 
 // APIConnection holds an API websocket connection
 type APIConnection struct {
-	Conn *websocket.Conn
+	Addr string
+	WS   *websocket.Conn
+	HTTP *http.Client
 }
 
 // NewAPIConnection starts a connection with the given endpoint address. The
 // connection is closed automatically when the test or benchmark finishes.
 func NewAPIConnection(addr string) *APIConnection {
-	r := &APIConnection{}
+	r := &APIConnection{Addr: addr}
 	var err error
-	r.Conn, _, err = websocket.Dial(context.TODO(), addr, nil)
-	if err != nil {
-		log.Fatal(err)
+	if strings.HasPrefix(addr, "ws") {
+		r.WS, _, err = websocket.Dial(context.TODO(), addr, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return r
+	} else if strings.HasPrefix(addr, "http") {
+		tr := &http.Transport{
+			MaxIdleConns:       10,
+			IdleConnTimeout:    10 * time.Second,
+			DisableCompression: false,
+		}
+		r.HTTP = &http.Client{Transport: tr, Timeout: time.Second * 20}
+	} else {
+		log.Fatalf("address is not websockets nor http: %s", addr)
 	}
+	log.Info("client ready")
 	return r
+}
+
+func (r *APIConnection) Close() error {
+	var err error
+	if r.WS != nil {
+		err = r.WS.Close(websocket.StatusNormalClosure, "")
+	}
+	if r.HTTP != nil {
+		r.HTTP.CloseIdleConnections()
+	}
+	return err
 }
 
 // Request makes a request to the previously connected endpoint
@@ -65,10 +93,34 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 		log.Fatalf("%s: %v", method, err)
 	}
 	log.Infof("sending: %s", reqBody)
-	if err := r.Conn.Write(context.TODO(), websocket.MessageText, reqBody); err != nil {
-		log.Fatalf("%s: %v", method, err)
+	message := []byte{}
+	if r.WS != nil {
+		tctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+		defer cancel()
+		if err := r.WS.Write(tctx, websocket.MessageText, reqBody); err != nil {
+			log.Fatalf("%s: %v", method, err)
+		}
+		_, message, err = r.WS.Read(tctx)
+		if err != nil {
+			log.Fatalf("%s: %v", method, err)
+		}
 	}
-	_, message, err := r.Conn.Read(context.TODO())
+	if r.HTTP != nil {
+		resp, err := r.HTTP.Post(r.Addr, "application/json", bytes.NewBuffer(reqBody))
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		message, err = io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatalf(err.Error())
+
+		}
+		resp.Body.Close()
+	}
+	// if err := r.Conn.Write(context.TODO(), websocket.MessageText, reqBody); err != nil {
+	// 	log.Fatalf("%s: %v", method, err)
+	// }
+	// _, message, err := r.Conn.Read(context.TODO())
 	log.Infof("received: %s", message)
 	if err != nil {
 		log.Fatalf("%s: %v", method, err)
@@ -118,7 +170,7 @@ func processLine(input []byte) types.MetaRequest {
 }
 
 func main() {
-	host := flag.String("host", "ws://127.0.0.1:8000/api/registry", "host to connect to")
+	host := flag.String("host", "http://127.0.0.1:9000/api/manager", "host to connect to")
 	logLevel := flag.String("logLevel", "error", "log level <debug, info, warn, error>")
 	privKey := flag.String("key", "", "private key for signature (leave blank for auto-generate)")
 	flag.Parse()
@@ -137,7 +189,7 @@ func main() {
 	}
 	log.Infof("connecting to %s", *host)
 	c := NewAPIConnection(*host)
-	defer c.Conn.Close(websocket.StatusNormalClosure, "")
+	defer c.Close()
 	var req types.MetaRequest
 	reader := bufio.NewReader(os.Stdin)
 	for {
