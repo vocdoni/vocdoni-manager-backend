@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/vocdoni/multirpc/transports"
-	"github.com/vocdoni/multirpc/transports/mhttp"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/metrics"
+	"go.vocdoni.io/dvote/multirpc/transports"
+	"go.vocdoni.io/dvote/multirpc/transports/mhttp"
 	"go.vocdoni.io/manager/config"
 	"go.vocdoni.io/manager/router"
 )

@@ -9,9 +9,9 @@ import (
 	"time"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/vocdoni/multirpc/transports"
-	"github.com/vocdoni/multirpc/transports/mhttp"
 	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/multirpc/transports"
+	"go.vocdoni.io/dvote/multirpc/transports/mhttp"
 
 	"go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/manager/database/testdb"

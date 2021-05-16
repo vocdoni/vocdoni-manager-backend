@@ -11,7 +11,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.15.x
+        go-version: 1.16.4
 
     - name: Checkout code
       uses: actions/checkout@v2
@@ -27,7 +27,7 @@ jobs:
       run: |
         diff -u <(echo -n) <(gofmt -s -d $(git ls-files '*.go'))
         go vet ./...
-        curl -L https://github.com/dominikh/go-tools/releases/download/2020.2.1/staticcheck_linux_amd64.tar.gz | tar -xzf -
+        curl -L https://github.com/dominikh/go-tools/releases/download/2020.2.3/staticcheck_linux_amd64.tar.gz | tar -xzf -
         ./staticcheck/staticcheck ./...
 
     - name: Install goveralls
