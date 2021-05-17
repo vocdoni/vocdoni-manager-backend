@@ -155,7 +155,7 @@ func (eth *Eth) SendTokens(ctx context.Context, to ethcommon.Address, maxAccepte
 	}
 
 	// create tx
-	tx := ethtypes.NewTransaction(nonce, to, value, eth.gasLimit, gasPrice, []byte{})
+	tx := ethtypes.NewTransaction(nonce, to, value, eth.gasLimit, gasPrice, nil)
 	// sign tx
 	signedTx, err := ethtypes.SignTx(tx, ethtypes.NewEIP155Signer(eth.networkID), &eth.signer.Private)
 	if err != nil {
@@ -164,6 +164,7 @@ func (eth *Eth) SendTokens(ctx context.Context, to ethcommon.Address, maxAccepte
 	// send tx
 	tctx4, cancel4 := context.WithTimeout(ctx, eth.timeout)
 	defer cancel4()
+	log.Debugf("sending transaction %v", signedTx)
 	err = eth.client.SendTransaction(tctx4, signedTx)
 	if err != nil {
 		return sent, fmt.Errorf("cannot send signed tx: %s", err)
