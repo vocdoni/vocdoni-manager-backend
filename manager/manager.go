@@ -190,16 +190,14 @@ func (m *Manager) signUp(request router.RouterRequest) {
 	}
 
 	// Add Entity
-	if err = m.db.AddEntity(entityID, entityInfo); err != nil {
-		if !strings.Contains(err.Error(), "entities_pkey") {
-			log.Errorf("cannot add entity %x to the DB: (%v)", request.SignaturePublicKey, err)
-			m.Router.SendError(request, "cannot add entity to the DB")
-			return
-		}
+	if err = m.db.AddEntity(entityID, entityInfo); err != nil && !strings.Contains(err.Error(), "entities_pkey") {
+		log.Errorf("cannot add entity %x to the DB: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot add entity to the DB")
+		return
 	}
 
 	target = &types.Target{EntityID: entityID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
-	if _, err = m.db.AddTarget(entityID, target); err != nil {
+	if _, err = m.db.AddTarget(entityID, target); err != nil && !strings.Contains(err.Error(), "result has no rows") {
 		log.Errorf("cannot create entity's %x generic target: (%v)", request.SignaturePublicKey, err)
 		m.Router.SendError(request, "cannot create entity generic target")
 		return
