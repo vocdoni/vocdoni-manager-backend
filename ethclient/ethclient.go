@@ -132,18 +132,18 @@ func (eth *Eth) SendTokens(ctx context.Context, to ethcommon.Address, maxAccepte
 	}
 
 	// set gas price
-	var gasPrice *big.Int
+	var gasPrice = big.NewInt(60000000000) // 60 gwei
 	switch eth.networkName {
 	// if xdai or sokol always 1 gwei
-	case "xdai", "sokol":
-		gasPrice = big.NewInt(60000000000) // 60 gwei
+	case "sokol":
+		gasPrice = big.NewInt(1000000000) // 10 gwei
 	// else let the node suggest
 	default:
 		tctx2, cancel2 := context.WithTimeout(ctx, eth.timeout)
 		defer cancel2()
 		gasPrice, err = eth.client.SuggestGasPrice(tctx2)
 		if err != nil {
-			return sent, fmt.Errorf("cannot suggest gas price: %s", err)
+			log.Warn("Could not estimate gas price, using default value of 60gwei")
 		}
 	}
 	// get nonce for the signer
