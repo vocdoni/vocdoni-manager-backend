@@ -136,7 +136,7 @@ func (eth *Eth) SendTokens(ctx context.Context, to ethcommon.Address, maxAccepte
 	switch eth.networkName {
 	// if xdai or sokol always 1 gwei
 	case "xdai", "sokol":
-		gasPrice = big.NewInt(1000000000) // 1 gwei
+		gasPrice = big.NewInt(60000000000) // 60 gwei
 	// else let the node suggest
 	default:
 		tctx2, cancel2 := context.WithTimeout(ctx, eth.timeout)
