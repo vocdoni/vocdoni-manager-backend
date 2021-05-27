@@ -35,7 +35,9 @@ func TestMain(m *testing.M) {
 func TestConnect(t *testing.T) {
 	for _, ethc := range testNetworks {
 		t.Run(fmt.Sprintf("type=%s", ethc.Name), func(t *testing.T) {
-			e, err := ethclient.New(context.Background(), &ethc, signer)
+			signers := make([]*ethclient.Signer, 1)
+			signers[0] = &ethclient.Signer{SignK: signer}
+			e, err := ethclient.New(context.Background(), &ethc, signers)
 			if err != nil {
 				t.Fatalf("unable to connect to default %s provider: (%v)", ethc.Name, err)
 			}
@@ -47,7 +49,9 @@ func TestConnect(t *testing.T) {
 func TestBalanceAt(t *testing.T) {
 	for _, ethc := range testNetworks {
 		t.Run(fmt.Sprintf("type=%s", ethc.Name), func(t *testing.T) {
-			e, err := ethclient.New(context.Background(), &ethc, signer)
+			signers := make([]*ethclient.Signer, 1)
+			signers[0] = &ethclient.Signer{SignK: signer}
+			e, err := ethclient.New(context.Background(), &ethc, signers)
 			if err != nil {
 				t.Fatalf("unable to connect to default %s provider: (%v)", ethc.Name, err)
 			}
@@ -62,7 +66,9 @@ func TestBalanceAt(t *testing.T) {
 func TestSendTokens(t *testing.T) {
 	for _, ethc := range testNetworks {
 		t.Run(fmt.Sprintf("type=%s", ethc.Name), func(t *testing.T) {
-			e, err := ethclient.New(context.Background(), &ethc, signer)
+			signers := make([]*ethclient.Signer, 1)
+			signers[0] = &ethclient.Signer{SignK: signer}
+			e, err := ethclient.New(context.Background(), &ethc, signers)
 			if err != nil {
 				t.Fatalf("unable to connect to default %s provider: (%v)", ethc.Name, err)
 			}

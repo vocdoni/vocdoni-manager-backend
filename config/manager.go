@@ -35,7 +35,7 @@ type Manager struct {
 	// SaveConfig overwrites the config file with the CLI provided flags
 	SaveConfig bool
 	// SigningKey is the ECDSA hexString private key for signing messages
-	SigningKey string
+	SigningKeys []string
 	// Migration options
 	Migrate *Migrate
 	// Web3 connection options
@@ -44,7 +44,7 @@ type Manager struct {
 
 func (m *Manager) String() string {
 	return fmt.Sprintf("API: %+v,  DB: %+v, SMTP: %+v, LogLevel: %s, LogOutput: %s, LogErrorFile: %s,  Metrics: %+v, Mode: %s, DataDir: %s, SaveConfig: %v, SigningKey: %s,  SMTP: %v, Migrate: %+v, Eth: %v",
-		*m.API, *m.DB, *m.SMTP, m.LogLevel, m.LogOutput, m.LogErrorFile, *m.Metrics, m.Mode, m.DataDir, m.SaveConfig, m.SigningKey, *m.SMTP, *m.Migrate, *m.EthNetwork)
+		*m.API, *m.DB, *m.SMTP, m.LogLevel, m.LogOutput, m.LogErrorFile, *m.Metrics, m.Mode, m.DataDir, m.SaveConfig, m.SigningKeys, *m.SMTP, *m.Migrate, *m.EthNetwork)
 }
 
 func (m *Manager) ValidMode() bool {
