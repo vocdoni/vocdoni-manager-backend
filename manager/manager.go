@@ -30,12 +30,20 @@ type Manager struct {
 	Router *router.Router
 	db     database.Database
 	smtp   *smtpclient.SMTP
-	eth    *ethclient.Eth
+	faucet *ethclient.Faucet
 }
 
 // NewManager creates a new registry handler for the Router
-func NewManager(r *router.Router, d database.Database, s *smtpclient.SMTP, ethclient *ethclient.Eth) *Manager {
-	return &Manager{Router: r, db: d, smtp: s, eth: ethclient}
+func NewManager(r *router.Router,
+	d database.Database,
+	s *smtpclient.SMTP,
+	ethfaucet *ethclient.Faucet) *Manager {
+	return &Manager{
+		Router: r,
+		db:     d,
+		smtp:   s,
+		faucet: ethfaucet,
+	}
 }
 
 // RegisterMethods registers all registry methods behind the given path
@@ -143,8 +151,8 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("removeTag", path+"/manager", m.removeTag, false, false); err != nil {
 		return err
 	}
-	if m.eth != nil {
-		// do not expose this endpoint if the manager does not have an ethereum client
+	if m.faucet != nil {
+		// do not expose this endpoint if the manager does not have the faucet
 		if err := m.Router.AddHandler("requestGas", path+"/manager", m.requestGas, false, false); err != nil {
 			return err
 		}
@@ -204,10 +212,10 @@ func (m *Manager) signUp(request router.RouterRequest) {
 	}
 
 	entityAddress := ethcommon.BytesToAddress(entityID)
-	// do not try to send tokens if ethclient is nil
-	if m.eth != nil {
+	// do not try to send tokens if no faucet
+	if m.faucet != nil {
 		// send the default amount of faucet tokens iff wallet balance is zero
-		sent, err := m.eth.SendTokens(context.Background(), entityAddress, 0, 0)
+		sent, err := m.faucet.SendTokens(context.Background(), entityAddress)
 		if err != nil {
 			if !strings.Contains(err.Error(), "maxAcceptedBalance") {
 				log.Errorf("error sending tokens to entity %s : %v", entityAddress.String(), err)
@@ -1547,8 +1555,8 @@ func (m *Manager) requestGas(request router.RouterRequest) {
 	var err error
 	var response types.MetaResponse
 
-	if m.eth == nil {
-		log.Errorf("cannot request for tokens, ethereum client is nil")
+	if m.faucet == nil {
+		log.Errorf("cannot request for tokens, no faucet found")
 		m.Router.SendError(request, "internal error")
 		return
 	}
@@ -1581,7 +1589,7 @@ func (m *Manager) requestGas(request router.RouterRequest) {
 		return
 	}
 
-	sent, err := m.eth.SendTokens(context.Background(), entityAddress, 0, 0)
+	sent, err := m.faucet.SendTokens(context.Background(), entityAddress)
 	if err != nil {
 		log.Errorf("error sending tokens to entity %s : %v", entityAddress.String(), err)
 		m.Router.SendError(request, "error sending tokens")

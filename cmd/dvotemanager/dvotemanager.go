@@ -11,8 +11,6 @@ import (
 
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"go.vocdoni.io/manager/ethclient"
-	"go.vocdoni.io/manager/types"
 
 	"go.vocdoni.io/dvote/chain"
 	"go.vocdoni.io/dvote/crypto/ethereum"
@@ -20,6 +18,7 @@ import (
 	"go.vocdoni.io/manager/config"
 	"go.vocdoni.io/manager/database"
 	"go.vocdoni.io/manager/database/pgsql"
+	"go.vocdoni.io/manager/ethclient"
 	"go.vocdoni.io/manager/manager"
 	"go.vocdoni.io/manager/smtpclient"
 
@@ -52,7 +51,7 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.LogOutput = *flag.String("logOutput", "stdout", "Log output (stdout, stderr or filepath)")
 	cfg.LogErrorFile = *flag.String("logErrorFile", "", "Log errors and warnings to a file")
 	cfg.SaveConfig = *flag.Bool("saveConfig", false, "overwrites an existing config file with the CLI provided flags")
-	cfg.SigningKeys = *flag.StringArray("signingKeys", []string{}, "signing private Keys (if not specified, a new one will be created), the first one is the oracle public key")
+	cfg.SigningKey = *flag.String("signingKeys", "", "signing private key (if not specified, a new one will be created)")
 	cfg.API.Route = *flag.String("apiRoute", "/api", "dvote API route")
 	cfg.API.ListenHost = *flag.String("listenHost", "0.0.0.0", "API endpoint listen address")
 	cfg.API.ListenPort = *flag.Int("listenPort", 8000, "API endpoint http port")
@@ -75,11 +74,16 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.SMTP.Sender = *flag.String("smtpSender", "validation@bender.vocdoni.io", "SMTP Sender address")
 	cfg.SMTP.SenderName = *flag.String("smtpSenderName", "Vocdoni", "Name that appears as sender identity in emails")
 	cfg.SMTP.Contact = *flag.String("smtpContact", "contact@vocdoni.io", "Fallback contact email address in emails")
+	// ethereum
 	cfg.EthNetwork.Name = *flag.String("ethNetworkName", "goerli", fmt.Sprintf("Ethereum blockchain to use: %s", chain.AvailableChains))
-	cfg.EthNetwork.Provider = *flag.String("ethNetworkProvider", "", "Ethereum network gateway")
-	cfg.EthNetwork.GasLimit = *flag.Uint64("ethNetworkGasLimit", 0, "Gas limit for sending an EVM transaction in units")
-	cfg.EthNetwork.FaucetAmount = *flag.Int("ethNetworkFaucetAmount", 0*types.Finney, "Amount of eth or similar to be provided upon an entity sign up (in milliEther)")
+	cfg.EthNetwork.DialAddress = *flag.String("ethNetworkDialAddress", "", "Ethereum network endpoint")
 	cfg.EthNetwork.Timeout = *flag.Duration("ethNetworkTimeout", 60*time.Second, "Timeout for ethereum transactions (default: 60s) ")
+	// faucet
+	cfg.Faucet.Amount = *flag.Int64("faucetAmount", 0, "faucet amount to send, default value depends on the network")
+	cfg.Faucet.GasLimit = *flag.Int64("faucetGasLimit", 0, "faucet gas limit for sending funds, default value depends on the network")
+	cfg.Faucet.GasPrice = *flag.Int64("faucetGasPrice", 0, "faucet gas price for sending funds, default value depends on the network")
+	cfg.Faucet.Signers = *flag.StringArray("faucetSigners", []string{}, "faucet signers, at least one must be provided")
+	cfg.Faucet.MaxBalance = *flag.Int64("faucetMaxBalance", 0, "accounts balance threshold for sending more founds")
 	// metrics
 	cfg.Metrics.Enabled = *flag.Bool("metricsEnabled", true, "enable prometheus metrics")
 	cfg.Metrics.RefreshInterval = *flag.Int("metricsRefreshInterval", 10, "metrics refresh interval in seconds")
@@ -128,10 +132,14 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("smtp.senderName", flag.Lookup("smtpSenderName"))
 	viper.BindPFlag("smtp.contact", flag.Lookup("smtpContact"))
 	viper.BindPFlag("ethnetwork.name", flag.Lookup("ethNetworkName"))
-	viper.BindPFlag("ethnetwork.provider", flag.Lookup("ethNetworkProvider"))
-	viper.BindPFlag("ethnetwork.gasLimit", flag.Lookup("ethNetworkGasLimit"))
-	viper.BindPFlag("ethnetwork.faucetAmount", flag.Lookup("ethNetworkFaucetAmount"))
+	viper.BindPFlag("ethnetwork.dialAddress", flag.Lookup("ethNetworkDialAddress"))
 	viper.BindPFlag("ethnetwork.timeout", flag.Lookup("ethNetworkTimeout"))
+	viper.BindPFlag("faucet.amount", flag.Lookup("faucetAmount"))
+	viper.BindPFlag("faucet.gasLimit", flag.Lookup("faucetGasLimit"))
+	viper.BindPFlag("faucet.gasPrice", flag.Lookup("faucetGasPrice"))
+	viper.BindPFlag("faucet.signers", flag.Lookup("faucetSigners"))
+	viper.BindPFlag("faucet.maxBalance", flag.Lookup("faucetMaxBalance"))
+
 	// metrics
 	viper.BindPFlag("metrics.enabled", flag.Lookup("metricsEnabled"))
 	viper.BindPFlag("metrics.refreshInterval", flag.Lookup("metricsRefreshInterval"))
@@ -171,10 +179,10 @@ func newConfig() (*config.Manager, config.Error) {
 		}
 	}
 
-	// Generate and save signing key if nos specified
-	if cfg.SigningKeys[0] != "" {
-		if len(cfg.SigningKeys[0]) < 32 {
-			fmt.Println("no signing keys, generating one...")
+	// Generate and save signing key if not specified
+	if cfg.SigningKey != "" {
+		if len(cfg.SigningKey) < 32 {
+			fmt.Println("no signing key, generating one...")
 			signer := ethereum.NewSignKeys()
 			signer.Generate()
 			if err != nil {
@@ -185,7 +193,7 @@ func newConfig() (*config.Manager, config.Error) {
 			}
 			_, priv := signer.HexString()
 			viper.Set("signingKeys", priv)
-			cfg.SigningKeys[0] = priv
+			cfg.SigningKey = priv
 			cfg.SaveConfig = true
 		}
 	}
@@ -223,9 +231,9 @@ func main() {
 		log.Fatalf("invalid mode %s", cfg.Mode)
 	}
 
-	// Signer
+	// manager signer
 	signer := ethereum.NewSignKeys()
-	if err := signer.AddHexKey(cfg.SigningKeys[0]); err != nil {
+	if err := signer.AddHexKey(cfg.SigningKey); err != nil {
 		log.Fatal(err)
 	}
 	pub, _ := signer.HexString()
@@ -279,35 +287,35 @@ func main() {
 	}
 
 	// Manager
-	signers := make([]*ethclient.Signer, len(cfg.SigningKeys))
-	privs := make([]string, len(cfg.SigningKeys))
-	for idx, key := range cfg.SigningKeys {
+	faucetSigners := make([]*ethclient.SignerWithPendingTx, len(cfg.Faucet.Signers))
+	privs := make([]string, len(cfg.Faucet.Signers))
+	for idx, key := range cfg.Faucet.Signers {
 		kpair := ethereum.NewSignKeys()
 		kpair.AddHexKey(key)
-		signers[idx] = &ethclient.Signer{
-			SignK: kpair,
-		}
+		faucetSigners[idx] = &ethclient.SignerWithPendingTx{}
+		faucetSigners[idx].SetKeyPair(kpair)
 		_, priv := kpair.HexString()
 		privs[idx] = priv
 	}
-	viper.Set("signingKeys", signers)
+	viper.Set("faucetSigners", faucetSigners)
 	cfg.SaveConfig = true
-	var ethClient *ethclient.Eth
+	// create ethereum instance
+	var ethClient *ethclient.Ethereum
 	if len(cfg.EthNetwork.Name) != 0 {
-		ethClient, err = ethclient.New(ctx, cfg.EthNetwork, signers)
+		ethClient, err = ethclient.NewEthereum(ctx, cfg.EthNetwork)
 		if err != nil {
 			log.Fatalf("cannot connect to ethereum endpoint: %w", err)
 		}
-		balance, err := ethClient.BalanceAt(context.Background(), signer.Address(), nil)
-		if err != nil {
-			log.Errorf("cannot get signer balance: (%v)", err)
-		}
-		log.Infof("my %s balance is %s", cfg.EthNetwork.Name, balance.String())
+	}
+	// create faucet
+	faucet, err := ethclient.NewFaucet(cfg.Faucet, ethClient)
+	if err != nil {
+		log.Fatalf("cannot init faucet: %s", err)
 	}
 
 	if cfg.Mode == "manager" || cfg.Mode == "all" {
 		log.Infof("enabling Manager API methods")
-		mgr := manager.NewManager(ep.Router, db, smtp, ethClient)
+		mgr := manager.NewManager(ep.Router, db, smtp, faucet)
 		if err := mgr.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}
