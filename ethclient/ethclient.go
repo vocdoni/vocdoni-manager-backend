@@ -236,61 +236,68 @@ func (eth *Eth) SendTokens(ctx context.Context,
 			toBalance.Int64(),
 		)
 	}
+	finished := false
 	// get available signer
-	for _, signer := range eth.signersPool {
-		// check all signer pending txs
-		tctx2, cancel2 := context.WithTimeout(ctx, eth.timeout)
-		defer cancel2()
-		if signer.PendingTx != nil {
+	for {
+		for _, signer := range eth.signersPool {
+			// check all signer pending txs
+			tctx2, cancel2 := context.WithTimeout(ctx, eth.timeout)
+			defer cancel2()
+			if signer.PendingTx != nil {
+				continue
+			}
+
+			tctx3, cancel3 := context.WithTimeout(ctx, eth.timeout)
+			defer cancel3()
+			// if signer has not enough balance or error checking it select the next one
+			isEnough, err := signer.checkEnoughBalance(tctx3, eth.DefaultFaucetAmount, eth.client, eth.timeout)
+			if err != nil {
+				log.Infof("cannot check signer: %s balance with error: %s", signer.SignKeys.Address().Hex(), err)
+				continue
+			}
+			if !isEnough {
+				log.Infof("signer %s have not enough balance", signer.SignKeys.Address().Hex())
+				continue
+			}
+			// send tx
+			tctx4, cancel4 := context.WithTimeout(ctx, eth.timeout)
+			defer cancel4()
+			var value *big.Int
+			if amount == 0 {
+				value = eth.DefaultFaucetAmount
+			} else {
+				value = big.NewInt(amount)
+			}
+			txHash, nonce, err := signer.sendTokens(tctx4,
+				eth.networkName,
+				eth.client,
+				eth.timeout,
+				eth.gasLimit,
+				to,
+				value,
+			)
+			if err != nil {
+				log.Infof("cannot send tx: %s with signer: %s", txHash.Hex(), signer.SignKeys.Address().Hex())
+				continue
+			}
+			// add pending tx
+			log.Infof("signer %s txhash: %s with nonce: %d sended successfully",
+				signer.SignKeys.Address().Hex(),
+				txHash,
+				nonce,
+			)
+			signer.Lock.Lock()
+			signer.PendingTx = &txHash
+			signer.Lock.Unlock()
 			go signer.waitForTx(tctx2, eth.client, eth.timeout*2)
-			continue
+			finished = true
+			break
 		}
-		tctx3, cancel3 := context.WithTimeout(ctx, eth.timeout)
-		defer cancel3()
-		// if signer has not enough balance or error checking it select the next one
-		isEnough, err := signer.checkEnoughBalance(tctx3, eth.DefaultFaucetAmount, eth.client, eth.timeout)
-		if err != nil {
-			log.Infof("cannot check signer: %s balance with error: %s", signer.SignKeys.Address().Hex(), err)
-			continue
+		if finished {
+			break
 		}
-		if !isEnough {
-			log.Infof("signer %s have not enough balance", signer.SignKeys.Address().Hex())
-			continue
-		}
-		// send tx
-		tctx4, cancel4 := context.WithTimeout(ctx, eth.timeout)
-		defer cancel4()
-		var value *big.Int
-		if amount == 0 {
-			value = eth.DefaultFaucetAmount
-		} else {
-			value = big.NewInt(amount)
-		}
-		txHash, nonce, err := signer.sendTokens(tctx4,
-			eth.networkName,
-			eth.client,
-			eth.timeout,
-			eth.gasLimit,
-			to,
-			value,
-		)
-		if err != nil {
-			log.Infof("cannot send tx: %s with signer: %s", txHash.Hex(), signer.SignKeys.Address().Hex())
-			continue
-		}
-		// add pending tx
-		log.Infof("signer %s txhash: %s with nonce: %d sended successfully",
-			signer.SignKeys.Address().Hex(),
-			txHash,
-			nonce,
-		)
-		signer.Lock.Lock()
-		signer.PendingTx = &txHash
-		signer.Lock.Unlock()
-		return eth.DefaultFaucetAmount, nil
 	}
-	// NO MORE SIGNERS, fail sending
-	return big.NewInt(0), fmt.Errorf("no signer available")
+	return eth.DefaultFaucetAmount, nil
 }
 
 func (s *Signer) waitForTx(ctx context.Context,
