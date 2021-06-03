@@ -172,22 +172,20 @@ func newConfig() (*config.Manager, config.Error) {
 	}
 
 	// Generate and save signing key if nos specified
-	if cfg.SigningKeys[0] != "" {
-		if len(cfg.SigningKeys[0]) < 32 {
-			fmt.Println("no signing keys, generating one...")
-			signer := ethereum.NewSignKeys()
-			signer.Generate()
-			if err != nil {
-				cfgError = config.Error{
-					Message: fmt.Sprintf("cannot generate signing key: %s", err),
-				}
-				return cfg, cfgError
+	if len(cfg.SigningKeys) == 0 {
+		fmt.Println("no signing keys, generating one...")
+		signer := ethereum.NewSignKeys()
+		signer.Generate()
+		if err != nil {
+			cfgError = config.Error{
+				Message: fmt.Sprintf("cannot generate signing key: %s", err),
 			}
-			_, priv := signer.HexString()
-			viper.Set("signingKeys", priv)
-			cfg.SigningKeys[0] = priv
-			cfg.SaveConfig = true
+			return cfg, cfgError
 		}
+		_, priv := signer.HexString()
+		viper.Set("signingKeys", priv)
+		cfg.SigningKeys[0] = priv
+		cfg.SaveConfig = true
 	}
 
 	if cfg.SaveConfig {
@@ -225,6 +223,9 @@ func main() {
 
 	// Signer
 	signer := ethereum.NewSignKeys()
+	for idx, key := range cfg.SigningKeys {
+		cfg.SigningKeys[idx] = strings.Trim(key, `"[]`)
+	}
 	if err := signer.AddHexKey(cfg.SigningKeys[0]); err != nil {
 		log.Fatal(err)
 	}
@@ -286,9 +287,11 @@ func main() {
 		kpair.AddHexKey(key)
 		signers[idx] = &ethclient.Signer{
 			SignKeys: kpair,
+			Taken:    make(chan bool, 1),
 		}
 		_, priv := kpair.HexString()
 		privs[idx] = priv
+		log.Infof("Added signer %s for faucet", signers[idx].SignKeys.AddressString())
 	}
 	viper.Set("signingKeys", signers)
 	cfg.SaveConfig = true
