@@ -35,7 +35,9 @@ func TestMain(m *testing.M) {
 func TestConnect(t *testing.T) {
 	for _, ethc := range testNetworks {
 		t.Run(fmt.Sprintf("type=%s", ethc.Name), func(t *testing.T) {
-			e, err := ethclient.New(context.Background(), &ethc, signer)
+			signers := make([]*ethclient.Signer, 1)
+			signers[0] = &ethclient.Signer{SignKeys: signer}
+			e, err := ethclient.New(context.Background(), &ethc, signers)
 			if err != nil {
 				t.Fatalf("unable to connect to default %s provider: (%v)", ethc.Name, err)
 			}
@@ -47,28 +49,15 @@ func TestConnect(t *testing.T) {
 func TestBalanceAt(t *testing.T) {
 	for _, ethc := range testNetworks {
 		t.Run(fmt.Sprintf("type=%s", ethc.Name), func(t *testing.T) {
-			e, err := ethclient.New(context.Background(), &ethc, signer)
+			signers := make([]*ethclient.Signer, 1)
+			signers[0] = &ethclient.Signer{SignKeys: signer}
+			e, err := ethclient.New(context.Background(), &ethc, signers)
 			if err != nil {
 				t.Fatalf("unable to connect to default %s provider: (%v)", ethc.Name, err)
 			}
 			balance, err := e.BalanceAt(context.Background(), signer.Address(), nil)
 			qt.Assert(t, err, qt.IsNil)
 			qt.Assert(t, balance.Int64(), qt.Equals, int64(0))
-			e.Close()
-		})
-	}
-}
-
-func TestSendTokens(t *testing.T) {
-	for _, ethc := range testNetworks {
-		t.Run(fmt.Sprintf("type=%s", ethc.Name), func(t *testing.T) {
-			e, err := ethclient.New(context.Background(), &ethc, signer)
-			if err != nil {
-				t.Fatalf("unable to connect to default %s provider: (%v)", ethc.Name, err)
-			}
-			count, err := e.SendTokens(context.Background(), signer.Address(), 0, 0)
-			qt.Assert(t, err, qt.ErrorMatches, `wallet does not have enough balance.*`)
-			qt.Assert(t, count.Int64(), qt.Equals, int64(0), qt.Commentf("expected to have send 0 tokens but sent %d", count.Int64()))
 			e.Close()
 		})
 	}

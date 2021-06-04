@@ -52,7 +52,7 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.LogOutput = *flag.String("logOutput", "stdout", "Log output (stdout, stderr or filepath)")
 	cfg.LogErrorFile = *flag.String("logErrorFile", "", "Log errors and warnings to a file")
 	cfg.SaveConfig = *flag.Bool("saveConfig", false, "overwrites an existing config file with the CLI provided flags")
-	cfg.SigningKey = *flag.String("signingKey", "", "signing private Key (if not specified, a new one will be created)")
+	cfg.SigningKeys = *flag.StringArray("signingKeys", []string{}, "signing private Keys (if not specified, a new one will be created), the first one is the oracle public key")
 	cfg.API.Route = *flag.String("apiRoute", "/api", "dvote API route")
 	cfg.API.ListenHost = *flag.String("listenHost", "0.0.0.0", "API endpoint listen address")
 	cfg.API.ListenPort = *flag.Int("listenPort", 8000, "API endpoint http port")
@@ -103,7 +103,7 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("logLevel", flag.Lookup("logLevel"))
 	viper.BindPFlag("logErrorFile", flag.Lookup("logErrorFile"))
 	viper.BindPFlag("logOutput", flag.Lookup("logOutput"))
-	viper.BindPFlag("signingKey", flag.Lookup("signingKey"))
+	viper.BindPFlag("signingKeys", flag.Lookup("signingKeys"))
 	viper.BindPFlag("api.route", flag.Lookup("apiRoute"))
 	viper.BindPFlag("api.listenHost", flag.Lookup("listenHost"))
 	viper.BindPFlag("api.listenPort", flag.Lookup("listenPort"))
@@ -172,8 +172,8 @@ func newConfig() (*config.Manager, config.Error) {
 	}
 
 	// Generate and save signing key if nos specified
-	if len(cfg.SigningKey) < 32 {
-		fmt.Println("no signing key, generating one...")
+	if len(cfg.SigningKeys) == 0 {
+		fmt.Println("no signing keys, generating one...")
 		signer := ethereum.NewSignKeys()
 		signer.Generate()
 		if err != nil {
@@ -183,8 +183,8 @@ func newConfig() (*config.Manager, config.Error) {
 			return cfg, cfgError
 		}
 		_, priv := signer.HexString()
-		viper.Set("signingKey", priv)
-		cfg.SigningKey = priv
+		viper.Set("signingKeys", priv)
+		cfg.SigningKeys[0] = priv
 		cfg.SaveConfig = true
 	}
 
@@ -223,7 +223,10 @@ func main() {
 
 	// Signer
 	signer := ethereum.NewSignKeys()
-	if err := signer.AddHexKey(cfg.SigningKey); err != nil {
+	for idx, key := range cfg.SigningKeys {
+		cfg.SigningKeys[idx] = strings.Trim(key, `"[]`)
+	}
+	if err := signer.AddHexKey(cfg.SigningKeys[0]); err != nil {
 		log.Fatal(err)
 	}
 	pub, _ := signer.HexString()
@@ -277,9 +280,24 @@ func main() {
 	}
 
 	// Manager
+	signers := make([]*ethclient.Signer, len(cfg.SigningKeys))
+	privs := make([]string, len(cfg.SigningKeys))
+	for idx, key := range cfg.SigningKeys {
+		kpair := ethereum.NewSignKeys()
+		kpair.AddHexKey(key)
+		signers[idx] = &ethclient.Signer{
+			SignKeys: kpair,
+			Taken:    make(chan bool, 1),
+		}
+		_, priv := kpair.HexString()
+		privs[idx] = priv
+		log.Infof("Added signer %s for faucet", signers[idx].SignKeys.AddressString())
+	}
+	viper.Set("signingKeys", signers)
+	cfg.SaveConfig = true
 	var ethClient *ethclient.Eth
 	if len(cfg.EthNetwork.Name) != 0 {
-		ethClient, err = ethclient.New(ctx, cfg.EthNetwork, signer)
+		ethClient, err = ethclient.New(ctx, cfg.EthNetwork, signers)
 		if err != nil {
 			log.Fatalf("cannot connect to ethereum endpoint: %w", err)
 		}
