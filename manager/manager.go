@@ -187,6 +187,8 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		// For now control which EntityInfo fields end up to the DB
 		entityInfo.Name = request.Entity.Name
 		entityInfo.Email = request.Entity.Email
+		entityInfo.Size = request.Entity.Size
+		entityInfo.Type = request.Entity.Type
 	}
 
 	// Add Entity

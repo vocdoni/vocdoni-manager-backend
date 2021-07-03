@@ -71,6 +71,10 @@ func TestEntity(t *testing.T) {
 		t.Fatalf("cannot add entity to the Postgres DB (pgsql.go:addEntity): %s", err)
 	}
 
+	if err = api.DB.AddEntity(entityID, &types.EntityInfo{}); err == nil {
+		t.Fatalf("added Duplicate entity to the Postgres DB (pgsql.go:addEntity): %s", err)
+	}
+
 	entity, err := api.DB.Entity(entityID)
 	if err != nil {
 		t.Fatalf("cannot fetch entity from the Postgres DB (pgsql.go:Entity): %s", err)

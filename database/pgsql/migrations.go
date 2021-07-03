@@ -36,6 +36,11 @@ var Migrations = migrate.MemoryMigrationSource{
 			Up:   []string{migration5up},
 			Down: []string{migration5down},
 		},
+		{
+			Id:   "6",
+			Up:   []string{migration6up},
+			Down: []string{migration6down},
+		},
 	},
 }
 
@@ -321,6 +326,20 @@ ALTER TABLE ONLY members
     DROP CONSTRAINT members_entity_id_email_unique;
 ALTER TABLE ONLY entities
     ADD COLUMN address bytea;
+`
+
+const migration6up = `
+ALTER TABLE ONLY entities
+    ADD COLUMN type text DEFAULT 'undefined',
+    -- org_size will hold the minimum number of the employees range with possible
+    -- values in [1,51,101,501,1001]
+    ADD COLUMN size integer DEFAULT 0;
+`
+
+const migration6down = `
+ALTER TABLE ONLY entities
+    DROP COLUMN type,
+    DROP COLUMN size;
 `
 
 func Migrator(action string, db database.Database) error {

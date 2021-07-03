@@ -64,11 +64,6 @@ func TestSignUp(t *testing.T) {
 	if !resp.Ok {
 		t.Fatalf("entity singup without data failed: %+v", req)
 	}
-	// cannot add twice
-	resp2 := wsc.Request(req, signers[0])
-	if resp2.Ok {
-		t.Fatal("entity must be unique, cannot add twice")
-	}
 
 	if targets, err := api.DB.ListTargets(entities[0].ID); err != nil || len(targets) != 1 {
 		t.Fatal("entities \"all\" automatically created target could not be retrieved")
@@ -79,6 +74,8 @@ func TestSignUp(t *testing.T) {
 	req.Entity = &types.EntityInfo{}
 	req.Entity.Name = entities[1].Name
 	req.Entity.Email = entities[1].Email
+	req.Entity.Size = entities[1].Size
+	req.Entity.Type = entities[1].Type
 	resp = wsc.Request(req, signers[1])
 	if !resp.Ok {
 		t.Fatalf("entity singUp with data failed: %+v", req)
@@ -88,7 +85,7 @@ func TestSignUp(t *testing.T) {
 	if err != nil {
 		t.Fatal("error retrieving entity after signUp")
 	}
-	if entity.Name != entities[1].Name || entity.Email != entities[1].Email {
+	if entity.Name != entities[1].Name || entity.Email != entities[1].Email || entity.Type != entities[1].Type || entity.Size != entities[1].Size {
 		t.Fatalf("entity signUp data were not stored correctly")
 	}
 }

@@ -25,6 +25,8 @@ type EntityInfo struct {
 	CallbackSecret          string   `json:"callbackSecret" db:"callback_secret"`
 	Email                   string   `json:"email,omitempty" db:"email"`
 	Name                    string   `json:"name" db:"name"`
+	Type                    string   `json:"type" db:"type"`
+	Size                    int      `json:"size" db:"size"`
 	CensusManagersAddresses [][]byte `json:"censusManagersAddresses,omitempty" db:"census_managers_addresses"`
 	Origins                 []Origin `json:"origins" db:"origins"`
 }
