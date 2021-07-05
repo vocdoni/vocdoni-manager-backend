@@ -11,9 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"go.vocdoni.io/dvote/chain"
 	"go.vocdoni.io/dvote/config"
 	"go.vocdoni.io/dvote/data"
+	ethereumhandler "go.vocdoni.io/dvote/ethereum/handler"
+
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/metrics"
 	"go.vocdoni.io/manager/database"
@@ -135,7 +136,7 @@ func (ft *IPFSFileTracker) getEntities() ([]string, error) {
 }
 
 func (ft *IPFSFileTracker) getEntityMetadataURL(ctx context.Context, eID, resolverDomain string) (string, error) {
-	return chain.ResolveEntityMetadataURL(ctx, ft.ensRegistryAddress, resolverDomain, eID, ft.w3endpoint)
+	return ethereumhandler.ResolveEntityMetadataURL(ctx, ft.ensRegistryAddress, resolverDomain, eID, ft.w3endpoint)
 }
 
 func (ft *IPFSFileTracker) refreshEntities(ctx context.Context) error {

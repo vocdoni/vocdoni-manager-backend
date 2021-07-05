@@ -14,8 +14,8 @@ import (
 	"go.vocdoni.io/manager/ethclient"
 	"go.vocdoni.io/manager/types"
 
-	"go.vocdoni.io/dvote/chain"
 	"go.vocdoni.io/dvote/crypto/ethereum"
+	chain "go.vocdoni.io/dvote/ethereum"
 	log "go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/manager/config"
 	"go.vocdoni.io/manager/database"

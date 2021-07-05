@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"
-	"go.vocdoni.io/dvote/crypto/snarks"
 	"go.vocdoni.io/manager/types"
 )
 
@@ -448,7 +447,7 @@ func (d *Database) User(pubKey []byte) (*types.User, error) {
 	}
 	return &types.User{
 		PubKey:         pubKey,
-		DigestedPubKey: snarks.Poseidon.Hash(pubKey),
+		DigestedPubKey: pubKey,
 	}, nil
 }
 

@@ -10,7 +10,7 @@ import (
 	"firebase.google.com/go/v4/auth"
 	"firebase.google.com/go/v4/messaging"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"go.vocdoni.io/dvote/chain/ethevents"
+	"go.vocdoni.io/dvote/ethereum/ethevents"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/manager/util"
 	"google.golang.org/api/option"

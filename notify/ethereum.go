@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"go.vocdoni.io/dvote/chain"
-	"go.vocdoni.io/dvote/chain/contracts"
+	"go.vocdoni.io/dvote/ethereum/contracts"
+	ethereumhandler "go.vocdoni.io/dvote/ethereum/handler"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/proto/build/go/models"
 )
@@ -17,7 +17,7 @@ var ethereumEventList = map[string]string{
 }
 
 // ProcessMeta returns the info of a newly created process from the event raised and ethereum storage
-func ProcessMeta(ctx context.Context, contractABI *abi.ABI, eventData []byte, ph *chain.VotingHandle) (*models.NewProcessTx, error) {
+func ProcessMeta(ctx context.Context, contractABI *abi.ABI, eventData []byte, ph *ethereumhandler.EthereumHandler) (*models.NewProcessTx, error) {
 	structuredData := &contracts.ProcessesNewProcess{}
 	if err := contractABI.UnpackIntoInterface(structuredData, "NewProcess", eventData); err != nil {
 		return nil, fmt.Errorf("cannot unpack NewProcess event: %w", err)

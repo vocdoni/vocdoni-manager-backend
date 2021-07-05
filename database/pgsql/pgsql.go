@@ -21,7 +21,6 @@ import (
 	"github.com/jackc/pgx"
 	_ "github.com/jackc/pgx/stdlib"
 	"go.vocdoni.io/dvote/crypto/ethereum"
-	"go.vocdoni.io/dvote/crypto/snarks"
 	"go.vocdoni.io/dvote/log"
 
 	"go.vocdoni.io/manager/config"
@@ -272,7 +271,7 @@ func (d *Database) AddUser(user *types.User) error {
 		return fmt.Errorf("invalid public Key")
 	}
 	if len(user.DigestedPubKey) == 0 {
-		user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
+		user.DigestedPubKey = user.PubKey
 	}
 	user.CreatedAt = time.Now()
 	user.UpdatedAt = time.Now()
@@ -380,7 +379,7 @@ func (d *Database) AddMember(entityID []byte, pubKey []byte, info *types.MemberI
 			},
 		}
 		if len(user.DigestedPubKey) == 0 {
-			user.DigestedPubKey = snarks.Poseidon.Hash(user.PubKey)
+			user.DigestedPubKey = user.PubKey
 		}
 		insert := `INSERT INTO users
 					(public_key, digested_public_key, created_at, updated_at)
@@ -599,7 +598,7 @@ func (d *Database) AddMemberBulk(entityID []byte, members []types.Member) error 
 		}
 		users[idx] = types.User{
 			PubKey:         member.PubKey,
-			DigestedPubKey: snarks.Poseidon.Hash(member.PubKey),
+			DigestedPubKey: member.PubKey,
 			CreatedUpdated: types.CreatedUpdated{
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
@@ -971,7 +970,7 @@ func (d *Database) RegisterMember(entityID, pubKey []byte, token *uuid.UUID) err
 		// This is the expected behaviour
 		user := &types.User{
 			PubKey:         pubKey,
-			DigestedPubKey: snarks.Poseidon.Hash(pubKey),
+			DigestedPubKey: pubKey,
 			CreatedUpdated: types.CreatedUpdated{
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
@@ -1480,7 +1479,7 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 				CensusID:       censusID,
 				MemberID:       member.ID,
 				Ephemeral:      false,
-				DigestedPubKey: snarks.Poseidon.Hash(member.PubKey),
+				DigestedPubKey: member.PubKey,
 			}
 			censusMembers = append(censusMembers, censusMember)
 
@@ -1505,7 +1504,7 @@ func (d *Database) ExpandCensusMembers(entityID, censusID []byte) ([]types.Censu
 				Ephemeral:      true,
 				PubKey:         pubKeyBytes,
 				PrivKey:        privKeyBytes,
-				DigestedPubKey: snarks.Poseidon.Hash(pubKeyBytes),
+				DigestedPubKey: pubKeyBytes,
 			})
 
 		}

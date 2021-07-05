@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
 	"strings"
@@ -13,9 +12,9 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"go.vocdoni.io/dvote/chain"
-	"go.vocdoni.io/dvote/chain/ethevents"
 	"go.vocdoni.io/dvote/crypto/ethereum"
+	chain "go.vocdoni.io/dvote/ethereum"
+	"go.vocdoni.io/dvote/ethereum/ethevents"
 	log "go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/service"
 	"go.vocdoni.io/manager/config"
@@ -63,21 +62,12 @@ func newConfig() (*config.Notify, config.Error) {
 	cfg.Notifications.Service = *flag.Int("pushNotificationsService", notify.Firebase, "push notifications service, 1: Firebase")
 	//ethereum node
 	cfg.Ethereum.SigningKey = *flag.String("ethSigningKey", "", "signing private Key (if not specified the Ethereum keystore will be used)")
-	cfg.Ethereum.ChainType = *flag.String("ethChain", "sokol", fmt.Sprintf("Ethereum blockchain to use: %s", chain.AvailableChains))
-	cfg.Ethereum.LightMode = *flag.Bool("ethChainLightMode", false, "synchronize Ethereum blockchain in light mode")
-	cfg.Ethereum.NodePort = *flag.Int("ethNodePort", 30303, "Ethereum p2p node port to use")
-	cfg.Ethereum.BootNodes = *flag.StringArray("ethBootNodes", []string{}, "Ethereum p2p custom bootstrap nodes (enode://<pubKey>@<ip>[:port])")
-	cfg.Ethereum.TrustedPeers = *flag.StringArray("ethTrustedPeers", []string{}, "Ethereum p2p trusted peer nodes (enode://<pubKey>@<ip>[:port])")
-	cfg.Ethereum.NoWaitSync = *flag.Bool("ethNoWaitSync", false, "do not wait for Ethereum to synchronize (for testing only)")
 	// ethereum events
 	cfg.EthereumEvents.CensusSync = *flag.Bool("ethCensusSync", false, "automatically import new census published on the smart contract")
 	cfg.EthereumEvents.SubscribeOnly = *flag.Bool("ethSubscribeOnly", true, "only subscribe to new ethereum events (do not read past log)")
 	// ethereum web3
 	cfg.Web3.W3External = *flag.String("w3External", "", "use an external web3 endpoint instead of the local one. Supported protocols: http(s)://, ws(s):// and IPC filepath")
-	cfg.Web3.Enabled = *flag.Bool("w3Enabled", true, "if true, a web3 public endpoint will be enabled")
-	cfg.Web3.Route = *flag.String("w3Route", "/web3", "web3 endpoint API route")
-	cfg.Web3.RPCPort = *flag.Int("w3RPCPort", 9091, "web3 RPC port")
-	cfg.Web3.RPCHost = *flag.String("w3RPCHost", "127.0.0.1", "web3 RPC host")
+	cfg.Web3.ChainType = *flag.String("ethChain", "sokol", fmt.Sprintf("Ethereum blockchain to use: %s", chain.AvailableChains))
 	// ipfs
 	cfg.IPFS.NoInit = *flag.Bool("ipfsNoInit", false, "disables inter planetary file system support")
 	cfg.IPFS.SyncKey = *flag.String("ipfsSyncKey", "", "enable IPFS cluster synchronization using the given secret key")
@@ -124,20 +114,12 @@ func newConfig() (*config.Notify, config.Error) {
 	// ethereum node
 	viper.Set("ethereum.datadir", cfg.DataDir+"/ethereum")
 	viper.BindPFlag("ethereum.signingKey", flag.Lookup("ethSigningKey"))
-	viper.BindPFlag("ethereum.chainType", flag.Lookup("ethChain"))
-	viper.BindPFlag("ethereum.lightMode", flag.Lookup("ethChainLightMode"))
-	viper.BindPFlag("ethereum.nodePort", flag.Lookup("ethNodePort"))
-	viper.BindPFlag("ethereum.bootNodes", flag.Lookup("ethBootNodes"))
-	viper.BindPFlag("ethereum.trustedPeers", flag.Lookup("ethTrustedPeers"))
 	viper.BindPFlag("ethereum.noWaitSync", flag.Lookup("ethNoWaitSync"))
 	viper.BindPFlag("ethereumEvents.censusSync", flag.Lookup("ethCensusSync"))
 	viper.BindPFlag("ethereumEvents.subscribeOnly", flag.Lookup("ethSubscribeOnly"))
 	// ethereum web3
 	viper.BindPFlag("web3.w3External", flag.Lookup("w3External"))
-	viper.BindPFlag("web3.route", flag.Lookup("w3Route"))
-	viper.BindPFlag("web3.enabled", flag.Lookup("w3Enabled"))
-	viper.BindPFlag("web3.RPCPort", flag.Lookup("w3RPCPort"))
-	viper.BindPFlag("web3.RPCHost", flag.Lookup("w3RPCHost"))
+	viper.BindPFlag("web3.chainType", flag.Lookup("ethChain"))
 	// ipfs
 	viper.Set("ipfs.ConfigPath", cfg.DataDir+"/ipfs")
 	viper.BindPFlag("ipfs.NoInit", flag.Lookup("ipfsNoInit"))
@@ -225,34 +207,13 @@ func main() {
 	}
 
 	// ethereum service
-	var node *chain.EthChainContext
 	if cfg.Web3.W3External == "" {
-		log.Infof("starting a local ethereum node")
-		node, err = service.Ethereum(cfg.Ethereum, cfg.Web3, ep.Proxy, signer, ep.MetricsAgent)
-		if err != nil {
-			log.Fatal(err)
-		}
-		// wait ethereum node to be ready if local node
-		if !cfg.Ethereum.NoWaitSync {
-			requiredPeers := 2
-			if len(cfg.Web3.W3External) > 0 {
-				requiredPeers = 1
-			}
-			for {
-				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-				if info, err := node.SyncInfo(ctx); err == nil && info.Synced && info.Peers >= requiredPeers && info.Height > 0 {
-					log.Infof("ethereum blockchain synchronized (%+v)", info)
-					break
-				}
-				cancel()
-				time.Sleep(time.Second * 5)
-			}
-		}
+		log.Warnf("no web3 endpoint defined")
 	} else {
-		log.Infof("using an external ethereum endpoint: %s", cfg.Web3.W3External)
+		log.Infof("using external ethereum endpoint: %s", cfg.Web3.W3External)
 	}
 
-	chainSpecs, specErr := chain.SpecsFor(cfg.Ethereum.ChainType)
+	chainSpecs, specErr := chain.SpecsFor(cfg.Web3.ChainType)
 	if err != nil {
 		log.Fatal("cannot get chain specifications with the ENS registry address: %s", specErr)
 	}
@@ -272,7 +233,11 @@ func main() {
 		// create file tracker
 		chainSpecs.Contracts["processes"].SetABI("processes")
 		chainSpecs.Contracts["entities"].SetABI("entities")
-		ipfsFileTracker := notify.NewIPFSFileTracker(cfg.IPFS, ep.MetricsAgent, db, chainSpecs.ENSregistryAddr, cfg.Web3.W3External, chainSpecs.Contracts["entities"].Domain)
+		ipfsFileTracker := notify.NewIPFSFileTracker(cfg.IPFS,
+			ep.MetricsAgent, db, chainSpecs.Contracts["entityResolver"].Address.Hex(),
+			cfg.Web3.W3External,
+			chainSpecs.Contracts["entities"].Domain,
+		)
 		switch cfg.Notifications.Service {
 		case notify.Firebase:
 			fa = notify.NewFirebaseAdmin(cfg.Notifications.KeyFile, cfg.Env, ipfsFileTracker)
@@ -293,9 +258,6 @@ func main() {
 	var evh []ethevents.EventHandler
 	var w3uri string
 	switch {
-	case cfg.Web3.W3External == "":
-		// If local ethereum node enabled, use the Go-Ethereum websockets endpoint
-		w3uri = "ws://" + net.JoinHostPort(cfg.Web3.RPCHost, fmt.Sprintf("%d", cfg.Web3.RPCPort))
 	case strings.HasPrefix(cfg.Web3.W3External, "ws"):
 		w3uri = cfg.Web3.W3External
 	case strings.HasSuffix(cfg.Web3.W3External, "ipc"):

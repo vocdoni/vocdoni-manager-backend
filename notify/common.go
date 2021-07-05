@@ -5,7 +5,7 @@ import (
 	"time"
 
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"go.vocdoni.io/dvote/chain/ethevents"
+	"go.vocdoni.io/dvote/ethereum/ethevents"
 )
 
 // lang represents the supported langs by https://www.loc.gov/standards/iso639-2/php/code_list.php
