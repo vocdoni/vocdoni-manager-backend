@@ -270,7 +270,7 @@ func (eth *Eth) SendTokens(ctx context.Context,
 				value,
 			)
 			if err != nil {
-				log.Infof("cannot send tx: %s with signer: %s", txHash.Hex(), signer.SignKeys.Address().Hex())
+				log.Infof("cannot send tx to: %s with signer: %s", to.Hex(), signer.SignKeys.Address().Hex())
 				<-signer.Taken
 				continue
 			}
