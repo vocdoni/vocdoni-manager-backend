@@ -72,6 +72,10 @@ func (d *Database) EntitiesID() ([]string, error) {
 	return nil, nil
 }
 
+func (d *Database) AdminEntityList() ([]types.Entity, error) {
+	return nil, nil
+}
+
 func (d *Database) EntityHas(entityID []byte, memberID *uuid.UUID) bool {
 	return true
 }

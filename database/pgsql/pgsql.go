@@ -266,6 +266,28 @@ func (d *Database) EntityHas(entityID []byte, memberID *uuid.UUID) bool {
 	return true
 }
 
+// Watchout, this should be used only in an admin context
+func (d *Database) AdminEntityList() ([]types.Entity, error) {
+	var entities []types.Entity
+	// type EntitiesData struct {
+	// 	ID string `db:"id"`
+	// }
+
+	// membersList := make([]*EntitiesData, len(memberIDs))
+	// for i, memberID := range memberIDs {
+	// 	membersList[i] = &EntitiesData{
+	// 		MemberID: memberID.String(),
+	// 	}
+	// }
+	query := `SELECT name, encode(id,'hex') as ID,email FROM entities  where created_at > '2021-05-18' AND LOWER(email) not like 
+	ANY(ARRAY[LOWER('%vocdoni%'),LOWER('%alexflores%'),LOWER('%aragon%'),LOWER('%test@test.com%'),
+			  LOWER('%pinyana%'),LOWER('%div@mail.com%'),LOWER('%mail@mail.com%'), LOWER('%test@example.com%'), LOWER('%joanarus%'), LOWER('%guifre.ballester%')]);`
+	if err := d.db.Select(&entities, query); err != nil {
+		return nil, err
+	}
+	return entities, nil
+}
+
 func (d *Database) AddUser(user *types.User) error {
 	if user.PubKey == nil {
 		return fmt.Errorf("invalid public Key")

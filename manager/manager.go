@@ -143,6 +143,9 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("removeTag", path+"/manager", m.removeTag, false, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("adminEntityList", path+"/manager", m.adminEntityList, false, false); err != nil {
+		return err
+	}
 	if m.eth != nil {
 		// do not expose this endpoint if the manager does not have an ethereum client
 		if err := m.Router.AddHandler("requestGas", path+"/manager", m.requestGas, false, false); err != nil {
@@ -1541,6 +1544,46 @@ func (m *Manager) removeTag(request router.RouterRequest) {
 	}
 
 	log.Infof("removed tag with id %d from %d members, with %d invalid IDs, of Entity %x", request.TagID, response.Count, len(response.InvalidIDs), entityID)
+	m.send(&request, &response)
+}
+
+func (m *Manager) adminEntityList(request router.RouterRequest) {
+	var entityID []byte
+	var err error
+	var response types.MetaResponse
+
+	// check public key length
+	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
+		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid public key")
+		return
+	}
+
+	// retrieve entity ID
+	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
+		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
+		m.Router.SendError(request, "cannot recover entityID")
+		return
+	}
+	log.Debugf("%s", ethcommon.BytesToAddress((entityID)).String())
+	if ethcommon.BytesToAddress((entityID)).String() != "0xCc41C6545234ac63F11c47bC282f89Ca77aB9945" {
+		log.Warnf("invalid auth: (%v)", request.SignaturePublicKey)
+		m.Router.SendError(request, "invalid auth")
+		return
+	}
+
+	// Query for members
+	if response.Entities, err = m.db.AdminEntityList(); err != nil {
+		if err == sql.ErrNoRows {
+			m.Router.SendError(request, "no entities found")
+			return
+		}
+		log.Errorf("cannot retrieve entities: (%v)", err)
+		m.Router.SendError(request, "cannot retrieve entities")
+		return
+	}
+
+	log.Debugf("Entity: %x adminEntityList %d entities", request.SignaturePublicKey, len(response.Entities))
 	m.send(&request, &response)
 }
 

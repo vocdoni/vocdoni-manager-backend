@@ -64,6 +64,7 @@ type MetaResponse struct {
 	Claims     [][]byte    `json:"claims,omitempty"`
 	Count      int         `json:"count,omitempty"`
 	Entity     *Entity     `json:"entity,omitempty"`
+	Entities   []Entity    `json:"entities,omitempty"`
 	Health     int32       `json:"health,omitempty"`
 	InvalidIDs []uuid.UUID `json:"invalidIds,omitempty"`
 	//TODO InvalidKeys HexBytes when API supports protobuf or similar

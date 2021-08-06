@@ -61,6 +61,7 @@ type Database interface {
 	CountCensus(entityID []byte) (int, error)
 	DeleteCensus(entityID []byte, censusID []byte) error
 	ListCensus(entityID []byte, filter *types.ListOptions) ([]types.Census, error)
+	AdminEntityList() ([]types.Entity, error)
 	Migrate(dir migrate.MigrationDirection) (int, error)
 	MigrateStatus() (int, int, string, error)
 	MigrationUpSync() (int, error)
