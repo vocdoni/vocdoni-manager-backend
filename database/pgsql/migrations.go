@@ -41,6 +41,11 @@ var Migrations = migrate.MemoryMigrationSource{
 			Up:   []string{migration6up},
 			Down: []string{migration6down},
 		},
+		{
+			Id:   "7",
+			Up:   []string{migration7up},
+			Down: []string{migration7down},
+		},
 	},
 }
 
@@ -341,6 +346,50 @@ ALTER TABLE ONLY entities
     DROP COLUMN type,
     DROP COLUMN size;
 `
+
+const migration7up = `
+CREATE TABLE plans  (
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    id  serial NOT NULL,
+    name text NOT NULL,
+    description text NOT NULL,
+    monthly_cost integer NOT NULL DEFAULT 0,
+    montly_cost integer NOT NULL DEFAULT 0
+);
+ALTER TABLE ONLY plans
+    ADD CONSTRAINT plans_pkey PRIMARY KEY (id);
+--
+CREATE TABLE features  (
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    id  serial NOT NULL,
+    name text NOT NULL,
+    description text NOT NULL
+);
+ALTER TABLE ONLY features
+    ADD CONSTRAINT features_pkey PRIMARY KEY (id);
+--
+-- The subscription talbe represents a MANY-TO-ONE relation between entities and 
+CREATE TABLE subscriptions (
+    plan_id integer NOT NULL,
+    entity_id bytea NOT NULL,
+    active 
+);
+-- set subscriptions table PK and FKs
+ALTER TABLE ONLY subscriptions
+    ADD CONSTRAINT subscriptions_pkey PRIMARY KEY (entity_id, plan_id);
+    ADD CONSTRAINT subscriptions_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE;
+    ADD CONSTRAINT subscriptions_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE CASCADE;
+-- add plan_id FK to entities table
+ALTER TABLE ONLY entities
+    ADD COLUMN plan_id integer DEFAULT 0
+    ADD CONSTRAINT entitis_plan_id_fkey  FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE SET DEFAULT;
+
+
+`
+
+const migration7down = ``
 
 func Migrator(action string, db database.Database) error {
 	switch action {
