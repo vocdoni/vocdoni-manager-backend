@@ -279,9 +279,7 @@ func (d *Database) AdminEntityList() ([]types.Entity, error) {
 	// 		MemberID: memberID.String(),
 	// 	}
 	// }
-	query := `SELECT name, encode(id,'hex') as ID, email, created_at, updated_at, type, size FROM entities  where created_at > '2021-05-18' AND LOWER(email) not like 
-	ANY(ARRAY[LOWER('%vocdoni%'),LOWER('%alexflores%'),LOWER('%aragon%'),LOWER('%test@test.com%'),
-			  LOWER('%pinyana%'),LOWER('%div@mail.com%'),LOWER('%mail@mail.com%'), LOWER('%test@example.com%'), LOWER('%joanarus%'), LOWER('%guifre.ballester%')]);`
+	query := `SELECT name, encode(id,'hex') as ID, email, created_at, updated_at, type, size FROM entities;`
 	if err := d.db.Select(&entities, query); err != nil {
 		return nil, err
 	}
