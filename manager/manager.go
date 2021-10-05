@@ -216,7 +216,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		if err != nil {
 			if !strings.Contains(err.Error(), "maxAcceptedBalance") {
 				log.Errorf("error sending tokens to entity %s : %v", entityAddress.String(), err)
-				m.Router.SendError(request, "could not send tokens to empty wallet")
+				m.Router.SendError(request, fmt.Sprintf("could not send tokens to %s", entityAddress.String()))
 				return
 			}
 			log.Warnf("signUp not sending tokens to entity %s : %v", entityAddress.String(), err)
