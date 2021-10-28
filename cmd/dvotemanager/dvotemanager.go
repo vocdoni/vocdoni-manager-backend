@@ -20,6 +20,7 @@ import (
 	"go.vocdoni.io/manager/smtpclient"
 	"go.vocdoni.io/manager/tokenapi"
 	"go.vocdoni.io/manager/types"
+	"go.vocdoni.io/manager/vocclient"
 
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	chain "go.vocdoni.io/dvote/ethereum"
@@ -201,7 +202,7 @@ func newConfig() (*config.Manager, config.Error) {
 }
 
 func main() {
-	// var err error
+	var err error
 	// setup config
 	// creating config and init logger
 	cfg, cfgerr := newConfig()
@@ -239,7 +240,7 @@ func main() {
 		cfg.GatewayUrls[idx] = strings.Trim(url, `"[]`)
 	}
 
-	// vocclient.New(cfg.GatewayUrls, "")
+	vocclient.New(cfg.GatewayUrls, "")
 
 	// WS Endpoint and Router
 	ep, err := endpoint.NewEndpoint(cfg, signer)

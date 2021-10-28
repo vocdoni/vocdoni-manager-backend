@@ -10,20 +10,7 @@ import (
 	"go.vocdoni.io/dvote/log"
 )
 
-// client wrapper for sorting by health
-type sortableClient struct {
-	client *client.Client
-	health int32
-}
-
-// list of clients for sorting by health
-type sortableClients []sortableClient
-
-func (c sortableClients) Len() int           { return len(c) }
-func (c sortableClients) Less(i, j int) bool { return c[i].health > c[j].health }
-func (c sortableClients) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
-
-func discoverGateways(urls []string) ([]*client.Client, error) {
+func discoverGateways(urls []string) (GatewayPool, error) {
 	gateways := []*client.Client{}
 	log.Debugf("discovering gateways %v", urls)
 	for _, url := range urls {
@@ -35,16 +22,14 @@ func discoverGateways(urls []string) ([]*client.Client, error) {
 		}
 	}
 	if len(gateways) == 0 {
-		return gateways, fmt.Errorf("could not initialize %d gateway clients", len(urls))
+		return nil, fmt.Errorf("could not initialize %d gateway clients", len(urls))
 	}
-	sortGateways(gateways)
-	log.Debugf("successfully connected to %d gateways", len(gateways))
-	return gateways, nil
+	return sortGateways(gateways), nil
 }
 
-func sortGateways(gateways []*client.Client) {
+func sortGateways(gateways []*client.Client) GatewayPool {
 	// make list of gateways that can be sorted by health
-	sortableGateways := sortableClients{}
+	gatewayPool := GatewayPool{}
 	wg := &sync.WaitGroup{}
 	mtx := new(sync.Mutex)
 
@@ -56,16 +41,17 @@ func sortGateways(gateways []*client.Client) {
 			mtx.Lock()
 			if err != nil {
 				log.Warnf("could not get info for %s: %v", gw.Addr, err)
-				sortableGateways = append(
-					sortableGateways, sortableClient{
+				gatewayPool = append(
+					gatewayPool, Gateway{
 						client: nil,
 						health: 0,
 					})
 			} else {
-				sortableGateways = append(
-					sortableGateways, sortableClient{
-						client: gw,
-						health: resp.Health,
+				gatewayPool = append(
+					gatewayPool, Gateway{
+						client:        gw,
+						health:        resp.Health,
+						supportedApis: resp.APIList,
 					})
 			}
 			mtx.Unlock()
@@ -75,10 +61,8 @@ func sortGateways(gateways []*client.Client) {
 	wg.Wait()
 
 	// sort gateways according to health scores
-	sort.Stable(sortableGateways)
-
-	// assign original gateway list in order of health
-	for i, gateway := range sortableGateways {
-		gateways[i] = gateway.client
-	}
+	sort.Stable(gatewayPool)
+	log.Debugf("successfully connected to %d gateways", len(gateways))
+	log.Info(gatewayPool)
+	return gatewayPool
 }

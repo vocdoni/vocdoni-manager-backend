@@ -1,11 +1,7 @@
 package vocclient
 
-import (
-	"go.vocdoni.io/dvote/client"
-)
-
 type VocClient struct {
-	pool       []*client.Client
+	pool       GatewayPool
 	signingKey string
 }
 
