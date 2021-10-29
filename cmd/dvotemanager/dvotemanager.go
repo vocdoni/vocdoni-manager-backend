@@ -240,7 +240,7 @@ func main() {
 		cfg.GatewayUrls[idx] = strings.Trim(url, `"[]`)
 	}
 
-	vocclient.New(cfg.GatewayUrls, "")
+	vocclient.New(cfg.GatewayUrls, signer)
 
 	// WS Endpoint and Router
 	ep, err := endpoint.NewEndpoint(cfg, signer)

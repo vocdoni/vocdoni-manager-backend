@@ -63,6 +63,5 @@ func sortGateways(gateways []*client.Client) GatewayPool {
 	// sort gateways according to health scores
 	sort.Stable(gatewayPool)
 	log.Debugf("successfully connected to %d gateways", len(gateways))
-	log.Info(gatewayPool)
 	return gatewayPool
 }
