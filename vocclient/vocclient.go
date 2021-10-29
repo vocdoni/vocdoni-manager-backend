@@ -32,6 +32,14 @@ func New(gatewayUrls []string, signingKey *ethereum.SignKeys) (*VocClient, error
 	}, nil
 }
 
+func (c *VocClient) ActiveEndpoint() string {
+	gw, err := c.pool.activeGateway()
+	if err != nil {
+		return ""
+	}
+	return gw.client.Addr
+}
+
 // FETCHING INFO APIS
 
 func (c *VocClient) GetCurrentBlock() (blockHeight uint32, _ error) {

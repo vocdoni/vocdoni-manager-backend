@@ -47,11 +47,8 @@ func (pool *GatewayPool) Request(req api.MetaRequest, signer *ethereum.SignKeys)
 		if err != nil {
 			return nil, fmt.Errorf("could not make request %s: %v", req.Method, err)
 		}
-		if !resp.Ok {
-			return nil, fmt.Errorf("%s failed: %s", req.Method, resp.Message)
-		}
 		resp, err = gw.client.Request(req, signer)
-		if err == nil {
+		if err == nil && resp.Ok {
 			return resp, nil
 		} else {
 			errorCount++

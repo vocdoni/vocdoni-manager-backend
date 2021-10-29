@@ -240,7 +240,15 @@ func main() {
 		cfg.GatewayUrls[idx] = strings.Trim(url, `"[]`)
 	}
 
-	vocclient.New(cfg.GatewayUrls, signer)
+	client, err := vocclient.New(cfg.GatewayUrls, signer)
+	if err != nil {
+		log.Fatal(err)
+	}
+	blockHeight, err := client.GetCurrentBlock()
+	if err != nil {
+		log.Error(err)
+	}
+	log.Infof("Connected to %s at block height %d", client.ActiveEndpoint(), blockHeight)
 
 	// WS Endpoint and Router
 	ep, err := endpoint.NewEndpoint(cfg, signer)
