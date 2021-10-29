@@ -9,6 +9,7 @@ import (
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/dvote/util"
+	"go.vocdoni.io/dvote/vochain/scrutinizer/indexertypes"
 	"go.vocdoni.io/manager/types"
 	"go.vocdoni.io/proto/build/go/models"
 	"google.golang.org/protobuf/proto"
@@ -44,6 +45,17 @@ func (c *VocClient) GetCurrentBlock() (blockHeight uint32, _ error) {
 		return 0, fmt.Errorf("height is nil")
 	}
 	return *resp.Height, nil
+}
+
+func (c *VocClient) GetProcess(pid []byte) (*indexertypes.Process, error) {
+	var req api.MetaRequest
+	req.Method = "getProcessInfo"
+	req.ProcessID = pid
+	resp, err := c.pool.Request(req, c.signingKey)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Process, nil
 }
 
 func (c *VocClient) GetProcessList(entityId []byte, searchTerm string, namespace uint32, status string, withResults bool, srcNetId string, from, listSize int) (processList []string, _ error) {
