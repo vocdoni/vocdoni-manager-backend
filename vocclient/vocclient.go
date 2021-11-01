@@ -37,6 +37,9 @@ func (c *VocClient) ActiveEndpoint() string {
 	if err != nil {
 		return ""
 	}
+	if gw.client == nil {
+		return ""
+	}
 	return gw.client.Addr
 }
 

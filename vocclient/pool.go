@@ -24,7 +24,7 @@ func (pool GatewayPool) Less(i, j int) bool { return pool[i].health > pool[j].he
 func (pool GatewayPool) Swap(i, j int)      { pool[i], pool[j] = pool[j], pool[i] }
 
 func (pool GatewayPool) activeGateway() (Gateway, error) {
-	if len(pool) == 0 {
+	if len(pool) == 0 || pool[0].client == nil {
 		return Gateway{}, fmt.Errorf("no gateways available")
 	}
 	return (pool)[0], nil
