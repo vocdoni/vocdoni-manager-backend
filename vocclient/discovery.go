@@ -24,10 +24,10 @@ func discoverGateways(urls []string) (GatewayPool, error) {
 	if len(gateways) == 0 {
 		return nil, fmt.Errorf("could not initialize %d gateway clients", len(urls))
 	}
-	return sortGateways(gateways), nil
+	return sortGateways(gateways)
 }
 
-func sortGateways(gateways []*client.Client) GatewayPool {
+func sortGateways(gateways []*client.Client) (GatewayPool, error) {
 	// make list of gateways that can be sorted by health
 	gatewayPool := GatewayPool{}
 	wg := &sync.WaitGroup{}
@@ -41,11 +41,6 @@ func sortGateways(gateways []*client.Client) GatewayPool {
 			mtx.Lock()
 			if err != nil {
 				log.Warnf("could not get info for %s: %v", gw.Addr, err)
-				gatewayPool = append(
-					gatewayPool, Gateway{
-						client: nil,
-						health: 0,
-					})
 			} else {
 				gatewayPool = append(
 					gatewayPool, Gateway{
@@ -61,7 +56,11 @@ func sortGateways(gateways []*client.Client) GatewayPool {
 	wg.Wait()
 
 	// sort gateways according to health scores
+	if len(gatewayPool) == 0 {
+		return nil, fmt.Errorf("no working gateways available")
+	}
+
 	sort.Stable(gatewayPool)
 	log.Debugf("successfully connected to %d gateways", len(gateways))
-	return gatewayPool
+	return gatewayPool, nil
 }

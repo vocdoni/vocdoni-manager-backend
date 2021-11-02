@@ -21,7 +21,6 @@ type VocClient struct {
 }
 
 func New(gatewayUrls []string, signingKey *ethereum.SignKeys) (*VocClient, error) {
-
 	gwPool, err := discoverGateways(gatewayUrls)
 	if err != nil {
 		return nil, err

@@ -36,6 +36,18 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestFailure(t *testing.T) {
+	badClient, err := vocclient.New(testBadUrls, nil)
+	qt.Assert(t, badClient, qt.IsNil)
+	qt.Assert(t, err, qt.Not(qt.IsNil))
+}
+
+func TestBadMethod(t *testing.T) {
+	root, err := testClient.GetRoot("0xzzzzzzzz")
+	qt.Assert(t, err, qt.IsNil)
+	qt.Assert(t, len(root) == 0, qt.IsTrue)
+}
+
 func TestCurrentBlock(t *testing.T) {
 	height, err := testClient.GetCurrentBlock()
 	qt.Assert(t, err, qt.IsNil)
