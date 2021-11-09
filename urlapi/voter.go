@@ -11,7 +11,7 @@ func (u *URLAPI) EnableVoterHandlers() error {
 	if err := u.api.RegisterMethod(
 		"/pub/censuses/#censusId/token",
 		"POST",
-		bearerstdapi.MethodAccessTypePublic,
+		bearerstdapi.MethodAccessTypeAdmin,
 		u.registerPublicKeyHandler,
 	); err != nil {
 		return err
@@ -19,7 +19,7 @@ func (u *URLAPI) EnableVoterHandlers() error {
 	if err := u.api.RegisterMethod(
 		"/pub/processes/#processId/auth/#signature",
 		"GET",
-		bearerstdapi.MethodAccessTypePublic,
+		bearerstdapi.MethodAccessTypeAdmin,
 		u.getProcessInfoHandler,
 	); err != nil {
 		return err

@@ -11,7 +11,7 @@ func (u *URLAPI) EnableIntegratorHandlers() error {
 	if err := u.api.RegisterMethod(
 		"/priv/account/entities",
 		"POST",
-		bearerstdapi.MethodAccessTypePrivate,
+		bearerstdapi.MethodAccessTypeAdmin,
 		u.createEntityHandler,
 	); err != nil {
 		return err
@@ -19,7 +19,7 @@ func (u *URLAPI) EnableIntegratorHandlers() error {
 	if err := u.api.RegisterMethod(
 		"/priv/account/entities/#entityId",
 		"GET",
-		bearerstdapi.MethodAccessTypePrivate,
+		bearerstdapi.MethodAccessTypeAdmin,
 		u.getEntityHandler,
 	); err != nil {
 		return err
@@ -27,7 +27,7 @@ func (u *URLAPI) EnableIntegratorHandlers() error {
 	if err := u.api.RegisterMethod(
 		"/priv/account/entities/#entityId",
 		"DELETE",
-		bearerstdapi.MethodAccessTypePrivate,
+		bearerstdapi.MethodAccessTypeAdmin,
 		u.deleteEntityHandler,
 	); err != nil {
 		return err
@@ -35,7 +35,7 @@ func (u *URLAPI) EnableIntegratorHandlers() error {
 	if err := u.api.RegisterMethod(
 		"/priv/account/entities/#id/key",
 		"PATCH",
-		bearerstdapi.MethodAccessTypePrivate,
+		bearerstdapi.MethodAccessTypeAdmin,
 		u.resetEntityKeyHandler,
 	); err != nil {
 		return err
