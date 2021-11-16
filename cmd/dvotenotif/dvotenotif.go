@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -14,9 +13,7 @@ import (
 
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	chain "go.vocdoni.io/dvote/ethereum"
-	"go.vocdoni.io/dvote/ethereum/ethevents"
 	log "go.vocdoni.io/dvote/log"
-	"go.vocdoni.io/dvote/service"
 	"go.vocdoni.io/manager/config"
 	"go.vocdoni.io/manager/database"
 	"go.vocdoni.io/manager/database/pgsql"
@@ -63,10 +60,10 @@ func newConfig() (*config.Notify, config.Error) {
 	//ethereum node
 	cfg.Ethereum.SigningKey = *flag.String("ethSigningKey", "", "signing private Key (if not specified the Ethereum keystore will be used)")
 	// ethereum events
-	cfg.EthereumEvents.CensusSync = *flag.Bool("ethCensusSync", false, "automatically import new census published on the smart contract")
-	cfg.EthereumEvents.SubscribeOnly = *flag.Bool("ethSubscribeOnly", true, "only subscribe to new ethereum events (do not read past log)")
+	// cfg.EthereumEvents.CensusSync = *flag.Bool("ethCensusSync", false, "automatically import new census published on the smart contract")
+	// cfg.EthereumEvents.SubscribeOnly = *flag.Bool("ethSubscribeOnly", true, "only subscribe to new ethereum events (do not read past log)")
 	// ethereum web3
-	cfg.Web3.W3External = *flag.String("w3External", "", "use an external web3 endpoint instead of the local one. Supported protocols: http(s)://, ws(s):// and IPC filepath")
+	// cfg.Web3.W3External = *flag.String("w3External", "", "use an external web3 endpoint instead of the local one. Supported protocols: http(s)://, ws(s):// and IPC filepath")
 	cfg.Web3.ChainType = *flag.String("ethChain", "sokol", fmt.Sprintf("Ethereum blockchain to use: %s", chain.AvailableChains))
 	// ipfs
 	cfg.IPFS.NoInit = *flag.Bool("ipfsNoInit", false, "disables inter planetary file system support")
@@ -207,7 +204,7 @@ func main() {
 	}
 
 	// ethereum service
-	if cfg.Web3.W3External == "" {
+	if len(cfg.Web3.W3External) == 0 {
 		log.Warnf("no web3 endpoint defined")
 	} else {
 		log.Infof("using external ethereum endpoint: %s", cfg.Web3.W3External)
@@ -235,7 +232,7 @@ func main() {
 		chainSpecs.Contracts["entities"].SetABI("entities")
 		ipfsFileTracker := notify.NewIPFSFileTracker(cfg.IPFS,
 			ep.MetricsAgent, db, chainSpecs.Contracts["entityResolver"].Address.Hex(),
-			cfg.Web3.W3External,
+			cfg.Web3.W3External[0],
 			chainSpecs.Contracts["entities"].Domain,
 		)
 		switch cfg.Notifications.Service {
@@ -255,36 +252,36 @@ func main() {
 	log.Info("push notifications service started")
 
 	// ethereum events service
-	var evh []ethevents.EventHandler
-	var w3uri string
-	switch {
-	case strings.HasPrefix(cfg.Web3.W3External, "ws"):
-		w3uri = cfg.Web3.W3External
-	case strings.HasSuffix(cfg.Web3.W3External, "ipc"):
-		w3uri = cfg.Web3.W3External
+	// var evh []ethevents.EventHandler
+	// var w3uri string
+	// switch {
+	// case strings.HasPrefix(cfg.Web3.W3External[0], "ws"):
+	// 	w3uri = cfg.Web3.W3External[0]
+	// case strings.HasSuffix(cfg.Web3.W3External[0], "ipc"):
+	// 	w3uri = cfg.Web3.W3External[0]
 
-	default:
-		log.Fatal("web3 external must be websocket or IPC for event subscription")
-	}
+	// default:
+	// 	log.Fatal("web3 external must be websocket or IPC for event subscription")
+	// }
 
-	ctx := context.Background()
+	// ctx := context.Background()
 	// Handle ethereum events and notify
-	evh = append(evh, fa.HandleEthereum)
+	// evh = append(evh, fa.HandleEthereum)
 
-	var initBlock *int64
-	if !cfg.EthereumEvents.SubscribeOnly {
-		initBlock = new(int64)
-		if specErr != nil {
-			log.Warn("cannot get chain block to start looking for events, using 0")
-			*initBlock = 0
-		} else {
-			*initBlock = chainSpecs.StartingBlock
-		}
-	}
+	// var initBlock *int64
+	// if !cfg.EthereumEvents.SubscribeOnly {
+	// 	initBlock = new(int64)
+	// 	if specErr != nil {
+	// 		log.Warn("cannot get chain block to start looking for events, using 0")
+	// 		*initBlock = 0
+	// 	} else {
+	// 		*initBlock = chainSpecs.StartingBlock
+	// 	}
+	// }
 
-	if err := service.EthEvents(ctx, w3uri, chainSpecs.Name, initBlock, nil, signer, nil, evh, nil, []string{}); err != nil {
-		log.Fatal(err)
-	}
+	// if err := service.EthEvents(ctx, w3uri, chainSpecs.Name, initBlock, nil, signer, nil, evh, nil, []string{}); err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	// start notifications API
 	log.Infof("enabling Notifications API methods")

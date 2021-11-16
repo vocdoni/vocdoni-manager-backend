@@ -7,6 +7,7 @@ import (
 	"go.vocdoni.io/dvote/httprouter"
 	"go.vocdoni.io/dvote/httprouter/bearerstdapi"
 	"go.vocdoni.io/dvote/metrics"
+	"go.vocdoni.io/manager/manager"
 )
 
 type URLAPI struct {
@@ -17,6 +18,7 @@ type URLAPI struct {
 	router       *httprouter.HTTProuter
 	api          *bearerstdapi.BearerStandardAPI
 	metricsagent *metrics.Agent
+	manager      *manager.Manager
 }
 
 func NewURLAPI(router *httprouter.HTTProuter, baseRoute string) (*URLAPI, error) {

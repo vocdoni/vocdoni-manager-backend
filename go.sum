@@ -61,8 +61,9 @@ firebase.google.com/go/v4 v4.0.0/go.mod h1:mB8wL5ohyReUeds5IIaA1+pOw3Tk1aybMEwce
 git.apache.org/thrift.git v0.0.0-20180902110319-2566ecd5d999/go.mod h1:fPE2ZNJGynbRyZ4dJvy6G277gSllfV2HJqblrnkyeyg=
 git.sr.ht/~sircmpwn/getopt v0.0.0-20191230200459-23622cc906b3/go.mod h1:wMEGFFFNuPos7vHmWXfszqImLppbc0wEhh6JBfJIUgw=
 git.sr.ht/~sircmpwn/go-bare v0.0.0-20201210182351-86af428a8287/go.mod h1:BVJwbDfVjCjoFiKrhkei6NdGcZYpkDkdyCdg1ukytRA=
-git.sr.ht/~sircmpwn/go-bare v0.0.0-20210406120253-ab86bc2846d9 h1:Ahny8Ud1LjVMMAlt8utUFKhhxJtwBAualvsbc/Sk7cE=
 git.sr.ht/~sircmpwn/go-bare v0.0.0-20210406120253-ab86bc2846d9/go.mod h1:BVJwbDfVjCjoFiKrhkei6NdGcZYpkDkdyCdg1ukytRA=
+github.com/766b/chi-prometheus v0.0.0-20180509160047-46ac2b31aa30 h1:bNHbCMKiQxpRNe4Pk2W09N1aXXc4ICOawQFKIDEicqc=
+github.com/766b/chi-prometheus v0.0.0-20180509160047-46ac2b31aa30/go.mod h1:X/LhbmoBoRu8TxoGIOIraVNhfz3hhikJoaelrOuhdPY=
 github.com/AndreasBriese/bbloom v0.0.0-20180913140656-343706a395b7/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
 github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
 github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 h1:cTp8I5+VIoKjsnZuH8vjyaysT/ses3EvZeaV/1UkF2M=
@@ -340,7 +341,6 @@ github.com/deepmap/oapi-codegen v1.6.0/go.mod h1:ryDa9AgbELGeB+YEXE1dR53yAjHwFvE
 github.com/deepmap/oapi-codegen v1.8.2/go.mod h1:YLgSKSDv/bZQB7N4ws6luhozi3cEdRktEqrX88CvjIw=
 github.com/denisenkom/go-mssqldb v0.0.0-20191001013358-cfbb681360f0/go.mod h1:xbL0rPBG9cCiLr28tMa8zpbdarY27NDyej4t/EjAShU=
 github.com/deroproject/graviton v0.0.0-20200906044921-89e9e09f9601/go.mod h1:lDvhst5GHvKJjUxBztS52sMmXENU5xD5oeqEmz7838Q=
-github.com/deroproject/graviton v0.0.0-20201218180342-ab474f4c94d2 h1:GRlU5gVJTD8pn9HUPKgzavf2Hm7UuXW3UWgE5V67LRU=
 github.com/deroproject/graviton v0.0.0-20201218180342-ab474f4c94d2/go.mod h1:lDvhst5GHvKJjUxBztS52sMmXENU5xD5oeqEmz7838Q=
 github.com/dghubble/sling v1.3.0/go.mod h1:XXShWaBWKzNLhu2OxikSNFrlsvowtz4kyRuXUG7oQKY=
 github.com/dgraph-io/badger v1.5.5-0.20190226225317-8115aed38f8f/go.mod h1:VZxzAIRPHRVNRKRo6AXrX9BJegn6il06VMTZVJYCIjQ=
@@ -2157,7 +2157,6 @@ github.com/tendermint/tm-db v0.6.4 h1:3N2jlnYQkXNQclQwd/eKV/NzlqPlfK21cpRRIx80XX
 github.com/tendermint/tm-db v0.6.4/go.mod h1:dptYhIpJ2M5kUuenLr+Yyf3zQOv1SgBZcl8/BmWlMBw=
 github.com/texttheater/golang-levenshtein v0.0.0-20180516184445-d188e65d659e/go.mod h1:XDKHRm5ThF8YJjx001LtgelzsoaEcvnA7lVWz9EeX3g=
 github.com/timshannon/badgerhold/v3 v3.0.0-20210208141506-eb78b03f8097/go.mod h1:czfK/0RM+CHcK9s0n3uH8pYkjPeM7tmnjtR2+BE+JZs=
-github.com/timshannon/badgerhold/v3 v3.0.0-20210415132401-e7c90fb5919f h1:GNulbesD8h8DEF/s+a0Q5cEm4c4HnwlTgzZ5KWIA68Y=
 github.com/timshannon/badgerhold/v3 v3.0.0-20210415132401-e7c90fb5919f/go.mod h1:czfK/0RM+CHcK9s0n3uH8pYkjPeM7tmnjtR2+BE+JZs=
 github.com/tinylib/msgp v1.0.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=
 github.com/tjfoc/gmsm v1.3.0/go.mod h1:HaUcFuY0auTiaHB9MHFGCPx5IaLhTUd2atbCFBQXn9w=
@@ -2335,8 +2334,8 @@ go.vocdoni.io/dvote v0.6.1-0.20210130094936-75dbb92de3f0/go.mod h1:NJyERGs2LmEvl
 go.vocdoni.io/dvote v0.6.1-0.20210206210936-a0407e833753/go.mod h1:HhMMtdnkLI3ujk+zcL1frzFg5S7SbvxWtis7RZTq1dA=
 go.vocdoni.io/dvote v1.0.0/go.mod h1:C9wjSWCzy33Bl2sNiF/2ie/oxcERR3uRD2G2c/NDeH0=
 go.vocdoni.io/dvote v1.0.4-0.20210806163627-9494efbc5382/go.mod h1:kl66EQmAjR252HCRQL756bZQnuvcXZZ3HuaABItf+0E=
-go.vocdoni.io/dvote v1.0.4-0.20211108173511-b4907b4521f0 h1:3Zmh4NhlRrvtmDUfE5XAUvYmuTXSN8OkZK5gbm7AsXY=
-go.vocdoni.io/dvote v1.0.4-0.20211108173511-b4907b4521f0/go.mod h1:qYtvaKH4xp3QnoyXPrBQqXo+oz4+1Q7ymyOV1Lprsys=
+go.vocdoni.io/dvote v1.0.4-0.20211111152020-2d4c168f9dc1 h1:qn4UFjhgazAi+6a8Vy+LtdM02V6GmC1K3jv+0SXMNBQ=
+go.vocdoni.io/dvote v1.0.4-0.20211111152020-2d4c168f9dc1/go.mod h1:3aoPPWItE5/XjnL2+AFONdKbwNtZhDHvX2B91dwRrxQ=
 go.vocdoni.io/proto v0.1.7/go.mod h1:cyITrt7+sHmUJH06WLu69xB7LBY9c9FakFaBOe8gs/M=
 go.vocdoni.io/proto v0.1.8/go.mod h1:cyITrt7+sHmUJH06WLu69xB7LBY9c9FakFaBOe8gs/M=
 go.vocdoni.io/proto v0.1.9-0.20210304214308-6f7363b52750/go.mod h1:cyITrt7+sHmUJH06WLu69xB7LBY9c9FakFaBOe8gs/M=

@@ -20,7 +20,7 @@ require (
 	github.com/shirou/gopsutil v3.21.8+incompatible
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.8.1
-	go.vocdoni.io/dvote v1.0.4-0.20211108173511-b4907b4521f0
+	go.vocdoni.io/dvote v1.0.4-0.20211111152020-2d4c168f9dc1
 	go.vocdoni.io/proto v1.13.3-0.20211027093430-8170bfc7dc03
 	google.golang.org/api v0.44.0
 	nhooyr.io/websocket v1.8.7

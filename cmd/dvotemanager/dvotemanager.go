@@ -310,7 +310,7 @@ func main() {
 
 	if cfg.Mode == "manager" || cfg.Mode == "all" {
 		log.Infof("enabling Manager API methods")
-		mgr := manager.NewManager(ep.Router, db, smtp, ethClient)
+		mgr := manager.NewManager(db, smtp, ethClient)
 		if err := mgr.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}
