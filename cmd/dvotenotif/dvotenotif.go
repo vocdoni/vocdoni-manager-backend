@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -13,12 +14,16 @@ import (
 
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	chain "go.vocdoni.io/dvote/ethereum"
+	"go.vocdoni.io/dvote/ethereum/ethevents"
+	"go.vocdoni.io/dvote/httprouter"
 	log "go.vocdoni.io/dvote/log"
+	"go.vocdoni.io/dvote/metrics"
+	"go.vocdoni.io/dvote/service"
 	"go.vocdoni.io/manager/config"
 	"go.vocdoni.io/manager/database"
 	"go.vocdoni.io/manager/database/pgsql"
 	"go.vocdoni.io/manager/notify"
-	endpoint "go.vocdoni.io/manager/services/api-endpoint"
+	"go.vocdoni.io/manager/urlapi"
 )
 
 func newConfig() (*config.Notify, config.Error) {
@@ -60,10 +65,10 @@ func newConfig() (*config.Notify, config.Error) {
 	//ethereum node
 	cfg.Ethereum.SigningKey = *flag.String("ethSigningKey", "", "signing private Key (if not specified the Ethereum keystore will be used)")
 	// ethereum events
-	// cfg.EthereumEvents.CensusSync = *flag.Bool("ethCensusSync", false, "automatically import new census published on the smart contract")
-	// cfg.EthereumEvents.SubscribeOnly = *flag.Bool("ethSubscribeOnly", true, "only subscribe to new ethereum events (do not read past log)")
+	cfg.SubscribeOnly = *flag.Bool("subscribeOnly", true, "only subscribe to new ethereum events (do not read past log)")
 	// ethereum web3
-	// cfg.Web3.W3External = *flag.String("w3External", "", "use an external web3 endpoint instead of the local one. Supported protocols: http(s)://, ws(s):// and IPC filepath")
+	cfg.Web3.W3External = *flag.StringArrayP("w3External", "", []string{},
+		"use an external web3 endpoint instead of the local one. Supported protocols: http(s)://, ws(s):// and IPC filepath")
 	cfg.Web3.ChainType = *flag.String("ethChain", "sokol", fmt.Sprintf("Ethereum blockchain to use: %s", chain.AvailableChains))
 	// ipfs
 	cfg.IPFS.NoInit = *flag.Bool("ipfsNoInit", false, "disables inter planetary file system support")
@@ -112,8 +117,7 @@ func newConfig() (*config.Notify, config.Error) {
 	viper.Set("ethereum.datadir", cfg.DataDir+"/ethereum")
 	viper.BindPFlag("ethereum.signingKey", flag.Lookup("ethSigningKey"))
 	viper.BindPFlag("ethereum.noWaitSync", flag.Lookup("ethNoWaitSync"))
-	viper.BindPFlag("ethereumEvents.censusSync", flag.Lookup("ethCensusSync"))
-	viper.BindPFlag("ethereumEvents.subscribeOnly", flag.Lookup("ethSubscribeOnly"))
+	viper.BindPFlag("subscribeOnly", flag.Lookup("subscribeOnly"))
 	// ethereum web3
 	viper.BindPFlag("web3.w3External", flag.Lookup("w3External"))
 	viper.BindPFlag("web3.chainType", flag.Lookup("ethChain"))
@@ -174,6 +178,7 @@ func newConfig() (*config.Notify, config.Error) {
 }
 
 func main() {
+	var err error
 	// setup config
 	// creating config and init logger
 	cfg, cfgerr := newConfig()
@@ -197,12 +202,6 @@ func main() {
 		log.Fatalf("invalid signing key: %s", err)
 	}
 
-	// create and init proxy
-	ep, err := endpoint.NewEndpoint(&config.Manager{API: cfg.API, Metrics: cfg.Metrics}, signer)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	// ethereum service
 	if len(cfg.Web3.W3External) == 0 {
 		log.Warnf("no web3 endpoint defined")
@@ -211,7 +210,7 @@ func main() {
 	}
 
 	chainSpecs, specErr := chain.SpecsFor(cfg.Web3.ChainType)
-	if err != nil {
+	if specErr != nil {
 		log.Fatal("cannot get chain specifications with the ENS registry address: %s", specErr)
 	}
 
@@ -224,6 +223,27 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Router
+	var httpRouter httprouter.HTTProuter
+	httpRouter.TLSdomain = cfg.API.Ssl.Domain
+	httpRouter.TLSdirCert = cfg.API.Ssl.DirCert
+	if err = httpRouter.Init(cfg.API.ListenHost, cfg.API.ListenPort); err != nil {
+		log.Fatal(err)
+	}
+
+	var metricsAgent *metrics.Agent
+	// Enable metrics via proxy
+	if cfg.Metrics.Enabled {
+		metricsAgent = metrics.NewAgent("/metrics",
+			time.Duration(cfg.Metrics.RefreshInterval)*time.Second, &httpRouter)
+	}
+
+	// Rest api
+	urlApi, err := urlapi.NewURLAPI(&httpRouter, cfg.API.Route, metricsAgent)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// init notifications service
 	var fa notify.PushNotifier
 	if len(cfg.Notifications.KeyFile) > 0 {
@@ -231,7 +251,7 @@ func main() {
 		chainSpecs.Contracts["processes"].SetABI("processes")
 		chainSpecs.Contracts["entities"].SetABI("entities")
 		ipfsFileTracker := notify.NewIPFSFileTracker(cfg.IPFS,
-			ep.MetricsAgent, db, chainSpecs.Contracts["entityResolver"].Address.Hex(),
+			metricsAgent, db, chainSpecs.Contracts["entityResolver"].Address.Hex(),
 			cfg.Web3.W3External[0],
 			chainSpecs.Contracts["entities"].Domain,
 		)
@@ -252,47 +272,32 @@ func main() {
 	log.Info("push notifications service started")
 
 	// ethereum events service
-	// var evh []ethevents.EventHandler
-	// var w3uri string
-	// switch {
-	// case strings.HasPrefix(cfg.Web3.W3External[0], "ws"):
-	// 	w3uri = cfg.Web3.W3External[0]
-	// case strings.HasSuffix(cfg.Web3.W3External[0], "ipc"):
-	// 	w3uri = cfg.Web3.W3External[0]
-
-	// default:
-	// 	log.Fatal("web3 external must be websocket or IPC for event subscription")
-	// }
-
-	// ctx := context.Background()
+	var evh []ethevents.EventHandler
+	ctx := context.Background()
 	// Handle ethereum events and notify
-	// evh = append(evh, fa.HandleEthereum)
+	evh = append(evh, fa.HandleEthereum)
 
-	// var initBlock *int64
-	// if !cfg.EthereumEvents.SubscribeOnly {
-	// 	initBlock = new(int64)
-	// 	if specErr != nil {
-	// 		log.Warn("cannot get chain block to start looking for events, using 0")
-	// 		*initBlock = 0
-	// 	} else {
-	// 		*initBlock = chainSpecs.StartingBlock
-	// 	}
-	// }
+	var initBlock *int64
+	if !cfg.SubscribeOnly {
+		initBlock = new(int64)
+		if specErr != nil {
+			log.Warn("cannot get chain block to start looking for events, using 0")
+			*initBlock = 0
+		} else {
+			*initBlock = chainSpecs.StartingBlock
+		}
+	}
 
-	// if err := service.EthEvents(ctx, w3uri, chainSpecs.Name, initBlock, nil, signer, nil, evh, nil, []string{}); err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// start notifications API
-	log.Infof("enabling Notifications API methods")
-	notif := notify.NewAPI(ep.Router, fa, ep.MetricsAgent)
-	if err := notif.RegisterMethods(cfg.API.Route); err != nil {
+	if err := service.EthEvents(ctx, cfg.Web3.W3External, chainSpecs.Name, signer, nil, evh, []string{}); err != nil {
 		log.Fatal(err)
 	}
 
-	// Only start routing once we have registered all methods. Otherwise we
-	// have a data race.
-	go ep.Router.Route()
+	// start notifications API
+	log.Infof("enabling Notifications API methods")
+	notif := notify.NewAPI(fa)
+	if err := urlApi.EnableNotifyHandlers(notif); err != nil {
+		log.Fatal(err)
+	}
 
 	log.Info("startup complete")
 

@@ -17,6 +17,8 @@ type Notify struct {
 	LogOutput string
 	// ErrorLogFile for logging warning, error and fatal messages
 	LogErrorFile string
+	// Ethereum subscription
+	SubscribeOnly bool
 	// Metrics config options
 	Metrics *MetricsCfg
 	// DataDir path where the gateway files will be stored
@@ -33,8 +35,6 @@ type Notify struct {
 	Ethereum *config.EthCfg
 	// Web3 endpoint config
 	Web3 *config.W3Cfg
-	// EthereumEvents ethereum even subscription config options
-	// EthereumEvents *config.EthEventCfg
 	// IPFS config options
 	IPFS *config.IPFSCfg
 }

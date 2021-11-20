@@ -32,7 +32,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/updateEntity",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.updateEntity,
+		m.UpdateEntity,
 	); err != nil {
 		return err
 	}
@@ -40,7 +40,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/countMembers",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.countMembers,
+		m.CountMembers,
 	); err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/listMembers",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.listMembers,
+		m.ListMembers,
 	); err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/getMember",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.getMember,
+		m.GetMember,
 	); err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/updateMember",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.updateMember,
+		m.UpdateMember,
 	); err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/deleteMembers",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.deleteMembers,
+		m.DeleteMembers,
 	); err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/generateTokens",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.generateTokens,
+		m.GenerateTokens,
 	); err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/exportTokens",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.exportTokens,
+		m.ExportTokens,
 	); err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/importMembers",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.importMembers,
+		m.ImportMembers,
 	); err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/countTargets",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.countTargets,
+		m.CountTargets,
 	); err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/listTargets",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.listTargets,
+		m.ListTargets,
 	); err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/getTarget",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.getTarget,
+		m.GetTarget,
 	); err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/dumpTarget",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.dumpTarget,
+		m.DumpTarget,
 	); err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/dumpCensus",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.dumpCensus,
+		m.DumpCensus,
 	); err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/addCensus",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.addCensus,
+		m.AddCensus,
 	); err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/updateCensus",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.updateCensus,
+		m.UpdateCensus,
 	); err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/getCensus",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.getCensus,
+		m.GetCensus,
 	); err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/countCensus",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.countCensus,
+		m.CountCensus,
 	); err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/listCensus",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.listCensus,
+		m.ListCensus,
 	); err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/deleteCensus",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.deleteCensus,
+		m.DeleteCensus,
 	); err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/sendValidationLinks",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.sendValidationLinks,
+		m.SendValidationLinks,
 	); err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/sendVotingLinks",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.sendVotingLinks,
+		m.SendVotingLinks,
 	); err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/createTag",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.createTag,
+		m.CreateTag,
 	); err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/listTags",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.listTags,
+		m.ListTags,
 	); err != nil {
 		return err
 	}
@@ -224,7 +224,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/deleteTag",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.deleteTag,
+		m.DeleteTag,
 	); err != nil {
 		return err
 	}
@@ -232,7 +232,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/addTag",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.addTag,
+		m.AddTag,
 	); err != nil {
 		return err
 	}
@@ -240,7 +240,7 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/removeTag",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.removeTag,
+		m.RemoveTag,
 	); err != nil {
 		return err
 	}
@@ -248,17 +248,17 @@ func (u *URLAPI) EnableManagerHandlers(m *manager.Manager) error {
 		"/manager/adminEntityList",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		m.adminEntityList,
+		m.AdminEntityList,
 	); err != nil {
 		return err
 	}
-	if m.eth != nil {
+	if m.HasEthClient() {
 		// do not expose this endpoint if the manager does not have an ethereum client
 		if err := u.api.RegisterMethod(
 			"/manager/requestGas",
 			"GET",
 			bearerstdapi.MethodAccessTypePublic,
-			m.requestGas,
+			m.RequestGas,
 		); err != nil {
 			return err
 		}

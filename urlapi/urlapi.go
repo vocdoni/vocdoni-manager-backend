@@ -8,6 +8,7 @@ import (
 	"go.vocdoni.io/dvote/httprouter/bearerstdapi"
 	"go.vocdoni.io/dvote/metrics"
 	"go.vocdoni.io/manager/manager"
+	"go.vocdoni.io/manager/notify"
 )
 
 type URLAPI struct {
@@ -19,9 +20,10 @@ type URLAPI struct {
 	api          *bearerstdapi.BearerStandardAPI
 	metricsagent *metrics.Agent
 	manager      *manager.Manager
+	notif        *notify.API
 }
 
-func NewURLAPI(router *httprouter.HTTProuter, baseRoute string) (*URLAPI, error) {
+func NewURLAPI(router *httprouter.HTTProuter, baseRoute string, metricsAgent *metrics.Agent) (*URLAPI, error) {
 	if router == nil {
 		return nil, fmt.Errorf("httprouter is nil")
 	}
@@ -33,9 +35,11 @@ func NewURLAPI(router *httprouter.HTTProuter, baseRoute string) (*URLAPI, error)
 		baseRoute = strings.TrimSuffix(baseRoute, "/")
 	}
 	urlapi := URLAPI{
-		BaseRoute: baseRoute,
-		router:    router,
+		BaseRoute:    baseRoute,
+		router:       router,
+		metricsagent: metricsAgent,
 	}
+	urlapi.registerMetrics()
 	var err error
 	urlapi.api, err = bearerstdapi.NewBearerStandardAPI(router, baseRoute)
 	if err != nil {

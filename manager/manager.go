@@ -37,6 +37,10 @@ func NewManager(d database.Database, s *smtpclient.SMTP, ethclient *ethclient.Et
 	return &Manager{db: d, smtp: s, eth: ethclient}
 }
 
+func (m *Manager) HasEthClient() bool {
+	return m.eth != nil
+}
+
 func (m *Manager) SignUp(msg *bearerstdapi.BearerStandardAPIdata, ctx *httprouter.HTTPContext) error {
 	var entityID []byte
 	var signaturePubKey []byte
