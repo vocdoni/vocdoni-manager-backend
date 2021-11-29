@@ -66,7 +66,6 @@ func TestRegisterMethods(t *testing.T) {
 	// register methods
 	if err := manager.RegisterMethods(""); err != nil {
 		t.Fatalf("cannot register methods: %v", err)
-
 	}
 }
 

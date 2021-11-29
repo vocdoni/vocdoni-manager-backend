@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestNewRegistry(t *testing.T) {
-	registry := registry.NewRegistry(nil, nil, nil)
+	registry := registry.NewRegistry(nil)
 	if registry == nil {
 		t.Fatal("cannot create registry")
 	}

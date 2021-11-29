@@ -11,175 +11,106 @@ import (
 
 	"github.com/badoux/checkmail"
 	"github.com/google/uuid"
-	"github.com/prometheus/client_golang/prometheus"
 	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/httprouter"
+	"go.vocdoni.io/dvote/httprouter/bearerstdapi"
 	"go.vocdoni.io/dvote/log"
-	"go.vocdoni.io/dvote/metrics"
-	"go.vocdoni.io/dvote/multirpc/transports"
 
 	"go.vocdoni.io/manager/database"
-	"go.vocdoni.io/manager/router"
 	"go.vocdoni.io/manager/types"
+	"go.vocdoni.io/manager/util"
 )
 
 type Registry struct {
-	Router *router.Router
-	db     database.Database
-	ma     *metrics.Agent
+	db database.Database
 }
 
 // NewRegistry creates a new registry handler for the Router
-func NewRegistry(r *router.Router, d database.Database, ma *metrics.Agent) *Registry {
-	return &Registry{Router: r, db: d, ma: ma}
+func NewRegistry(d database.Database) *Registry {
+	return &Registry{db: d}
 }
 
-// RegisterMethods registers all registry methods behind the given path
-func (r *Registry) RegisterMethods(path string) error {
-	var transport transports.Transport
-	if tr, ok := r.Router.Transports["httpws"]; ok {
-		transport = tr
-	} else if tr, ok = r.Router.Transports["http"]; ok {
-		transport = tr
-	} else if tr, ok = r.Router.Transports["ws"]; ok {
-		transport = tr
-	} else {
-		return fmt.Errorf("no compatible transports found (ws or http)")
-	}
-
-	log.Infof("adding namespace registry %s", path+"/registry")
-	transport.AddNamespace(path + "/registry")
-	if err := r.Router.AddHandler("register", path+"/registry", r.register, false, false); err != nil {
-		return err
-	}
-	if err := r.Router.AddHandler("validateToken", path+"/registry", r.validateToken, false, false); err != nil {
-		return err
-	}
-	if err := r.Router.AddHandler("registrationStatus", path+"/registry", r.registrationStatus, false, false); err != nil {
-		return err
-	}
-	if err := r.Router.AddHandler("subscribe", path+"/registry", r.subscribe, false, false); err != nil {
-		return err
-	}
-	if err := r.Router.AddHandler("unsubscribe", path+"/registry", r.unsubscribe, false, false); err != nil {
-		return err
-	}
-	if err := r.Router.AddHandler("listSubscriptions", path+"/registry", r.listSubscriptions, false, false); err != nil {
-		return err
-	}
-	r.registerMetrics()
-	return nil
-}
-
-func (r *Registry) send(req *router.RouterRequest, resp *types.MetaResponse) {
-	if req == nil || req.MessageContext == nil || resp == nil {
-		log.Errorf("message context or request is nil, cannot send reply message")
-		return
-	}
-	req.Send(r.Router.BuildReply(req, resp))
-}
-
-func (r *Registry) register(request router.RouterRequest) {
+func (r *Registry) Register(msg *bearerstdapi.BearerStandardAPIdata, ctx *httprouter.HTTPContext) error {
 	var err error
+	var entityID []byte
+	var signaturePubKey []byte
 	var member *types.Member
+	var memberInfo *types.MemberInfo
 	var user types.User
 	var uid uuid.UUID
 	var response types.MetaResponse
-	// increase stats counter
-	RegistryRequests.With(prometheus.Labels{"method": "register"}).Inc()
 
-	user.PubKey = request.SignaturePublicKey
+	if entityID, signaturePubKey, err = util.RetrieveEntityID(ctx); err != nil {
+		return err
+	}
+	user.PubKey = signaturePubKey
 
-	// check entityId exists
-	entityID := request.EntityID
-	if _, err := r.db.Entity(request.EntityID); err != nil {
+	if _, err := r.db.Entity(entityID); err != nil {
 		if err == sql.ErrNoRows {
-			log.Warnf("register: invalid entity ID %x", entityID)
-			r.Router.SendError(request, "invalid entityID")
-			return
+			return fmt.Errorf("register: invalid entity ID %x", entityID)
 		}
-		log.Errorf("register: error retrieving entity %x", entityID)
-		r.Router.SendError(request, "error retrieving entity")
-		return
+		return fmt.Errorf("register: error retrieving entity %x", entityID)
+	}
+
+	if err = util.DecodeJsonMessage(memberInfo, "memberInfo", ctx); err != nil {
+		return err
 	}
 
 	// either token or valid member info should be valid
-	if !checkMemberInfo(request.MemberInfo) {
-		log.Warnf("register: invalid member info %v", request.MemberInfo)
-		r.Router.SendError(request, "invalid member info")
-		return
+	if !checkMemberInfo(memberInfo) {
+		return fmt.Errorf("register: invalid member info %v", memberInfo)
 	}
-	if uid, err = r.db.AddMember(entityID, user.PubKey, request.MemberInfo); err != nil {
-		log.Error(err)
-		r.Router.SendError(request, fmt.Sprintf("cannot create member: (%s)", err))
-		return
+	if uid, err = r.db.AddMember(entityID, user.PubKey, memberInfo); err != nil {
+		return fmt.Errorf("cannot create member: (%s)", err)
 	}
-	member = &types.Member{ID: uid, PubKey: user.PubKey, EntityID: entityID, MemberInfo: *request.MemberInfo}
-
-	log.Infof("new member added %+v for entity %s", *member, request.EntityID)
-	r.send(&request, &response)
-
-	// increase stats counter
-	RegistryRequests.With(prometheus.Labels{"method": "register_success"}).Inc()
+	member = &types.Member{ID: uid, PubKey: user.PubKey, EntityID: entityID, MemberInfo: *memberInfo}
+	log.Infof("new member added %+v for entity %s", *member, entityID)
+	return util.SendResponse(response, ctx)
 }
 
-func (r *Registry) validateToken(request router.RouterRequest) {
+func (r *Registry) ValidateToken(msg *bearerstdapi.BearerStandardAPIdata, ctx *httprouter.HTTPContext) error {
 	var uid uuid.UUID
+	var entityID []byte
+	var signaturePubKey []byte
+	var err error
 	var response types.MetaResponse
 
-	// increase stats counter
-	RegistryRequests.With(prometheus.Labels{"method": "validateToken"}).Inc()
-	log.Debugf("got validateToken request with pubKey %x", request.SignaturePublicKey)
-
-	// either token or valid member info should be valid
-	if len(request.Token) == 0 {
-		log.Warnf("empty token validation for entity %s", request.EntityID)
-		r.Router.SendError(request, "invalid token")
-		return
+	if entityID, signaturePubKey, err = util.RetrieveEntityID(ctx); err != nil {
+		return err
 	}
-	var err error
-	if uid, err = uuid.Parse(request.Token); err != nil {
-		log.Warnf("invalid token id format %s for entity %s: (%v)", request.Token, request.EntityID, err)
-		r.Router.SendError(request, "invalid token format")
-		return
+
+	log.Debugf("got validateToken request with pubKey %x", signaturePubKey)
+
+	token := ctx.URLParam("token")
+	// either token or valid member info should be valid
+	if len(token) == 0 {
+		return fmt.Errorf("empty token validation for entity %s", entityID)
+	}
+	if uid, err = uuid.Parse(token); err != nil {
+		return fmt.Errorf("invalid token id format %s for entity %s: (%v)", token, entityID, err)
 	}
 	// check entityId exists
-	entity, err := r.db.Entity(request.EntityID)
+	entity, err := r.db.Entity(entityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_entity"}).Inc()
-			log.Warnf("trying to validate token  %s for non-existing combination entity %s", request.Token, request.EntityID)
-			r.Router.SendError(request, "invalid entity id")
-			return
+			return fmt.Errorf("trying to validate token  %s for non-existing combination entity %s", token, entityID)
 
 		}
-		log.Warnf("error retrieving entity (%q) to validate token (%q): (%q)", request.EntityID, request.Token, err)
-		r.Router.SendError(request, "error retrieving entity")
-		return
+		return fmt.Errorf("error retrieving entity (%q) to validate token (%q): (%q)", entityID, token, err)
 	}
-	member, err := r.db.Member(request.EntityID, &uid)
+	member, err := r.db.Member(entityID, &uid)
 	if err != nil {
 		if err == sql.ErrNoRows { // token does not exist
-			RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_invalid_token"}).Inc()
-			log.Warnf("using non-existing combination of token  %s and entity %s: (%v)", request.Token, request.EntityID, err)
-			r.Router.SendError(request, "invalid token id")
-			return
+			return fmt.Errorf("using non-existing combination of token  %s and entity %s: (%v)", token, entityID, err)
 		}
-		log.Warnf("error retrieving member (%q) for entity (%q): (%q)", request.Token, request.EntityID, err)
-		r.Router.SendError(request, "error retrieving token")
-		return
+		return fmt.Errorf("error retrieving member (%q) for entity (%q): (%q)", token, entityID, err)
 	}
 
 	// 1.
-	if bytes.Equal(member.PubKey, request.SignaturePublicKey) {
-		RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_already_registered"}).Inc()
-		log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
-		r.Router.SendError(request, "duplicate user already registered")
-		return
+	if bytes.Equal(member.PubKey, signaturePubKey) {
+		return fmt.Errorf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), token, entityID, err)
 	} else if len(member.PubKey) != 0 {
-		RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_reused_token"}).Inc()
-		log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
-		r.Router.SendError(request, "invalid token")
-		return
+		return fmt.Errorf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), token, entityID, err)
 	}
 
 	// if len(member.PubKey) != 0 {
@@ -212,43 +143,40 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	// 	}
 	// }
 
-	if err = r.db.RegisterMember(request.EntityID, request.SignaturePublicKey, &uid); err != nil {
-		log.Warnf("cannot register member for entity %s: (%v)", request.EntityID, err)
+	if err = r.db.RegisterMember(entityID, signaturePubKey, &uid); err != nil {
+		log.Warnf("cannot register member for entity %s: (%v)", entityID, err)
 		msg := "invalidToken"
 		// if err.Error() == "duplicate user" {
 		// 	msg = "duplicate user"
 		// }
-		r.Router.SendError(request, msg)
-		return
+		return fmt.Errorf(msg)
 	}
-	log.Debugf("new user registered with pubKey: %x", request.SignaturePublicKey)
+	log.Debugf("new user registered with pubKey: %x", signaturePubKey)
 
 	_, err = url.ParseRequestURI(entity.CallbackURL)
 	if err == nil {
 		go callback(entity.CallbackURL, entity.CallbackSecret, "register", uid)
 	} else {
-		log.Debugf("no callback URL defined for (%x)", request.EntityID)
+		log.Debugf("no callback URL defined for (%x)", entityID)
 	}
 
 	// remove pedning tag if exists
 	tagName := "PendingValidation"
-	tag, err := r.db.TagByName(request.EntityID, tagName)
+	tag, err := r.db.TagByName(entityID, tagName)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.Errorf("error retrieving PendingValidationTag: (%v)", err)
 		}
 	}
 	if tag != nil {
-		if _, _, err := r.db.RemoveTagFromMembers(request.EntityID, []uuid.UUID{member.ID}, tag.ID); err != nil {
+		if _, _, err := r.db.RemoveTagFromMembers(entityID, []uuid.UUID{member.ID}, tag.ID); err != nil {
 			log.Errorf("error removing pendingValidationTag from member %s : (%v)", member.ID.String(), err)
 		}
 	}
 
-	log.Infof("token %s validated for Entity %x", request.Token, request.EntityID)
-	r.send(&request, &response)
+	log.Infof("token %s validated for Entity %x", token, entityID)
 
-	// increase stats counter
-	RegistryRequests.With(prometheus.Labels{"method": "validateToken_sucess"}).Inc()
+	return util.SendResponse(response, ctx)
 }
 
 // callback: /callback?authHash={AUTH}&event={EVENT}&ts={TIMESTAMP}&token={TOKEN}
@@ -269,52 +197,48 @@ func callback(callbackURL, secret, event string, uid uuid.UUID) error {
 	return err
 }
 
-func (r *Registry) registrationStatus(request router.RouterRequest) {
+func (r *Registry) RegistrationStatus(msg *bearerstdapi.BearerStandardAPIdata, ctx *httprouter.HTTPContext) error {
+	var err error
+	var entityID []byte
+	var signaturePubKey []byte
 	var member *types.Member
 	var response types.MetaResponse
 
-	// increase stats counter
-	RegistryRequests.With(prometheus.Labels{"method": "status"}).Inc()
-	log.Debugf("got registrationStatus request with pubKey %x", request.SignaturePublicKey)
+	if entityID, signaturePubKey, err = util.RetrieveEntityID(ctx); err != nil {
+		return err
+	}
+	log.Debugf("got registrationStatus request with pubKey %x", signaturePubKey)
 
 	// check if entity exists
-	if _, err := r.db.Entity(request.EntityID); err != nil {
+	if _, err := r.db.Entity(entityID); err != nil {
 		log.Warn(err)
-		r.Router.SendError(request, "entity does not exist")
-		RegistryRequests.With(prometheus.Labels{"method": "status_error_entity"}).Inc()
-		return
+		return fmt.Errorf("entity does not exist")
 	}
 
 	// check if user is a member
-	var err error
-	if member, err = r.db.MemberPubKey(request.EntityID, request.SignaturePublicKey); err != nil {
+	if member, err = r.db.MemberPubKey(entityID, signaturePubKey); err != nil {
 		// user is not a member but exists
 		if err == sql.ErrNoRows {
 			response.Status = &types.Status{
 				Registered:  false,
 				NeedsUpdate: false,
 			}
-			RegistryRequests.With(prometheus.Labels{"method": "status_not_registered"}).Inc()
-			request.Send(r.Router.BuildReply(&request, &response))
-			return
+			return util.SendResponse(response, ctx)
 		}
 		log.Warn(err)
-		r.Router.SendError(request, "cannot query for member")
-		return
+		return fmt.Errorf("cannot query for member")
 	}
 	// user exists and is member
 	if member != nil {
-		// increase stats counter
-		RegistryRequests.With(prometheus.Labels{"method": "status_registered"}).Inc()
 		response.Status = &types.Status{
 			Registered:  true,
 			NeedsUpdate: false,
 		}
 	}
-	request.Send(r.Router.BuildReply(&request, &response))
+	return util.SendResponse(response, ctx)
 }
 
-func (r *Registry) subscribe(request router.RouterRequest) {
+func (r *Registry) Subscribe(msg *bearerstdapi.BearerStandardAPIdata, ctx *httprouter.HTTPContext) error {
 	/*
 		var response types.MetaResponse
 		var err error
@@ -384,10 +308,10 @@ func (r *Registry) subscribe(request router.RouterRequest) {
 		// already subscribed
 		r.Router.SendError(request, "already subscribed")
 	*/
-	r.send(&request, &types.MetaResponse{Ok: true})
+	return util.SendResponse(types.MetaResponse{Ok: true}, ctx)
 }
 
-func (r *Registry) unsubscribe(request router.RouterRequest) {
+func (r *Registry) Unsubscribe(msg *bearerstdapi.BearerStandardAPIdata, ctx *httprouter.HTTPContext) error {
 	/*
 		var response types.MetaResponse
 		var err error
@@ -450,12 +374,12 @@ func (r *Registry) unsubscribe(request router.RouterRequest) {
 		// not subscribed
 		r.Router.SendError(request, "not subscribed")
 	*/
-	r.send(&request, &types.MetaResponse{Ok: true})
+	return util.SendResponse(types.MetaResponse{Ok: true}, ctx)
 }
 
-func (r *Registry) listSubscriptions(request router.RouterRequest) {
+func (r *Registry) ListSubscriptions(msg *bearerstdapi.BearerStandardAPIdata, ctx *httprouter.HTTPContext) error {
 	var response types.MetaResponse
-	request.Send(r.Router.BuildReply(&request, &response))
+	return util.SendResponse(response, ctx)
 }
 
 // ===== helpers =======

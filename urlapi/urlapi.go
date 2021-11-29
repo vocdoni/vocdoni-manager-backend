@@ -9,6 +9,7 @@ import (
 	"go.vocdoni.io/dvote/metrics"
 	"go.vocdoni.io/manager/manager"
 	"go.vocdoni.io/manager/notify"
+	"go.vocdoni.io/manager/registry"
 )
 
 type URLAPI struct {
@@ -20,6 +21,7 @@ type URLAPI struct {
 	api          *bearerstdapi.BearerStandardAPI
 	metricsagent *metrics.Agent
 	manager      *manager.Manager
+	registry     *registry.Registry
 	notif        *notify.API
 }
 

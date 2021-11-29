@@ -1,56 +1,62 @@
 package urlapi
 
 import (
+	"fmt"
+
 	"go.vocdoni.io/dvote/httprouter/bearerstdapi"
-	"go.vocdoni.io/manager/tokenapi"
+	"go.vocdoni.io/manager/registry"
 )
 
-func (u *URLAPI) EnableTokenAPIMethods(t *tokenapi.TokenAPI) error {
+func (u *URLAPI) EnableRegistryHandlers(r *registry.Registry) error {
+	if r == nil {
+		return fmt.Errorf("no registry provided")
+	}
+	u.registry = r
 	if err := u.api.RegisterMethod(
-		"/token/revoke",
-		"DELETE",
+		"/registry/register",
+		"POST",
 		bearerstdapi.MethodAccessTypePublic,
-		t.Revoke,
+		u.registry.Register,
 	); err != nil {
 		return err
 	}
 	if err := u.api.RegisterMethod(
-		"/token/status",
+		"/registry/validateToken",
+		"POST",
+		bearerstdapi.MethodAccessTypePublic,
+		u.registry.ValidateToken,
+	); err != nil {
+		return err
+	}
+	if err := u.api.RegisterMethod(
+		"/registry/registrationStatus",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		t.Status,
+		u.registry.RegistrationStatus,
 	); err != nil {
 		return err
 	}
 	if err := u.api.RegisterMethod(
-		"/token/generate",
-		"PUSH",
+		"/registry/subscribe",
+		"POST",
 		bearerstdapi.MethodAccessTypePublic,
-		t.Generate,
+		u.registry.Subscribe,
 	); err != nil {
 		return err
 	}
 	if err := u.api.RegisterMethod(
-		"/token/importKeysBulk",
+		"/registry/unsubscribe",
 		"PATCH",
 		bearerstdapi.MethodAccessTypePublic,
-		t.ImportKeysBulk,
+		u.registry.Unsubscribe,
 	); err != nil {
 		return err
 	}
 	if err := u.api.RegisterMethod(
-		"/token/listKeys",
+		"/registry/listSubscriptions",
 		"GET",
 		bearerstdapi.MethodAccessTypePublic,
-		t.ListKeys,
-	); err != nil {
-		return err
-	}
-	if err := u.api.RegisterMethod(
-		"/token/deleteKeys",
-		"DELETE",
-		bearerstdapi.MethodAccessTypePublic,
-		t.DeleteKeys,
+		u.registry.ListSubscriptions,
 	); err != nil {
 		return err
 	}

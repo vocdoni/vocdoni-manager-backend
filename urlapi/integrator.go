@@ -2,6 +2,7 @@ package urlapi
 
 import (
 	"fmt"
+	"io/ioutil"
 
 	"go.vocdoni.io/dvote/httprouter"
 	"go.vocdoni.io/dvote/httprouter/bearerstdapi"
@@ -17,7 +18,7 @@ func (u *URLAPI) EnableIntegratorHandlers() error {
 		return err
 	}
 	if err := u.api.RegisterMethod(
-		"/priv/account/entities/#entityId",
+		"/priv/account/entities/{entityId}",
 		"GET",
 		bearerstdapi.MethodAccessTypeAdmin,
 		u.getEntityHandler,
@@ -25,7 +26,7 @@ func (u *URLAPI) EnableIntegratorHandlers() error {
 		return err
 	}
 	if err := u.api.RegisterMethod(
-		"/priv/account/entities/#entityId",
+		"/priv/account/entities/{entityId}",
 		"DELETE",
 		bearerstdapi.MethodAccessTypeAdmin,
 		u.deleteEntityHandler,
@@ -46,6 +47,7 @@ func (u *URLAPI) EnableIntegratorHandlers() error {
 // POST https://server/v1/priv/account/entities
 // createEntityHandler creates a new entity
 func (u *URLAPI) createEntityHandler(msg *bearerstdapi.BearerStandardAPIdata, ctx *httprouter.HTTPContext) error {
+	jsonData, err := ioutil.ReadAll(ctx.Request.Body)
 	return fmt.Errorf("endpoint %s unimplemented", ctx.Request.URL.String())
 }
 

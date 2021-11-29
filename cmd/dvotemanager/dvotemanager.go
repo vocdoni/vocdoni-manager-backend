@@ -12,6 +12,7 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.vocdoni.io/manager/ethclient"
+	"go.vocdoni.io/manager/registry"
 	"go.vocdoni.io/manager/tokenapi"
 	"go.vocdoni.io/manager/types"
 	"go.vocdoni.io/manager/urlapi"
@@ -264,15 +265,6 @@ func main() {
 	}
 	defer smtp.ClosePool()
 
-	// User registry
-	// if cfg.Mode == "registry" || cfg.Mode == "all" {
-	// 	log.Infof("enabling Registry API methods")
-	// 	reg := registry.NewRegistry(ep.Router, db, ep.MetricsAgent)
-	// 	if err := reg.RegisterMethods(cfg.API.Route); err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// }
-
 	// Router
 	var httpRouter httprouter.HTTProuter
 	httpRouter.TLSdomain = cfg.API.Ssl.Domain
@@ -336,6 +328,15 @@ func main() {
 		log.Infof("enabling Token API methods")
 		tok := tokenapi.NewTokenAPI(db)
 		if err := urlApi.EnableTokenAPIMethods(tok); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	// User registry
+	if cfg.Mode == "registry" || cfg.Mode == "all" {
+		log.Infof("enabling Registry API methods")
+		reg := registry.NewRegistry(db)
+		if err := urlApi.EnableRegistryHandlers(reg); err != nil {
 			log.Fatal(err)
 		}
 	}
