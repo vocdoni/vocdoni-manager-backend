@@ -85,7 +85,7 @@ func TestSignUp(t *testing.T) {
 	if err != nil {
 		t.Fatal("error retrieving entity after signUp")
 	}
-	if entity.Name != entities[1].Name || entity.Email != entities[1].Email || entity.Type != entities[1].Type || entity.Size != entities[1].Size {
+	if entity.Name != entities[1].Name || entity.Email != entities[1].Email || entity.Type != entities[1].Type || entity.Size != entities[1].Size || entity.Consented != false {
 		t.Fatalf("entity signUp data were not stored correctly")
 	}
 }

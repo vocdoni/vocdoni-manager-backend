@@ -192,6 +192,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		entityInfo.Email = request.Entity.Email
 		entityInfo.Size = request.Entity.Size
 		entityInfo.Type = request.Entity.Type
+		entityInfo.Consented = request.Entity.Consented
 	}
 
 	// Add Entity

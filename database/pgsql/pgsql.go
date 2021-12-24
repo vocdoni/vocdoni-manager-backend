@@ -106,8 +106,8 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 	}
 	// TODO: Calculate EntityID (consult go-dvote)
 	insert := `INSERT INTO entities
-			(id, is_authorized, email, name, type, size, callback_url, callback_secret, census_managers_addresses, created_at, updated_at)
-			VALUES (:id, :is_authorized, :email, :name, :type, :size, :callback_url, :callback_secret, :pg_census_managers_addresses, :created_at, :updated_at)`
+			(id, is_authorized, email, name, type, size, consented, callback_url, callback_secret, census_managers_addresses, created_at, updated_at)
+			VALUES (:id, :is_authorized, :email, :name, :type, :size, :consented, :callback_url, :callback_secret, :pg_census_managers_addresses, :created_at, :updated_at)`
 	_, err = tx.NamedExec(insert, pgEntity)
 	if err != nil {
 		return fmt.Errorf("cannot add insert query in the transaction: %w", err)
@@ -132,7 +132,7 @@ func (d *Database) AddEntity(entityID []byte, info *types.EntityInfo) error {
 
 func (d *Database) Entity(entityID []byte) (*types.Entity, error) {
 	var pgEntity PGEntity
-	selectEntity := `SELECT id, is_authorized, email, name, type, size, callback_url, callback_secret, census_managers_addresses as "pg_census_managers_addresses"  
+	selectEntity := `SELECT id, is_authorized, email, name, type, size, consented, callback_url, callback_secret, census_managers_addresses as "pg_census_managers_addresses"  
 						FROM entities WHERE id=$1`
 	row := d.db.QueryRowx(selectEntity, entityID)
 	err := row.StructScan(&pgEntity)

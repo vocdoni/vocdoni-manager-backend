@@ -60,6 +60,7 @@ func TestEntity(t *testing.T) {
 		Name:                    "test entity",
 		CensusManagersAddresses: [][]byte{{1, 2, 3}},
 		Origins:                 []types.Origin{types.Token},
+		Consented:               true,
 	}
 
 	startEntities, err := api.DB.EntitiesID()
@@ -78,6 +79,9 @@ func TestEntity(t *testing.T) {
 	entity, err := api.DB.Entity(entityID)
 	if err != nil {
 		t.Fatalf("cannot fetch entity from the Postgres DB (pgsql.go:Entity): %s", err)
+	}
+	if entity.Consented != true {
+		t.Fatalf("cannot verify consented field from from the Postgres DB (pgsql.go:Entity): %s", err)
 	}
 	marshalledEntityInfo, err := json.Marshal(entity.EntityInfo)
 	if err != nil {
