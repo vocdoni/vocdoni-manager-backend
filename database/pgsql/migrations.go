@@ -41,6 +41,11 @@ var Migrations = migrate.MemoryMigrationSource{
 			Up:   []string{migration6up},
 			Down: []string{migration6down},
 		},
+		{
+			Id:   "7",
+			Up:   []string{migration7up},
+			Down: []string{migration7down},
+		},
 	},
 }
 
@@ -340,6 +345,16 @@ const migration6down = `
 ALTER TABLE ONLY entities
     DROP COLUMN type,
     DROP COLUMN size;
+`
+
+const migration7up = `
+ALTER TABLE ONLY entities
+    ADD COLUMN consented boolean DEFAULT false NOT NULL;
+`
+
+const migration7down = `
+ALTER TABLE ONLY entities
+    DROP COLUMN consented;
 `
 
 func Migrator(action string, db database.Database) error {

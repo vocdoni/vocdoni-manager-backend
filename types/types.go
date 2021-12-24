@@ -29,6 +29,7 @@ type EntityInfo struct {
 	Size                    int      `json:"size" db:"size"`
 	CensusManagersAddresses [][]byte `json:"censusManagersAddresses,omitempty" db:"census_managers_addresses"`
 	Origins                 []Origin `json:"origins" db:"origins"`
+	Consented               bool     `json:"consented" db:"consented"`
 }
 
 //go:generate stringer -type=Origin
