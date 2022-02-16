@@ -216,3 +216,26 @@ func (s *SMTP) SendVotingLink(ephemeralMember *types.EphemeralMemberInfo, entity
 
 	return s.SendMail(e)
 }
+
+// SendContactMessage send a message received in the web
+func (s *SMTP) SendContactMsg(m types.ContactMsg) error {
+	textParsed, err := txtTemplate.New("body").Parse(ContactTextTemplate)
+	if err != nil {
+		return fmt.Errorf("error parsing text template: %v", err)
+	}
+	var txtBuff bytes.Buffer
+	err = textParsed.Execute(&txtBuff, m)
+	if err != nil {
+		return fmt.Errorf("error adding data to text template: %v", err)
+	}
+	e := email.Email{
+		From:    fmt.Sprintf("%s <%s>", m.Name, m.Email),
+		Sender:  s.config.Sender,
+		To:      []string{fmt.Sprintf("%s <%s>", "Contact Aragon Labs", "contact@aragonlabs.com")},
+		Subject: fmt.Sprintf("[%s] Web Contact", m.Subject),
+		Text:    []byte(txtBuff.Bytes()),
+		HTML:    []byte(txtBuff.Bytes()),
+		Headers: textproto.MIMEHeader{},
+	}
+	return s.SendMail(e)
+}

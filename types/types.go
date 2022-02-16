@@ -32,6 +32,13 @@ type EntityInfo struct {
 	Consented               bool     `json:"consented" db:"consented"`
 }
 
+type ContactMsg struct {
+	Name    string `json:"name,omitempty"`
+	Email   string `json:"email,omitempty"`
+	Subject string `json:"subject,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
 //go:generate stringer -type=Origin
 type Origin int
 
