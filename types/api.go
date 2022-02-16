@@ -44,6 +44,7 @@ type MetaRequest struct {
 	Timestamp     int32        `json:"timestamp"`
 	Token         string       `json:"token,omitempty"`
 	Topic         string       `json:"topic,omitempty"`
+	ContactMsg    ContactMsg   `json:"contactMsg,omitempty"`
 }
 
 // ResponseMessage wraps an api response

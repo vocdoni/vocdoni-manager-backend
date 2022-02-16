@@ -863,3 +863,15 @@ const VotingHTMLTemplate = `
 </html>
 
 `
+
+const ContactTextTemplate = `
+Hi,
+
+A new message was received via the vocdoni.app contact us page.
+
+The message was sent by <b>{{.Name}}</b> and its email is <b>{{.Email}}</b>. The subject of the messsage is <b>{{.Subject}}</b>
+
+This is the received message: 
+
+{{.Message}}
+`

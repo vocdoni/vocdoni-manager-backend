@@ -146,6 +146,9 @@ func (m *Manager) RegisterMethods(path string) error {
 	if err := m.Router.AddHandler("adminEntityList", path+"/manager", m.adminEntityList, false, false); err != nil {
 		return err
 	}
+	if err := m.Router.AddHandler("sendContactMsg", path+"/manager", m.sendContactMsg, false, true); err != nil {
+		return err
+	}
 	if m.eth != nil {
 		// do not expose this endpoint if the manager does not have an ethereum client
 		if err := m.Router.AddHandler("requestGas", path+"/manager", m.requestGas, false, false); err != nil {
@@ -1636,6 +1639,39 @@ func (m *Manager) requestGas(request router.RouterRequest) {
 
 	response.Count = int(sent.Int64())
 	m.send(&request, &response)
+}
+
+func (m *Manager) sendContactMsg(request router.RouterRequest) {
+	var response types.MetaResponse
+	if request.ContactMsg.Email == "" {
+		log.Errorf("contact message email not specified")
+		m.Router.SendError(request, "internal error")
+		return
+	}
+	if request.ContactMsg.Message == "" {
+		log.Errorf("contact message body not specified")
+		m.Router.SendError(request, "internal error")
+		return
+	}
+	if request.ContactMsg.Name == "" {
+		log.Errorf("contact message name not specified")
+		m.Router.SendError(request, "internal error")
+		return
+	}
+	if request.ContactMsg.Subject == "" {
+		log.Errorf("contact message subject not specified")
+		m.Router.SendError(request, "internal error")
+		return
+	}
+	err := m.smtp.SendContactMsg(request.ContactMsg)
+	if err != nil {
+		log.Errorf("could not send email, error: %v", err)
+		m.Router.SendError(request, "internal error")
+		return
+	}
+	response.Ok = true
+	m.send(&request, &response)
+
 }
 
 func checkOptions(filter *types.ListOptions, method string) error {
