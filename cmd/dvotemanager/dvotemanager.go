@@ -12,6 +12,7 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.vocdoni.io/manager/ethclient"
+	"go.vocdoni.io/manager/hubspotClient"
 	"go.vocdoni.io/manager/types"
 
 	"go.vocdoni.io/dvote/crypto/ethereum"
@@ -80,6 +81,9 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.EthNetwork.GasLimit = *flag.Uint64("ethNetworkGasLimit", 0, "Gas limit for sending an EVM transaction in units")
 	cfg.EthNetwork.FaucetAmount = *flag.Int("ethNetworkFaucetAmount", 0*types.Finney, "Amount of eth or similar to be provided upon an entity sign up (in milliEther)")
 	cfg.EthNetwork.Timeout = *flag.Duration("ethNetworkTimeout", 60*time.Second, "Timeout for ethereum transactions (default: 60s) ")
+	cfg.Hubspot.ApiKey = *flag.String("hubspotApiKey", "", "hubspot api key")
+	cfg.Hubspot.BaseUrl = *flag.String("hubspotBaseUrl", "", "hubspot base URL")
+	cfg.Hubspot.Enabled = *flag.Bool("hubspotEnabled", false, "hubspot base URL")
 	// metrics
 	cfg.Metrics.Enabled = *flag.Bool("metricsEnabled", true, "enable prometheus metrics")
 	cfg.Metrics.RefreshInterval = *flag.Int("metricsRefreshInterval", 10, "metrics refresh interval in seconds")
@@ -132,6 +136,9 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("ethnetwork.gasLimit", flag.Lookup("ethNetworkGasLimit"))
 	viper.BindPFlag("ethnetwork.faucetAmount", flag.Lookup("ethNetworkFaucetAmount"))
 	viper.BindPFlag("ethnetwork.timeout", flag.Lookup("ethNetworkTimeout"))
+	viper.BindPFlag("hubspot.apiKey", flag.Lookup("hubspotApiKey"))
+	viper.BindPFlag("hubspot.baseUrl", flag.Lookup("hubspotBaseUrl"))
+	viper.BindPFlag("hubspot.enabled", flag.Lookup("hubspotEnabled"))
 	// metrics
 	viper.BindPFlag("metrics.enabled", flag.Lookup("metricsEnabled"))
 	viper.BindPFlag("metrics.refreshInterval", flag.Lookup("metricsRefreshInterval"))
@@ -270,6 +277,12 @@ func main() {
 	}
 	defer smtp.ClosePool()
 
+	// Generate Hubspot Object
+	hs, err := hubspotClient.New(cfg.Hubspot)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// User registry
 	if cfg.Mode == "registry" || cfg.Mode == "all" {
 		log.Infof("enabling Registry API methods")
@@ -310,7 +323,7 @@ func main() {
 
 	if cfg.Mode == "manager" || cfg.Mode == "all" {
 		log.Infof("enabling Manager API methods")
-		mgr := manager.NewManager(ep.Router, db, smtp, ethClient)
+		mgr := manager.NewManager(ep.Router, db, smtp, ethClient, hs)
 		if err := mgr.RegisterMethods(cfg.API.Route); err != nil {
 			log.Fatal(err)
 		}

@@ -40,6 +40,8 @@ type Manager struct {
 	Migrate *Migrate
 	// Web3 connection options
 	EthNetwork *EthNetwork
+	// Hubsport integration config
+	Hubspot *Hubspot
 }
 
 func (m *Manager) String() string {
@@ -60,7 +62,14 @@ func NewManagerConfig() *Manager {
 		SMTP:       new(SMTP),
 		Metrics:    new(MetricsCfg),
 		EthNetwork: new(EthNetwork),
+		Hubspot:    new(Hubspot),
 	}
+}
+
+type Hubspot struct {
+	ApiKey  string
+	BaseUrl string
+	Enabled bool
 }
 
 type SMTP struct {

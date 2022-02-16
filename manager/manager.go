@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"math/rand"
+	"strconv"
 	"sync"
 
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 	"go.vocdoni.io/manager/ethclient"
+	"go.vocdoni.io/manager/hubspotClient"
 
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
@@ -31,11 +33,12 @@ type Manager struct {
 	db     database.Database
 	smtp   *smtpclient.SMTP
 	eth    *ethclient.Eth
+	hs     *hubspotClient.Hubspot
 }
 
 // NewManager creates a new registry handler for the Router
-func NewManager(r *router.Router, d database.Database, s *smtpclient.SMTP, ethclient *ethclient.Eth) *Manager {
-	return &Manager{Router: r, db: d, smtp: s, eth: ethclient}
+func NewManager(r *router.Router, d database.Database, s *smtpclient.SMTP, ethclient *ethclient.Eth, hsclient *hubspotClient.Hubspot) *Manager {
+	return &Manager{Router: r, db: d, smtp: s, eth: ethclient, hs: hsclient}
 }
 
 // RegisterMethods registers all registry methods behind the given path
@@ -224,7 +227,22 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		}
 		response.Count = int(sent.Int64())
 	}
-
+	// Hubspot integration
+	var domain string = ""
+	if len(strings.Split(entityInfo.Email, "@")) == 2 {
+		domain = strings.Split(entityInfo.Email, "@")[1]
+	}
+	hsCompany := types.HubspotCompany{
+		Name:              entityInfo.Name,
+		Email:             entityInfo.Email,
+		NumberOfEmployees: strconv.Itoa(entityInfo.Size),
+		Type:              entityInfo.Type,
+		Domain:            domain,
+	}
+	_, err = m.hs.CreateCompany(&hsCompany)
+	if err != nil {
+		log.Error(err)
+	}
 	log.Debugf("Entity: %s signUp", entityAddress.String())
 	m.send(&request, &response)
 }

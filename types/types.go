@@ -31,6 +31,20 @@ type EntityInfo struct {
 	Origins                 []Origin `json:"origins" db:"origins"`
 	Consented               bool     `json:"consented" db:"consented"`
 }
+type HubspotCompany struct {
+	Name              string `json:"name,omitempty"`
+	Email             string `json:"email,omitempty"`
+	NumberOfEmployees string `json:"numberofemployees,omitempty"`
+	Type              string `json:"vocdoni_type,omitempty"`
+	Domain            string `json:"domain,omitempty"`
+}
+type HubspotObject struct {
+	Id                string         `json:"id,omitempty"`
+	CreatedAt         string         `json:"createdAt,omitempty"`
+	UpdatedAt         string         `json:"updatedAt,omitempty"`
+	Archived          bool           `json:"archived,omitempty"`
+	CompanyProperties HubspotCompany `json:"properties,omitempty"`
+}
 
 //go:generate stringer -type=Origin
 type Origin int
