@@ -228,20 +228,22 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		response.Count = int(sent.Int64())
 	}
 	// Hubspot integration
-	var domain string = ""
-	if len(strings.Split(entityInfo.Email, "@")) == 2 {
-		domain = strings.Split(entityInfo.Email, "@")[1]
-	}
-	hsCompany := types.HubspotCompany{
-		Name:              entityInfo.Name,
-		Email:             entityInfo.Email,
-		NumberOfEmployees: strconv.Itoa(entityInfo.Size),
-		Type:              entityInfo.Type,
-		Domain:            domain,
-	}
-	_, err = m.hs.CreateCompany(&hsCompany)
-	if err != nil {
-		log.Error(err)
+	if m.hs != nil {
+		var domain string = ""
+		if len(strings.Split(entityInfo.Email, "@")) == 2 {
+			domain = strings.Split(entityInfo.Email, "@")[1]
+		}
+		hsCompany := types.HubspotProperties{
+			Name:              entityInfo.Name,
+			VocdoniEmail:      entityInfo.Email,
+			NumberOfEmployees: strconv.Itoa(entityInfo.Size),
+			VocdoniType:       entityInfo.Type,
+			Domain:            domain,
+		}
+		_, err = m.hs.CreateCompany(hsCompany)
+		if err != nil {
+			log.Error(err)
+		}
 	}
 	log.Debugf("Entity: %s signUp", entityAddress.String())
 	m.send(&request, &response)

@@ -280,7 +280,10 @@ func main() {
 	// Generate Hubspot Object
 	hs, err := hubspotClient.New(cfg.Hubspot)
 	if err != nil {
-		log.Fatal(err)
+		log.Warn(err)
+	}
+	if hs != nil {
+		hs.InitializeProperties()
 	}
 
 	// User registry
