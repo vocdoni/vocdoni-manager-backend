@@ -19,9 +19,6 @@ func New(hsc *config.Hubspot) (*Hubspot, error) {
 	if hsc.ApiKey == "" {
 		return nil, fmt.Errorf("invalid api key")
 	}
-	if !hsc.Enabled {
-		return nil, fmt.Errorf("hubspot api not enabled")
-	}
 	return &Hubspot{config: hsc}, nil
 }
 

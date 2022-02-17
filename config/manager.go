@@ -69,7 +69,6 @@ func NewManagerConfig() *Manager {
 type Hubspot struct {
 	ApiKey  string
 	BaseUrl string
-	Enabled bool
 }
 
 type SMTP struct {

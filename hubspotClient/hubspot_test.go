@@ -8,26 +8,27 @@ import (
 	"go.vocdoni.io/manager/types"
 )
 
+const API_KEY = ""
+
 func TestNewClient(t *testing.T) {
 	var err error
-	_, err = hubspotClient.New(&config.Hubspot{ApiKey: "", BaseUrl: "https://api.hubspot.com", Enabled: true})
+	_, err = hubspotClient.New(&config.Hubspot{ApiKey: "", BaseUrl: "https://api.hubspot.com"})
 	if err == nil {
-		t.Fatal("api key is not provided client should not be able to start")
+		t.Log("api key not specified, skipping")
+		t.SkipNow()
 	}
-	_, err = hubspotClient.New(&config.Hubspot{ApiKey: "eu1-8167-1c7a-4710-9e0d-fb5a55cc6f16", BaseUrl: "https://api.hubspot.com", Enabled: false})
-	if err == nil {
-		t.Fatal("client is disabled shoul not be initialized")
-	}
-	_, err = hubspotClient.New(&config.Hubspot{ApiKey: "eu1-8167-1c7a-4710-9e0d-fb5a55cc6f16", BaseUrl: "https://api.hubspot.com", Enabled: true})
+	_, err = hubspotClient.New(&config.Hubspot{ApiKey: API_KEY, BaseUrl: "https://api.hubspot.com"})
 	if err != nil {
-		t.Fatal("cannot start client")
+		t.Log("api key not specified, skipping")
+		t.SkipNow()
 	}
 }
 func TestHsAPI(t *testing.T) {
 	// start client
-	hs, err := hubspotClient.New(&config.Hubspot{ApiKey: "eu1-8167-1c7a-4710-9e0d-fb5a55cc6f16", BaseUrl: "https://api.hubspot.com", Enabled: true})
+	hs, err := hubspotClient.New(&config.Hubspot{ApiKey: API_KEY, BaseUrl: "https://api.hubspot.com"})
 	if err != nil {
-		t.Fatal("cannot start client")
+		t.Log("api key not specified, skipping")
+		t.SkipNow()
 	}
 	// create company
 	c := types.HubspotProperties{
