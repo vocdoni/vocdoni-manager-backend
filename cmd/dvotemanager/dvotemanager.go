@@ -11,21 +11,21 @@ import (
 
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.vocdoni.io/manager/database"
+	"go.vocdoni.io/manager/database/pgsql"
 	"go.vocdoni.io/manager/ethclient"
+	"go.vocdoni.io/manager/manager"
+	"go.vocdoni.io/manager/registry"
+	endpoint "go.vocdoni.io/manager/services/api-endpoint"
+	"go.vocdoni.io/manager/smtpclient"
+	"go.vocdoni.io/manager/tokenapi"
 	"go.vocdoni.io/manager/types"
+	"go.vocdoni.io/manager/vocclient"
 
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	chain "go.vocdoni.io/dvote/ethereum"
 	log "go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/manager/config"
-	"go.vocdoni.io/manager/database"
-	"go.vocdoni.io/manager/database/pgsql"
-	"go.vocdoni.io/manager/manager"
-	"go.vocdoni.io/manager/smtpclient"
-
-	"go.vocdoni.io/manager/registry"
-	endpoint "go.vocdoni.io/manager/services/api-endpoint"
-	"go.vocdoni.io/manager/tokenapi"
 )
 
 func newConfig() (*config.Manager, config.Error) {
@@ -53,6 +53,7 @@ func newConfig() (*config.Manager, config.Error) {
 	cfg.LogErrorFile = *flag.String("logErrorFile", "", "Log errors and warnings to a file")
 	cfg.SaveConfig = *flag.Bool("saveConfig", false, "overwrites an existing config file with the CLI provided flags")
 	cfg.SigningKeys = *flag.StringArray("signingKeys", []string{}, "signing private Keys (if not specified, a new one will be created), the first one is the oracle public key")
+	cfg.GatewayUrls = *flag.StringArray("gatewayUrls", []string{"https://gw1.vocdoni.net/dvote"}, "urls to use as gateway api endpoints")
 	cfg.API.Route = *flag.String("apiRoute", "/api", "dvote API route")
 	cfg.API.ListenHost = *flag.String("listenHost", "0.0.0.0", "API endpoint listen address")
 	cfg.API.ListenPort = *flag.Int("listenPort", 8000, "API endpoint http port")
@@ -104,6 +105,7 @@ func newConfig() (*config.Manager, config.Error) {
 	viper.BindPFlag("logErrorFile", flag.Lookup("logErrorFile"))
 	viper.BindPFlag("logOutput", flag.Lookup("logOutput"))
 	viper.BindPFlag("signingKeys", flag.Lookup("signingKeys"))
+	viper.BindPFlag("gatewayUrls", flag.Lookup("gatewayUrls"))
 	viper.BindPFlag("api.route", flag.Lookup("apiRoute"))
 	viper.BindPFlag("api.listenHost", flag.Lookup("listenHost"))
 	viper.BindPFlag("api.listenPort", flag.Lookup("listenPort"))
@@ -232,6 +234,21 @@ func main() {
 	pub, _ := signer.HexString()
 	log.Infof("my public key: %s", pub)
 	log.Infof("my address: %s", signer.AddressString())
+
+	// Gateways
+	for idx, url := range cfg.GatewayUrls {
+		cfg.GatewayUrls[idx] = strings.Trim(url, `"[]`)
+	}
+
+	client, err := vocclient.New(cfg.GatewayUrls, signer)
+	if err != nil {
+		log.Fatal(err)
+	}
+	blockHeight, err := client.GetCurrentBlock()
+	if err != nil {
+		log.Error(err)
+	}
+	log.Infof("Connected to %s at block height %d", client.ActiveEndpoint(), blockHeight)
 
 	// WS Endpoint and Router
 	ep, err := endpoint.NewEndpoint(cfg, signer)

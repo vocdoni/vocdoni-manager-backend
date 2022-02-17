@@ -25,6 +25,7 @@ require (
 	go.vocdoni.io/dvote v1.0.4-0.20210705151626-5b292fc7e743
 	go.vocdoni.io/proto v1.0.4-0.20210705140049-b1513a5b3223
 	google.golang.org/api v0.36.0
+	google.golang.org/protobuf v1.25.0
 	nhooyr.io/websocket v1.8.6
 )
 
