@@ -2,6 +2,7 @@ package testcommon
 
 import (
 	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/httprouter"
 	"go.vocdoni.io/dvote/log"
 	"go.vocdoni.io/manager/config"
 	"go.vocdoni.io/manager/database"
@@ -11,13 +12,11 @@ import (
 	"go.vocdoni.io/manager/registry"
 	"go.vocdoni.io/manager/smtpclient"
 	"go.vocdoni.io/manager/tokenapi"
-
-	endpoint "go.vocdoni.io/manager/services/api-endpoint"
 )
 
 type TestAPI struct {
 	DB     database.Database
-	EP     *endpoint.EndPoint
+	Router *httprouter.HTTProuter
 	Port   int
 	Signer *ethereum.SignKeys
 }
@@ -28,12 +27,15 @@ type TestAPI struct {
 func (t *TestAPI) Start(dbc *config.DB, route string) error {
 	log.Init("info", "stdout")
 	var err error
+	var cfg *config.Manager
+	var signer *ethereum.SignKeys
 	if route != "" {
 		// Signer
-		t.Signer = ethereum.NewSignKeys()
-		t.Signer.Generate()
+		signer = ethereum.NewSignKeys()
+		signer.Generate()
+		t.Signer = signer
 
-		cfg := &config.Manager{
+		cfg = &config.Manager{
 			API: &config.API{
 				Route:      route,
 				ListenPort: t.Port,
@@ -41,10 +43,6 @@ func (t *TestAPI) Start(dbc *config.DB, route string) error {
 			},
 		}
 
-		// WS Endpoint and Router
-		if t.EP, err = endpoint.NewEndpoint(cfg, t.Signer); err != nil {
-			return err
-		}
 	}
 	if dbc != nil {
 		// Postgres with sqlx
@@ -60,10 +58,12 @@ func (t *TestAPI) Start(dbc *config.DB, route string) error {
 
 	if route != "" {
 		log.Infof("enabling API methods")
-		reg := registry.NewRegistry(t.EP.Router, t.DB, nil)
-		if err := reg.RegisterMethods(route); err != nil {
+
+		var httpRouter httprouter.HTTProuter
+		if err = httpRouter.Init(cfg.API.ListenHost, cfg.API.ListenPort); err != nil {
 			log.Fatal(err)
 		}
+
 		smtpConfig := &config.SMTP{
 			User:          "coby.rippin@ethereal.email",
 			Password:      "HmjWVQ86X3Q6nKBR3u",
@@ -80,17 +80,33 @@ func (t *TestAPI) Start(dbc *config.DB, route string) error {
 			log.Fatal(err)
 		}
 		// defer s.ClosePool()
-		mgr := manager.NewManager(t.EP.Router, t.DB, s, nil)
-		if err := mgr.RegisterMethods(route); err != nil {
+
+		mg, err := manager.NewManager(signer, &httpRouter, "/api", t.DB, s, nil)
+		if err != nil {
 			log.Fatal(err)
 		}
-		token := tokenapi.NewTokenAPI(t.EP.Router, t.DB, nil)
-		if err := token.RegisterMethods(route); err != nil {
+
+		if err := mg.EnableAPI(); err != nil {
 			log.Fatal(err)
 		}
-		// Only start routing once we have registered all methods. Otherwise we
-		// have a data race.
-		go t.EP.Router.Route()
+
+		r, err := registry.NewRegistry(t.Signer, &httpRouter, "/api", t.DB, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := r.EnableAPI(); err != nil {
+			log.Fatal(err)
+		}
+
+		ta, err := tokenapi.NewTokenAPI(&httpRouter, "/api", t.DB, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := ta.EnableAPI(); err != nil {
+			log.Fatal(err)
+		}
 	}
 	return nil
 }

@@ -10,72 +10,12 @@ import (
 	"github.com/google/uuid"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
-	"go.vocdoni.io/dvote/metrics"
-	"go.vocdoni.io/dvote/multirpc/transports"
 	dvoteutil "go.vocdoni.io/dvote/util"
-	"go.vocdoni.io/manager/database"
-	"go.vocdoni.io/manager/router"
 	"go.vocdoni.io/manager/types"
 )
 
 // AuthWindowSeconds is the time window (in seconds) that the tokenapi Auth tolerates
 const AuthWindowSeconds = 300
-
-// TokenAPI is a handler for external token managmement
-type TokenAPI struct {
-	Router *router.Router
-	db     database.Database
-	ma     *metrics.Agent
-}
-
-// NewTokenAPI creates a new token API handler for the Router
-func NewTokenAPI(r *router.Router, d database.Database, ma *metrics.Agent) *TokenAPI {
-	return &TokenAPI{Router: r, db: d, ma: ma}
-}
-
-// RegisterMethods registers all tokenAPI methods behind the given path
-func (t *TokenAPI) RegisterMethods(path string) error {
-	var transport transports.Transport
-	if tr, ok := t.Router.Transports["httpws"]; ok {
-		transport = tr
-	} else if tr, ok = t.Router.Transports["http"]; ok {
-		transport = tr
-	} else if tr, ok = t.Router.Transports["ws"]; ok {
-		transport = tr
-	} else {
-		return fmt.Errorf("no compatible transports found (ws or http)")
-	}
-
-	log.Infof("adding namespace token %s", path+"/token")
-	transport.AddNamespace(path + "/token")
-	if err := t.Router.AddHandler("revoke", path+"/token", t.revoke, false, true); err != nil {
-		return err
-	}
-	if err := t.Router.AddHandler("status", path+"/token", t.status, false, true); err != nil {
-		return err
-	}
-	if err := t.Router.AddHandler("generate", path+"/token", t.generate, false, true); err != nil {
-		return err
-	}
-	if err := t.Router.AddHandler("importKeysBulk", path+"/token", t.importKeysBulk, false, true); err != nil {
-		return err
-	}
-	if err := t.Router.AddHandler("listKeys", path+"/token", t.listKeys, false, true); err != nil {
-		return err
-	}
-	if err := t.Router.AddHandler("deleteKeys", path+"/token", t.deleteKeys, false, true); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *TokenAPI) send(req *router.RouterRequest, resp *types.MetaResponse) {
-	if req == nil || req.MessageContext == nil || resp == nil {
-		log.Errorf("message context or request is nil, cannot send reply message")
-		return
-	}
-	req.Send(t.Router.BuildReply(req, resp))
-}
 
 func checkAuth(timestamp int32, auth string, fields ...interface{}) bool {
 	if len(fields) == 0 {
@@ -116,99 +56,84 @@ func (t *TokenAPI) getSecret(entityID []byte) (string, error) {
 	return entity.CallbackSecret, nil
 }
 
-func (t *TokenAPI) revoke(request router.RouterRequest) {
+func (t *TokenAPI) revoke(request *types.APIrequest) (*types.APIresponse, error) {
 	if len(request.EntityID) == 0 {
 		log.Errorf("trying to revoke token %q for null entity %s", request.Token, request.EntityID)
-		t.Router.SendError(request, "invalid entityID")
-		return
+		return nil, fmt.Errorf("invalid entityID")
 
 	}
 
 	// either token or valid member info should be valid
 	if len(request.Token) == 0 {
 		log.Errorf("empty token validation for entity %s", request.EntityID)
-		t.Router.SendError(request, "invalid token")
-		return
+		return nil, fmt.Errorf("invalid token")
 	}
 
 	uid, err := uuid.Parse(request.Token)
 	if err != nil {
 		log.Errorf("invalid token id format %s for entity %s:(%v)", request.Token, request.EntityID, err)
-		t.Router.SendError(request, "invalid token format")
-		return
+		return nil, fmt.Errorf("invalid token format")
 	}
 
 	secret, err := t.getSecret(request.EntityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Errorf("revoke: invalid entity id %s", request.EntityID)
-			t.Router.SendError(request, "invalid entityID")
-			return
+			return nil, fmt.Errorf("invalid entityID")
 
 		}
 		log.Errorf("revoke: database error error retrieving entity (%q) : (%v)", request.EntityID, err)
-		t.Router.SendError(request, "error retrieving entity")
-		return
+		return nil, fmt.Errorf("error retrieving entity")
 	}
 	if !checkAuth(
 		request.Timestamp, request.AuthHash,
 		request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), request.Token, secret) {
 		log.Errorf("invalid authentication: checkAuth error for entity (%q) to validate token (%q):(%v)", request.EntityID, request.Token, err)
-		t.Router.SendError(request, "invalid authentication")
-		return
+		return nil, fmt.Errorf("invalid authentication")
 	}
 	if err = t.db.DeleteMember(request.EntityID, &uid); err != nil {
 		log.Errorf("database error: could not delete token %q for entity %q: (%v)", request.Token, request.EntityID, err)
-		t.Router.SendError(request, "could not delete member")
-		return
+		return nil, fmt.Errorf("could not delete member")
 	}
 
 	log.Infof("deleted member with token (%q) for entity (%s)", request.Token, request.EntityID)
-	var resp types.MetaResponse
-	t.send(&request, &resp)
+	return &types.APIresponse{Ok: true}, nil
 }
 
-func (t *TokenAPI) status(request router.RouterRequest) {
-	var resp types.MetaResponse
+func (t *TokenAPI) status(request *types.APIrequest) (*types.APIresponse, error) {
+	var resp types.APIresponse
 
 	if len(request.EntityID) == 0 {
 		log.Errorf("invalid entity %s", request.EntityID)
-		t.Router.SendError(request, "invalid entityID")
-		return
-
+		return nil, fmt.Errorf("invalid entityID")
 	}
 
 	// either token or valid member info should be valid
 	if len(request.Token) == 0 {
 		log.Errorf("empty token validation for entity %s", request.EntityID)
-		t.Router.SendError(request, "invalid token")
-		return
+		return nil, fmt.Errorf("invalid token")
 	}
 	uid, err := uuid.Parse(request.Token)
 	if err != nil {
 		log.Errorf("invalid token id format %s for entity %s:(%v)", request.Token, request.EntityID, err)
-		t.Router.SendError(request, "invalid token format")
-		return
+		return nil, fmt.Errorf("invalid token format")
 	}
 
 	secret, err := t.getSecret(request.EntityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Errorf("status: invalid entity id %s", request.EntityID)
-			t.Router.SendError(request, "invalid entityID")
-			return
+			return nil, fmt.Errorf("invalid entityID")
 
 		}
 		log.Errorf("status: database error error retrieving entity (%q) : (%v)", request.EntityID, err)
-		t.Router.SendError(request, "error retrieving entity")
-		return
+		return nil, fmt.Errorf("error retrieving entity")
 	}
 	if !checkAuth(
 		request.Timestamp, request.AuthHash,
 		request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), request.Token, secret) {
 		log.Errorf("invalid authentication: checkAuth error for entity (%q) to validate token (%q): (%v)", request.EntityID, request.Token, err)
-		t.Router.SendError(request, "invalid authentication")
-		return
+		return nil, fmt.Errorf("invalid authentication")
 	}
 	member, err := t.db.Member(request.EntityID, &uid)
 	if err != nil {
@@ -218,28 +143,25 @@ func (t *TokenAPI) status(request router.RouterRequest) {
 		}
 		log.Errorf("database error: trying to get status for token (%q) for entity (%q): (%v)", request.Token, request.EntityID, err)
 		resp.TokenStatus = "invalid"
-		t.send(&request, &resp)
-		return
+		return &resp, nil
 	}
 
 	if len(member.PubKey) != ethereum.PubKeyLengthBytes {
 		log.Debugf("status for member with token (%q) for entity (%s): ", request.Token, request.EntityID)
 		resp.TokenStatus = "available"
-		t.send(&request, &resp)
-		return
+		return &resp, nil
 	}
 
 	resp.TokenStatus = "registered"
-	t.send(&request, &resp)
+	return &resp, nil
 }
 
-func (t *TokenAPI) generate(request router.RouterRequest) {
-	var response types.MetaResponse
+func (t *TokenAPI) generate(request *types.APIrequest) (*types.APIresponse, error) {
+	var response types.APIresponse
 
 	if len(request.EntityID) == 0 {
 		log.Errorf("trying to generate tokens for null entity %s", request.EntityID)
-		t.Router.SendError(request, "invalid entityId")
-		return
+		return nil, fmt.Errorf("invalid entityId")
 
 	}
 
@@ -247,26 +169,22 @@ func (t *TokenAPI) generate(request router.RouterRequest) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Errorf("generate: invalid entity id %s", request.EntityID)
-			t.Router.SendError(request, "invalid entityID")
-			return
+			return nil, fmt.Errorf("invalid entityID")
 
 		}
 		log.Errorf("generate: database error error retrieving entity (%q) : (%v)", request.EntityID, err)
-		t.Router.SendError(request, "error retrieving entity")
-		return
+		return nil, fmt.Errorf("error retrieving entity")
 	}
 	if !checkAuth(
 		request.Timestamp, request.AuthHash,
 		fmt.Sprintf("%d", request.Amount), request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), secret) {
 		log.Errorf("invalid authentication: checkAuth error for entity (%q) to generate tokens: (%v)", request.EntityID, err)
-		t.Router.SendError(request, "invalid authentication")
-		return
+		return nil, fmt.Errorf("invalid authentication")
 	}
 
 	if request.Amount < 1 {
 		log.Errorf("invalid token amount requested by %s", request.EntityID)
-		t.Router.SendError(request, "invalid token amount")
-		return
+		return nil, fmt.Errorf("invalid token amount")
 	}
 
 	for i := 0; i < request.Amount; i++ {
@@ -275,106 +193,92 @@ func (t *TokenAPI) generate(request router.RouterRequest) {
 	// TODO: Probably I need to initialize tokens
 	if err = t.db.CreateMembersWithTokens(request.EntityID, response.Tokens); err != nil {
 		log.Errorf("could not create members with generated tokens for %q: (%v)", request.SignaturePublicKey, err)
-		t.Router.SendError(request, "could not generate tokens")
-		return
+		return nil, fmt.Errorf("could not generate tokens")
 	}
 
 	log.Debugf("Entity: %x generateTokens: %d tokens", request.SignaturePublicKey, len(response.Tokens))
-	t.send(&request, &response)
+	return &response, nil
 }
 
-func (t *TokenAPI) importKeysBulk(request router.RouterRequest) {
-	var response types.MetaResponse
+func (t *TokenAPI) importKeysBulk(request *types.APIrequest) (*types.APIresponse, error) {
+	var response types.APIresponse
 
 	if len(request.EntityID) == 0 || len(request.Keys) == 0 {
-		t.Router.SendError(request, "invalid arguments")
-		return
+		return nil, fmt.Errorf("invalid arguments")
 	}
 
 	secret, err := t.getSecret(request.EntityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Errorf("importKeysBulk: invalid entity id %s", request.EntityID)
-			t.Router.SendError(request, "invalid entityID")
-			return
+			return nil, fmt.Errorf("invalid entityID")
 
 		}
 		log.Errorf("importKeysBulk: database error error retrieving entity (%q) : (%v)", request.EntityID, err)
-		t.Router.SendError(request, "error retrieving entity")
-		return
+		return nil, fmt.Errorf("error retrieving entity")
 	}
 	if !checkAuth(
 		request.Timestamp, request.AuthHash,
 		request.Keys, request.EntityID, request.Method, fmt.Sprintf("%d", request.Timestamp), secret) {
 		log.Errorf("importKeysBulk invalid authentication: checkAuth error for entity (%q)", request.EntityID)
-		t.Router.SendError(request, "invalid authentication")
-		return
+		return nil, fmt.Errorf("invalid authentication")
 	}
 
 	members := make([]types.Member, len(request.Keys))
 	for i, claim := range request.Keys {
 		if members[i].PubKey, err = hex.DecodeString(dvoteutil.TrimHex(claim)); err != nil {
 			log.Errorf("importKeysBulk: error decoding claim (%s): (%v)", claim, err)
-			t.Router.SendError(request, fmt.Sprintf("error decoding claim (%s)", claim))
-			return
+			return nil, fmt.Errorf("error decoding claim (%s)", claim)
 		}
 	}
 
 	if err = t.db.AddMemberBulk(request.EntityID, members); err != nil {
 		log.Errorf("importKeysBulk: could not import provided keys for %s: (%v)", request.EntityID, err)
-		t.Router.SendError(request, "could not import keys")
-		return
+		return nil, fmt.Errorf("could not import keys")
 	}
 
 	log.Debugf("Entity: %x importKeysBulk: %d tokens", request.SignaturePublicKey, len(request.Keys))
-	t.send(&request, &response)
+	return &response, nil
 }
 
-func (t *TokenAPI) listKeys(request router.RouterRequest) {
-	var response types.MetaResponse
+func (t *TokenAPI) listKeys(request *types.APIrequest) (*types.APIresponse, error) {
+	var response types.APIresponse
 
 	if len(request.EntityID) == 0 {
-		t.Router.SendError(request, "invalid arguments")
-		return
+		return nil, fmt.Errorf("invalid arguments")
 	}
 
 	secret, err := t.getSecret(request.EntityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Errorf("invalid entity id: trying to validate token  %q for non-existing entity %s", request.Token, request.EntityID)
-			t.Router.SendError(request, "invalid entityID")
-			return
+			return nil, fmt.Errorf("invalid entityID")
 
 		}
 		log.Errorf("database error: error retrieving entity (%q) to validate token (%q): (%v)", request.EntityID, request.Token, err)
-		t.Router.SendError(request, "error retrieving entity")
-		return
+		return nil, fmt.Errorf("error retrieving entity")
 	}
 	if !checkAuth(
 		request.Timestamp, request.AuthHash,
 		request.EntityID, request.ListOptions, request.Method, fmt.Sprintf("%d", request.Timestamp), secret) {
 		log.Errorf("importKeysBulk invalid authentication: checkAuth error for entity (%v)", request.EntityID)
-		t.Router.SendError(request, "invalid authentication")
-		return
+		return nil, fmt.Errorf("invalid authentication")
 	}
 
 	// check filter
 	if err = checkOptions(request.ListOptions, request.Method); err != nil {
 		log.Errorf("invalid filter options %q: (%v)", request.SignaturePublicKey, err)
-		t.Router.SendError(request, "invalid filter options")
-		return
+		return nil, fmt.Errorf("invalid filter options")
 	}
 
 	// Query for members
 	members, err := t.db.ListMembers(request.EntityID, request.ListOptions)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			t.Router.SendError(request, "no members found")
-			return
+			return nil, fmt.Errorf("no members found")
 		}
 		log.Errorf("cannot retrieve members of %q: (%v)", request.SignaturePublicKey, err)
-		t.Router.SendError(request, "cannot retrieve members")
-		return
+		return nil, fmt.Errorf("cannot retrieve members")
 	}
 	var keys []string
 	for _, member := range members {
@@ -386,35 +290,31 @@ func (t *TokenAPI) listKeys(request router.RouterRequest) {
 
 	response.Keys = keys
 	log.Debugf("Entity: %x listKeys, dump %d keys from %d members", request.EntityID, len(keys), len(members))
-	t.send(&request, &response)
+	return &response, nil
 }
 
-func (t *TokenAPI) deleteKeys(request router.RouterRequest) {
-	var response types.MetaResponse
+func (t *TokenAPI) deleteKeys(request *types.APIrequest) (*types.APIresponse, error) {
+	var response types.APIresponse
 
 	if len(request.EntityID) == 0 {
-		t.Router.SendError(request, "invalid arguments")
-		return
+		return nil, fmt.Errorf("invalid arguments")
 	}
 
 	secret, err := t.getSecret(request.EntityID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Errorf("deleteKeys: invalid entity id %s", request.EntityID)
-			t.Router.SendError(request, "invalid entityID")
-			return
+			return nil, fmt.Errorf("invalid entityID")
 
 		}
 		log.Errorf("deleteKeys: database error error retrieving entity (%q) : (%v)", request.EntityID, err)
-		t.Router.SendError(request, "error retrieving entity")
-		return
+		return nil, fmt.Errorf("error retrieving entity")
 	}
 	if !checkAuth(
 		request.Timestamp, request.AuthHash,
 		request.EntityID, request.Keys, request.Method, fmt.Sprintf("%d", request.Timestamp), secret) {
 		log.Errorf("deleteKeys: invalid authentication: checkAuth error for entity (%v)", request.EntityID)
-		t.Router.SendError(request, "invalid authentication")
-		return
+		return nil, fmt.Errorf("invalid authentication")
 	}
 
 	//convert keys to []byte
@@ -423,7 +323,7 @@ func (t *TokenAPI) deleteKeys(request router.RouterRequest) {
 		keyBytes, err := hex.DecodeString(key)
 		if err != nil {
 			log.Errorf("deleteKeys: error decoding key %s for entity %s", key, request.EntityID)
-			t.Router.SendError(request, "error decoding keys")
+			return nil, fmt.Errorf("error decoding keys")
 		}
 		keys[i] = keyBytes
 	}
@@ -431,12 +331,10 @@ func (t *TokenAPI) deleteKeys(request router.RouterRequest) {
 	deleted, invalidKeysBytes, err := t.db.DeleteMembersByKeys(request.EntityID, keys)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			t.Router.SendError(request, "no members found")
-			return
+			return nil, fmt.Errorf("no members found")
 		}
 		log.Errorf("deleteKeys: cannot delete members of %q: (%v)", request.SignaturePublicKey, err)
-		t.Router.SendError(request, "cannot delete members")
-		return
+		return nil, fmt.Errorf("cannot delete members")
 	}
 	response.Count = deleted
 
@@ -445,7 +343,7 @@ func (t *TokenAPI) deleteKeys(request router.RouterRequest) {
 		response.InvalidKeys = append(response.InvalidKeys, fmt.Sprintf("%x", key))
 	}
 	log.Debugf("Entity: %x deleteKeys: %d deleted, %d invalid and %d duplicate keys", request.EntityID, deleted, len(invalidKeysBytes), len(request.Keys)-deleted-len(invalidKeysBytes))
-	t.send(&request, &response)
+	return &response, nil
 }
 
 func checkOptions(filter *types.ListOptions, method string) error {

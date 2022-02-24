@@ -101,6 +101,7 @@ func TestEntity(t *testing.T) {
 		Name:                    "test1 entity",
 		CallbackURL:             "http://127.0.0.1/extapi",
 		CallbackSecret:          "asdafgewgrf",
+		Consented:               true, //same
 	}
 	count, err := api.DB.UpdateEntity(entityID, updateInfo)
 	if err != nil {

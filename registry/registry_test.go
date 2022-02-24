@@ -10,13 +10,9 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"go.vocdoni.io/dvote/crypto/ethereum"
-	"go.vocdoni.io/dvote/multirpc/transports"
-	"go.vocdoni.io/dvote/multirpc/transports/mhttp"
 
 	"go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/manager/database/testdb"
-	"go.vocdoni.io/manager/registry"
-	"go.vocdoni.io/manager/router"
 	"go.vocdoni.io/manager/test/testcommon"
 	"go.vocdoni.io/manager/types"
 )
@@ -30,71 +26,17 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestNewRegistry(t *testing.T) {
-	registry := registry.NewRegistry(nil, nil, nil)
-	if registry == nil {
-		t.Fatal("cannot create registry")
-	}
-}
-
-func TestRegisterMethods(t *testing.T) {
-	// create signer
-	signer := ethereum.NewSignKeys()
-	if err := signer.Generate(); err != nil {
-		t.Fatalf("cannot generate signer: %v", err)
-	}
-	// create proxy
-	pxy := mhttp.NewProxy()
-	pxy.Conn.Address = "127.0.0.1"
-	pxy.Conn.Port = 0
-	// init proxy
-	if err := pxy.Init(); err != nil {
-		t.Fatalf("cannot init proxy: %v", err)
-	}
-	// create router channel
-	listenerOutput := make(chan transports.Message)
-	// create ws
-	//ws := new(net.WebsocketHandle)
-	//ws.Init(new(dvotetypes.Connection))
-	//ws.SetProxy(pxy)
-	// create http
-	http := new(mhttp.HttpHandler)
-	if err := http.Init(new(transports.Connection)); err != nil {
-		t.Fatalf("cannot start http handler: (%s)", err)
-	}
-	http.SetProxy(pxy)
-	go http.Listen(listenerOutput)
-	// create transports map
-	ts := make(map[string]transports.Transport)
-	//ts["ws"] = ws
-	ts["http"] = http
-	// init router
-	r := router.InitRouter(listenerOutput, ts, signer)
-	// create database
-	db, err := testdb.New()
-	if err != nil {
-		t.Fatalf("cannot create DB: %v", err)
-	}
-	// create registry
-	registry := registry.NewRegistry(r, db, nil)
-	// register methods
-	if err := registry.RegisterMethods(""); err != nil {
-		t.Fatalf("cannot register methods: %v", err)
-
-	}
-}
-
 func TestSend(t *testing.T) {
 	// nothing to test here, router layer
 }
 
 func TestRegister(t *testing.T) {
-	var req types.MetaRequest
+	var req types.APIrequest
 	// generate signing keys
 	s := ethereum.NewSignKeys()
 	s.Generate()
 	// connect to endpoint
-	conn, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
+	conn, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -116,7 +58,7 @@ func TestRegister(t *testing.T) {
 	s2 := ethereum.NewSignKeys()
 	// generate signing keys
 	s2.Generate()
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "register"
 	req2.EntityID = util.RandomBytes(ethcommon.AddressLength)
 	if err != nil {
@@ -133,7 +75,7 @@ func TestRegister(t *testing.T) {
 	}
 
 	// should fail if add member fails
-	var req4 types.MetaRequest
+	var req4 types.APIrequest
 	req4.Method = "register"
 	req4.EntityID = util.RandomBytes(ethcommon.AddressLength)
 	req4.MemberInfo = &types.MemberInfo{
@@ -147,7 +89,7 @@ func TestRegister(t *testing.T) {
 	}
 
 	// should fail if entity does not exist
-	var req7 types.MetaRequest
+	var req7 types.APIrequest
 	req7.Method = "register"
 	req7.EntityID, err = hex.DecodeString("f6da3e4864d566faf82163a407e84a9001592678")
 	if err != nil {
@@ -165,7 +107,7 @@ func TestRegister(t *testing.T) {
 
 	// TODO: Enable if separate select query for Entity
 	// should fail if req.entityID != fetched entity.ID
-	// var req8 types.MetaRequest
+	// var req8 types.APIrequest
 	// req8.Method = "register"
 	// req8.EntityID = "ca526af2aaa0f3e9bb68ab80de4392590f7b153a"
 	// req8.MemberInfo = &types.MemberInfo{
@@ -178,7 +120,7 @@ func TestRegister(t *testing.T) {
 	// }
 
 	// if user does not exist create
-	var req9 types.MetaRequest
+	var req9 types.APIrequest
 	constSigner := ethereum.NewSignKeys()
 	constSigner.AddHexKey(testdb.Signers[0].Priv)
 	req9.Method = "register"
@@ -195,7 +137,7 @@ func TestRegister(t *testing.T) {
 
 	// should fail if user does not exist and fails on create
 	// TODO: Update for uncompressed pubkey
-	// var req10 types.MetaRequest
+	// var req10 types.APIrequest
 	// constSigner2 := ethereum.NewSignKeys()
 	// constSigner2.AddHexKey(testdb.Signers[1].Priv)
 	// req10.Method = "register"
@@ -212,7 +154,7 @@ func TestRegister(t *testing.T) {
 
 	// should fail cannot query for user
 	// TODO: Update for uncompressed pubkey
-	// var req11 types.MetaRequest
+	// var req11 types.APIrequest
 	// constSigner3 := ethereum.NewSignKeys()
 	// constSigner3.AddHexKey(testdb.Signers[2].Priv)
 	// //p1, p2 := constSigner3.HexString()
@@ -231,13 +173,13 @@ func TestRegister(t *testing.T) {
 }
 
 func TestStatus(t *testing.T) {
-	var req types.MetaRequest
+	var req types.APIrequest
 	s := ethereum.NewSignKeys()
 
 	// generate signing keys
 	s.Generate()
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -256,7 +198,7 @@ func TestStatus(t *testing.T) {
 	}
 
 	// check user is registered calling status
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "registrationStatus"
 	req2.EntityID = util.RandomBytes(ethcommon.AddressLength)
 	resp2 := wsc.Request(req2, s)
@@ -271,7 +213,7 @@ func TestStatus(t *testing.T) {
 	}
 
 	// should fail if entity does not exist
-	var req4 types.MetaRequest
+	var req4 types.APIrequest
 	req4.Method = "registrationStatus"
 	req4.EntityID, err = hex.DecodeString("f6da3e4864d566faf82163a407e84a9001592678")
 	if err != nil {
@@ -284,7 +226,7 @@ func TestStatus(t *testing.T) {
 
 	// registered should be false if user is not a member
 	// TODO: Update for uncompressed pubkey
-	// var req6 types.MetaRequest
+	// var req6 types.APIrequest
 	// constSigner2 := ethereum.NewSignKeys()
 	// constSigner2.AddHexKey(testdb.Signers[3].Priv)
 	// req6.Method = "registrationStatus"
@@ -298,12 +240,12 @@ func TestStatus(t *testing.T) {
 }
 
 func TestSubscribe(t *testing.T) {
-	var req types.MetaRequest
+	var req types.APIrequest
 	s := ethereum.NewSignKeys()
 	// generate signing keys
 	s.Generate()
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -315,12 +257,12 @@ func TestSubscribe(t *testing.T) {
 	}
 }
 func TestUnsubscribe(t *testing.T) {
-	var req types.MetaRequest
+	var req types.APIrequest
 	s := ethereum.NewSignKeys()
 	// generate signing keys
 	s.Generate()
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)

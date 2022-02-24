@@ -11,6 +11,7 @@ import (
 
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.vocdoni.io/dvote/httprouter"
 	"go.vocdoni.io/manager/ethclient"
 	"go.vocdoni.io/manager/types"
 
@@ -22,10 +23,6 @@ import (
 	"go.vocdoni.io/manager/database/pgsql"
 	"go.vocdoni.io/manager/manager"
 	"go.vocdoni.io/manager/smtpclient"
-
-	"go.vocdoni.io/manager/registry"
-	endpoint "go.vocdoni.io/manager/services/api-endpoint"
-	"go.vocdoni.io/manager/tokenapi"
 )
 
 func newConfig() (*config.Manager, config.Error) {
@@ -233,9 +230,10 @@ func main() {
 	log.Infof("my public key: %s", pub)
 	log.Infof("my address: %s", signer.AddressString())
 
-	// WS Endpoint and Router
-	ep, err := endpoint.NewEndpoint(cfg, signer)
-	if err != nil {
+	var httpRouter httprouter.HTTProuter
+	httpRouter.TLSdomain = cfg.API.Ssl.Domain
+	httpRouter.TLSdirCert = cfg.API.Ssl.DirCert
+	if err = httpRouter.Init(cfg.API.ListenHost, cfg.API.ListenPort); err != nil {
 		log.Fatal(err)
 	}
 
@@ -270,15 +268,6 @@ func main() {
 	}
 	defer smtp.ClosePool()
 
-	// User registry
-	if cfg.Mode == "registry" || cfg.Mode == "all" {
-		log.Infof("enabling Registry API methods")
-		reg := registry.NewRegistry(ep.Router, db, ep.MetricsAgent)
-		if err := reg.RegisterMethods(cfg.API.Route); err != nil {
-			log.Fatal(err)
-		}
-	}
-
 	// Manager
 	signers := make([]*ethclient.Signer, len(cfg.SigningKeys))
 	privs := make([]string, len(cfg.SigningKeys))
@@ -308,26 +297,40 @@ func main() {
 		log.Infof("my %s balance is %s", cfg.EthNetwork.Name, balance.String())
 	}
 
+	// var ma *metrics.Agent
+	// if cfg.Metrics != nil && cfg.Metrics.Enabled {
+	// 	ma = metrics.NewAgent("/metrics", time.Second*time.Duration(cfg.Metrics.RefreshInterval), httpRouter)
+	// }
+
+	// var managerapi *rpcapi.RPCAPI
 	if cfg.Mode == "manager" || cfg.Mode == "all" {
 		log.Infof("enabling Manager API methods")
-		mgr := manager.NewManager(ep.Router, db, smtp, ethClient)
-		if err := mgr.RegisterMethods(cfg.API.Route); err != nil {
+		mg, err := manager.NewManager(signer, &httpRouter, cfg.API.Route, db, smtp, ethClient)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := mg.EnableAPI(); err != nil {
 			log.Fatal(err)
 		}
 	}
+
+	// // User registry
+	// if cfg.Mode == "registry" || cfg.Mode == "all" {
+	// 	log.Infof("enabling Registry API methods")
+	// 	reg := registry.NewRegistry(ep.Router, db, ep.MetricsAgent)
+	// 	if err := reg.RegisterMethods(cfg.API.Route); err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// }
 
 	// External token API
-	if cfg.Mode == "token" || cfg.Mode == "all" {
-		log.Infof("enabling Token API methods")
-		tok := tokenapi.NewTokenAPI(ep.Router, db, ep.MetricsAgent)
-		if err := tok.RegisterMethods(cfg.API.Route); err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	// Only start routing once we have registered all methods. Otherwise we
-	// have a data race.
-	go ep.Router.Route()
+	// if cfg.Mode == "token" || cfg.Mode == "all" {
+	// 	log.Infof("enabling Token API methods")
+	// 	tok := tokenapi.NewTokenAPI(ep.Router, db, ep.MetricsAgent)
+	// 	if err := tok.RegisterMethods(cfg.API.Route); err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// }
 
 	log.Info("startup complete")
 	// close if interrupt received

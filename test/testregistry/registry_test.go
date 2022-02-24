@@ -54,13 +54,13 @@ func TestRegister(t *testing.T) {
 		t.Fatalf("cannot create members: %s", err)
 	}
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// register member without token
-	var req types.MetaRequest
+	var req types.APIrequest
 	// create register request
 	req.Method = "register"
 	req.EntityID = entities[0].ID
@@ -126,13 +126,13 @@ func TestValidateToken(t *testing.T) {
 	}
 
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// register member without token
-	var req types.MetaRequest
+	var req types.APIrequest
 	// create register request
 	req.Method = "validateToken"
 	req.EntityID = entities[0].ID
@@ -293,14 +293,14 @@ func TestStatus(t *testing.T) {
 		t.Fatalf("cannot create members: %s", err)
 	}
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/registry", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 
 	// check status added and linked member
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "registrationStatus"
 	req.EntityID = entities[0].ID
 	resp := wsc.Request(req, membersSigners[0])
@@ -319,7 +319,7 @@ func TestStatus(t *testing.T) {
 		t.Fatalf("cannot add created members into database: %s", err)
 	}
 	// check status added and linked member
-	// var req types.MetaRequest
+	// var req types.APIrequest
 	req.Method = "registrationStatus"
 	req.EntityID = entities[0].ID
 	resp = wsc.Request(req, membersSigners[0])
@@ -334,7 +334,7 @@ func TestStatus(t *testing.T) {
 		t.Fatalf("cannot add user into database: %s", err)
 	}
 	// check user not registered
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "registrationStatus"
 	req2.EntityID = entities[0].ID
 	resp2 := wsc.Request(req2, membersSigners[1])
