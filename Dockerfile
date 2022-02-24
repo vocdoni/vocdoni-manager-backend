@@ -14,7 +14,7 @@ RUN apt update && apt install -y ca-certificates
 # Build all the binaries at once, so that the final targets don't require having
 # Go installed to build each of them.
 COPY . .
-RUN go build -o=. -ldflags='-w -s' ./cmd/dvotemanager ./cmd/managertest ./cmd/dvotenotif
+RUN go build -o=. -ldflags='-w -s' ./cmd/dvotemanager ./cmd/managertest
 
 FROM debian:10.8-slim as managertest
 
@@ -22,14 +22,6 @@ WORKDIR /app
 COPY --from=builder /src/managertest ./
 
 ENTRYPOINT ["/app/managertest"]
-
-FROM debian:10.8-slim as dvotenotif
-
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-WORKDIR /app
-COPY --from=builder /src/dvotenotif ./
-
-ENTRYPOINT ["/app/dvotenotif"]
 
 FROM debian:10.8-slim
 
