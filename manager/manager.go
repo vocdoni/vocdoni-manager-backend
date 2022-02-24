@@ -13,176 +13,32 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
-	"go.vocdoni.io/manager/ethclient"
 
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
-	"go.vocdoni.io/dvote/multirpc/transports"
-	"go.vocdoni.io/manager/database"
 	"go.vocdoni.io/manager/database/pgsql"
-	"go.vocdoni.io/manager/router"
-	"go.vocdoni.io/manager/smtpclient"
 	"go.vocdoni.io/manager/types"
 	"go.vocdoni.io/manager/util"
 )
 
-type Manager struct {
-	Router *router.Router
-	db     database.Database
-	smtp   *smtpclient.SMTP
-	eth    *ethclient.Eth
-}
-
-// NewManager creates a new registry handler for the Router
-func NewManager(r *router.Router, d database.Database, s *smtpclient.SMTP, ethclient *ethclient.Eth) *Manager {
-	return &Manager{Router: r, db: d, smtp: s, eth: ethclient}
-}
-
-// RegisterMethods registers all registry methods behind the given path
-func (m *Manager) RegisterMethods(path string) error {
-	var transport transports.Transport
-	if tr, ok := m.Router.Transports["httpws"]; ok {
-		transport = tr
-	} else if tr, ok = m.Router.Transports["ws"]; ok {
-		transport = tr
-	} else if tr, ok = m.Router.Transports["http"]; ok {
-		transport = tr
-	} else {
-		return fmt.Errorf("no compatible transports found (ws or http)")
-	}
-
-	log.Infof("adding namespace manager %s", path+"/manager")
-	transport.AddNamespace(path + "/manager")
-	if err := m.Router.AddHandler("getInfo", path+"/manager", m.Router.Info, false, true); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("signUp", path+"/manager", m.signUp, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("getEntity", path+"/manager", m.getEntity, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("updateEntity", path+"/manager", m.updateEntity, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("countMembers", path+"/manager", m.countMembers, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("listMembers", path+"/manager", m.listMembers, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("getMember", path+"/manager", m.getMember, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("updateMember", path+"/manager", m.updateMember, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("deleteMembers", path+"/manager", m.deleteMembers, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("generateTokens", path+"/manager", m.generateTokens, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("exportTokens", path+"/manager", m.exportTokens, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("importMembers", path+"/manager", m.importMembers, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("countTargets", path+"/manager", m.countTargets, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("listTargets", path+"/manager", m.listTargets, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("getTarget", path+"/manager", m.getTarget, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("dumpTarget", path+"/manager", m.dumpTarget, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("dumpCensus", path+"/manager", m.dumpCensus, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("addCensus", path+"/manager", m.addCensus, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("updateCensus", path+"/manager", m.updateCensus, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("getCensus", path+"/manager", m.getCensus, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("countCensus", path+"/manager", m.countCensus, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("listCensus", path+"/manager", m.listCensus, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("deleteCensus", path+"/manager", m.deleteCensus, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("sendValidationLinks", path+"/manager", m.sendValidationLinks, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("sendVotingLinks", path+"/manager", m.sendVotingLinks, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("createTag", path+"/manager", m.createTag, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("listTags", path+"/manager", m.listTags, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("deleteTag", path+"/manager", m.deleteTag, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("addTag", path+"/manager", m.addTag, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("removeTag", path+"/manager", m.removeTag, false, false); err != nil {
-		return err
-	}
-	if err := m.Router.AddHandler("adminEntityList", path+"/manager", m.adminEntityList, false, false); err != nil {
-		return err
-	}
-	if m.eth != nil {
-		// do not expose this endpoint if the manager does not have an ethereum client
-		if err := m.Router.AddHandler("requestGas", path+"/manager", m.requestGas, false, false); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (m *Manager) send(req *router.RouterRequest, resp *types.MetaResponse) {
-	if req == nil || req.MessageContext == nil || resp == nil {
-		log.Errorf("message context or request is nil, cannot send reply message")
-		return
-	}
-	req.Send(m.Router.BuildReply(req, resp))
-}
-
-func (m *Manager) signUp(request router.RouterRequest) {
+func (m *Manager) signUp(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var entityInfo *types.EntityInfo
 	var target *types.Target
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	// dvoteutil.IsHexEncodedStringWithLength
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	entityInfo = &types.EntityInfo{CensusManagersAddresses: [][]byte{entityID}, Origins: []types.Origin{types.Token}}
@@ -198,15 +54,13 @@ func (m *Manager) signUp(request router.RouterRequest) {
 	// Add Entity
 	if err = m.db.AddEntity(entityID, entityInfo); err != nil && !strings.Contains(err.Error(), "entities_pkey") {
 		log.Errorf("cannot add entity %x to the DB: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot add entity to the DB")
-		return
+		return nil, fmt.Errorf("cannot add entity to the DB")
 	}
 
 	target = &types.Target{EntityID: entityID, Name: "all", Filters: json.RawMessage([]byte("{}"))}
 	if _, err = m.db.AddTarget(entityID, target); err != nil && !strings.Contains(err.Error(), "result has no rows") {
 		log.Errorf("cannot create entity's %x generic target: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot create entity generic target")
-		return
+		return nil, fmt.Errorf("cannot create entity generic target")
 	}
 
 	entityAddress := ethcommon.BytesToAddress(entityID)
@@ -217,8 +71,7 @@ func (m *Manager) signUp(request router.RouterRequest) {
 		if err != nil {
 			if !strings.Contains(err.Error(), "maxAcceptedBalance") {
 				log.Errorf("error sending tokens to entity %s : %v", entityAddress.String(), err)
-				m.Router.SendError(request, fmt.Sprintf("could not send tokens to %s", entityAddress.String()))
-				return
+				return nil, fmt.Errorf("could not send tokens to %s", entityAddress.String())
 			}
 			log.Warnf("signUp not sending tokens to entity %s : %v", entityAddress.String(), err)
 		}
@@ -226,67 +79,60 @@ func (m *Manager) signUp(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %s signUp", entityAddress.String())
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) getEntity(request router.RouterRequest) {
+func (m *Manager) getEntity(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	if response.Entity, err = m.db.Entity(entityID); err != nil {
 		if err == sql.ErrNoRows {
 			log.Errorf("entity requesting its info with getEntity not found")
-			m.Router.SendError(request, "entity not found")
-			return
+			return nil, fmt.Errorf("entity not found")
 		}
 		log.Errorf("cannot retrieve details of entity %x: (%v)", entityID, err)
-		m.Router.SendError(request, "cannot retrieve entity")
-		return
+		return nil, fmt.Errorf("cannot retrieve entity")
 	}
 
 	log.Infof("listing details of Entity %x", entityID)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) updateEntity(request router.RouterRequest) {
+func (m *Manager) updateEntity(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	// dvoteutil.IsHexEncodedStringWithLength
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	if request.Entity == nil {
 		log.Errorf("updateEntity with no entity data to update for %x", entityID)
-		m.Router.SendError(request, "no entity data to update")
-		return
+		return nil, fmt.Errorf("no entity data to update")
 	}
 
 	entityInfo := &types.EntityInfo{
@@ -306,89 +152,78 @@ func (m *Manager) updateEntity(request router.RouterRequest) {
 	// Add Entity
 	if response.Count, err = m.db.UpdateEntity(entityID, entityInfo); err != nil {
 		log.Errorf("cannot update entity %x to the DB: (%v)", entityID, err)
-		m.Router.SendError(request, "cannot update entity")
-		return
+		return nil, fmt.Errorf("cannot update entity")
 	}
 
 	log.Debugf("Entity: %x entityUpdate", entityID)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) listMembers(request router.RouterRequest) {
+func (m *Manager) listMembers(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	// check filter
 	if err = checkOptions(request.ListOptions, request.Method); err != nil {
 		log.Warnf("invalid filter options %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "invalid filter options")
-		return
+		return nil, fmt.Errorf("invalid filter options")
 	}
 
 	// Query for members
 	if response.Members, err = m.db.ListMembers(entityID, request.ListOptions); err != nil {
 		if err == sql.ErrNoRows {
-			m.Router.SendError(request, "no members found")
-			return
+			return nil, fmt.Errorf("no members found")
 		}
 		log.Errorf("cannot retrieve members of %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot retrieve members")
-		return
+		return nil, fmt.Errorf("cannot retrieve members")
 	}
 
 	log.Debugf("Entity: %x listMembers %d members", request.SignaturePublicKey, len(response.Members))
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) getMember(request router.RouterRequest) {
+func (m *Manager) getMember(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	if request.MemberID == nil {
 		log.Warnf("memberID is nil on getMember")
-		m.Router.SendError(request, "invalid memberId")
-		return
+		return nil, fmt.Errorf("invalid memberId")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	if response.Member, err = m.db.Member(entityID, request.MemberID); err != nil {
 		if err == sql.ErrNoRows {
 			log.Warn("member not found")
-			m.Router.SendError(request, "member not found")
-			return
+			return nil, fmt.Errorf("member not found")
 		}
 		log.Errorf("cannot retrieve member %q for entity %x: (%v)", request.MemberID.String(), request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot retrieve member")
-		return
+		return nil, fmt.Errorf("cannot retrieve member")
 	}
 
 	// TODO: Change when targets are implemented
@@ -401,133 +236,119 @@ func (m *Manager) getMember(request router.RouterRequest) {
 		response.Target = &targets[0]
 	} else {
 		log.Errorf("error retrieving member %q targets for entity %x: (%v)", request.MemberID.String(), request.SignaturePublicKey, err)
-		m.Router.SendError(request, "error retrieving member targets")
-		return
+		return nil, fmt.Errorf("error retrieving member targets")
 	}
 
 	log.Infof("listing member %q for Entity with public Key %x", request.MemberID.String(), request.SignaturePublicKey)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) updateMember(request router.RouterRequest) {
+func (m *Manager) updateMember(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	if request.Member == nil {
-		m.Router.SendError(request, "invalid member struct")
+		return nil, fmt.Errorf("invalid member struct")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	// If a string Member property is sent as "" then it is not updated
 	if response.Count, err = m.db.UpdateMember(entityID, &request.Member.ID, &request.Member.MemberInfo); err != nil {
 		log.Errorf("cannot update member %q for entity %x: (%v)", request.Member.ID.String(), request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot update member")
-		return
+		return nil, fmt.Errorf("cannot update member")
 	}
 
 	log.Infof("update member %q for Entity with public Key %x", request.Member.ID.String(), request.SignaturePublicKey)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) deleteMembers(request router.RouterRequest) {
+func (m *Manager) deleteMembers(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	if len(request.MemberIDs) == 0 {
-		m.Router.SendError(request, "invalid member list")
-		return
+		return nil, fmt.Errorf("invalid member list")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	response.Count, response.InvalidIDs, err = m.db.DeleteMembers(entityID, request.MemberIDs)
 	if err != nil {
 		log.Errorf("error deleting members for entity %x: (%v)", entityID, err)
-		m.Router.SendError(request, "error deleting members")
-		return
+		return nil, fmt.Errorf("error deleting members")
 	}
 
 	log.Infof("deleted %d members, found %d invalid tokens, for Entity with public Key %x", response.Count, len(response.InvalidIDs), entityID)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) countMembers(request router.RouterRequest) {
+func (m *Manager) countMembers(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	// Query for members
 	if response.Count, err = m.db.CountMembers(entityID); err != nil {
 		log.Errorf("cannot count members for %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot count members")
-		return
+		return nil, fmt.Errorf("cannot count members")
 	}
 
 	log.Debugf("Entity %q countMembers: %d members", request.SignaturePublicKey, response.Count)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) generateTokens(request router.RouterRequest) {
+func (m *Manager) generateTokens(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	if request.Amount < 1 {
 		log.Warnf("invalid token amount requested by %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid token amount")
-		return
+		return nil, fmt.Errorf("invalid token amount")
 	}
 
 	response.Tokens = make([]uuid.UUID, request.Amount)
@@ -537,43 +358,38 @@ func (m *Manager) generateTokens(request router.RouterRequest) {
 	// TODO: Probably I need to initialize tokens
 	if err = m.db.CreateMembersWithTokens(entityID, response.Tokens); err != nil {
 		log.Errorf("could not register generated tokens for %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "could not register generated tokens")
-		return
+		return nil, fmt.Errorf("could not register generated tokens")
 	}
 
 	log.Debugf("Entity: %x generateTokens: %d tokens", request.SignaturePublicKey, len(response.Tokens))
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) exportTokens(request router.RouterRequest) {
+func (m *Manager) exportTokens(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var members []types.Member
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	// TODO: Probably I need to initialize tokens
 	if members, err = m.db.MembersTokensEmails(entityID); err != nil {
 		if err == sql.ErrNoRows {
-			m.Router.SendError(request, "no members found")
-			return
+			return nil, fmt.Errorf("no members found")
 		}
 		log.Errorf("could not retrieve members tokens for %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, err.Error())
-		return
+		return nil, fmt.Errorf("could not retrieve members tokens")
 	}
 	response.MembersTokens = make([]types.TokenEmail, len(members))
 	for idx, member := range members {
@@ -581,32 +397,29 @@ func (m *Manager) exportTokens(request router.RouterRequest) {
 	}
 
 	log.Debugf("Entity: %x exportTokens: %d tokens", request.SignaturePublicKey, len(members))
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) importMembers(request router.RouterRequest) {
+func (m *Manager) importMembers(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	if len(request.MembersInfo) < 1 {
 		log.Warnf("no member data provided for import members by %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "no member data provided")
-		return
+		return nil, fmt.Errorf("no member data provided")
 	}
 
 	for idx := range request.MembersInfo {
@@ -616,67 +429,60 @@ func (m *Manager) importMembers(request router.RouterRequest) {
 	// Add members
 	if err = m.db.ImportMembers(entityID, request.MembersInfo); err != nil {
 		log.Errorf("could not import members for %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, err.Error())
-		return
+		return nil, fmt.Errorf("could not import members")
 	}
 
 	log.Debugf("Entity: %x importMembers: %d members", request.SignaturePublicKey, len(request.MembersInfo))
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) countTargets(request router.RouterRequest) {
+func (m *Manager) countTargets(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	// Query for members
 	if response.Count, err = m.db.CountTargets(entityID); err != nil {
 		log.Errorf("cannot count targets for %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot count targets")
-		return
+		return nil, fmt.Errorf("cannot count targets")
 	}
 
 	log.Debugf("Entity %x countTargets: %d targets", request.SignaturePublicKey, response.Count)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) listTargets(request router.RouterRequest) {
+func (m *Manager) listTargets(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	// check filter
 	if err = checkOptions(request.ListOptions, request.Method); err != nil {
 		log.Warnf("invalid filter options %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, err.Error())
-		return
+		return nil, fmt.Errorf("invalid filter options: (%v)", err)
 	}
 
 	// Retrieve targets
@@ -684,138 +490,121 @@ func (m *Manager) listTargets(request router.RouterRequest) {
 	response.Targets, err = m.db.ListTargets(entityID)
 	if err != nil || len(response.Targets) == 0 {
 		if err == sql.ErrNoRows {
-			m.Router.SendError(request, "no targets found")
-			return
+			return nil, fmt.Errorf("no targets found")
 		}
 		log.Errorf("cannot query targets for %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot query targets")
-		return
+		return nil, fmt.Errorf("cannot query targets")
 	}
 
 	log.Debugf("Entity: %x listTargets: %d targets", request.SignaturePublicKey, len(response.Targets))
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) getTarget(request router.RouterRequest) {
+func (m *Manager) getTarget(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	if response.Target, err = m.db.Target(entityID, request.TargetID); err != nil {
 		if err == sql.ErrNoRows {
 			log.Debugf("target %q not found for %x", request.TargetID.String(), request.SignaturePublicKey)
-			m.Router.SendError(request, "target not found")
-			return
+			return nil, fmt.Errorf("target not found")
 		}
 		log.Errorf("could not retrieve target for %x: %+v", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "could not retrieve target")
-		return
+		return nil, fmt.Errorf("could not retrieve target")
 	}
 
 	response.Members, err = m.db.TargetMembers(entityID, request.TargetID)
 	if err != nil {
 		log.Warn("members for requested target could not be retrieved")
-		m.Router.SendError(request, "members for requested target could not be retrieved")
-		return
+		return nil, fmt.Errorf("members for requested target could not be retrieved")
 	}
 
 	log.Debugf("Entity: %x getTarget: %s", request.SignaturePublicKey, request.TargetID.String())
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) dumpTarget(request router.RouterRequest) {
+func (m *Manager) dumpTarget(request *types.APIrequest) (*types.APIresponse, error) {
 	var target *types.Target
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	if target, err = m.db.Target(entityID, request.TargetID); err != nil || target.Name != "all" {
 		if err == sql.ErrNoRows {
 			log.Debugf("target %q not found for %x", request.TargetID.String(), request.SignaturePublicKey)
-			m.Router.SendError(request, "target not found")
-			return
+			return nil, fmt.Errorf("target not found")
 		}
 		log.Errorf("could not retrieve target for %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "could not retrieve target")
-		return
+		return nil, fmt.Errorf("could not retrieve target")
 	}
 
 	// TODO: Implement DumpTargetClaims filtered directly by target filters
 	if response.Claims, err = m.db.DumpClaims(entityID); err != nil {
 		if err == sql.ErrNoRows {
 			log.Debugf("no claims found for %x", request.SignaturePublicKey)
-			m.Router.SendError(request, "no claims found")
-			return
+			return nil, fmt.Errorf("no claims found")
 		}
 		log.Errorf("cannot dump claims for %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot dump claims")
-		return
+		return nil, fmt.Errorf("cannot dump claims")
 	}
 
 	log.Debugf("Entity: %x dumpTarget: %d claims", request.SignaturePublicKey, len(response.Claims))
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) dumpCensus(request router.RouterRequest) {
+func (m *Manager) dumpCensus(request *types.APIrequest) (*types.APIresponse, error) {
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	entityID, err := util.PubKeyToEntityID(request.SignaturePublicKey)
 	if err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	censusID, err := util.DecodeCensusID(request.CensusID, request.SignaturePublicKey)
 	if err != nil {
 		log.Errorf("cannot decode census id %s for %x", request.CensusID, entityID)
-		m.Router.SendError(request, "cannot decode census id")
-		return
+		return nil, fmt.Errorf("cannot decode census id")
 	}
 
 	// TODO: Implement DumpTargetClaims filtered directly by target filters
 	censusMembers, err := m.db.ExpandCensusMembers(entityID, censusID)
 	if err != nil {
 		log.Errorf("cannot dump claims for %q: (%v)", entityID, err)
-		m.Router.SendError(request, "cannot dump claims")
-		return
+		return nil, fmt.Errorf("cannot dump claims")
 	}
 	shuffledClaims := make([][]byte, len(censusMembers))
 	shuffledIndexes := rand.Perm(len(censusMembers))
@@ -825,43 +614,38 @@ func (m *Manager) dumpCensus(request router.RouterRequest) {
 	response.Claims = shuffledClaims
 
 	log.Debugf("Entity: %x dumpCensus: %d claims", entityID, len(response.Claims))
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) sendVotingLinks(request router.RouterRequest) {
+func (m *Manager) sendVotingLinks(request *types.APIrequest) (*types.APIresponse, error) {
 
 	if len(request.MemberID) == 0 || len(request.ProcessID) == 0 {
-		m.Router.SendError(request, "invalid arguments")
-		return
+		return nil, fmt.Errorf("invalid arguments")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	entityID, err := util.PubKeyToEntityID(request.SignaturePublicKey)
 	if err != nil {
 		log.Errorf("cannot recover %x entityID from public key: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID from public key")
-		return
+		return nil, fmt.Errorf("cannot recover entityID from public key")
 	}
 
 	entity, err := m.db.Entity(entityID)
 	if err != nil {
 		log.Errorf("cannot recover entity %x: (%v)", entityID, err)
-		m.Router.SendError(request, "cannot recover entity from public key")
-		return
+		return nil, fmt.Errorf("cannot recover entity from public key")
 	}
 
 	censusID, err := util.DecodeCensusID(request.CensusID, request.SignaturePublicKey)
 	if err != nil {
 		log.Errorf("cannot decode census id %s for %x", request.CensusID, entityID)
-		m.Router.SendError(request, "cannot decode census id")
-		return
+		return nil, fmt.Errorf("cannot decode census id")
 	}
 
 	if request.Email != "" {
@@ -869,32 +653,28 @@ func (m *Manager) sendVotingLinks(request router.RouterRequest) {
 		censusMember, err := m.db.EphemeralMemberInfoByEmail(entityID, censusID, request.Email)
 		if err != nil {
 			log.Errorf("cannot retrieve ephemeral member %s of  census %x for enity %x: (%v)", request.Email, censusID, entityID, err)
-			m.Router.SendError(request, "cannot retrieve ephemeral census member by email")
-			return
+			return nil, fmt.Errorf("cannot retrieve ephemeral census member by email")
 		}
 		if err := m.smtp.SendVotingLink(censusMember, entity, request.ProcessID); err != nil {
 			log.Errorf("could not send voting link for member %q entity: (%v)", censusMember.ID, err)
-			m.Router.SendError(request, "could not send voting link")
-			return
+			return nil, fmt.Errorf("could not send voting link")
 		}
 		log.Infof("send validation links to 1 members for Entity %x", entityID)
-		var response types.MetaResponse
+		var response types.APIresponse
 		response.Count = 1
-		m.send(&request, &response)
-		return
+		return &response, nil
 	}
 
 	censusMembers, err := m.db.ListEphemeralMemberInfo(entityID, censusID)
 	if err != nil {
 		log.Errorf("cannot retrieve ephemeral members of  census %x for enity %x: (%v)", censusID, entityID, err)
-		m.Router.SendError(request, "cannot retrieve ephemeral census members")
-		return
+		return nil, fmt.Errorf("cannot retrieve ephemeral census members")
 	}
 
-	var response types.MetaResponse
+	var response types.APIresponse
 	if len(censusMembers) == 0 {
 		response.Count = 0
-		m.send(&request, &response)
+		return &response, nil
 	}
 	// send concurrently emails
 	processID := request.ProcessID
@@ -908,7 +688,6 @@ func (m *Manager) sendVotingLinks(request router.RouterRequest) {
 				log.Errorf("could not send voting link for member %q entity: (%v)", member.ID, err)
 				ec <- fmt.Errorf("member %s error  %v", member.ID, err)
 				wg.Done()
-				return
 			}
 			sc <- member.ID
 			wg.Done()
@@ -929,12 +708,11 @@ func (m *Manager) sendVotingLinks(request router.RouterRequest) {
 	}
 	if len(errors)+response.Count != len(censusMembers) {
 		log.Errorf("inconsistency in number of sent emails and errors")
-		m.Router.SendError(request, "inconsistency in number of sent emails and errors")
+		return nil, fmt.Errorf("inconsistency in number of sent emails and errors")
 	}
 	if len(errors) == len(censusMembers) {
 		log.Errorf("no validation email was sent %v", errors)
-		m.Router.SendError(request, "could not send emails")
-		return
+		return nil, fmt.Errorf("could not send emails")
 	}
 	if len(errors) > 0 {
 		response.Message = fmt.Sprintf("%d where found:\n%v", len(errors), errors)
@@ -950,113 +728,100 @@ func (m *Manager) sendVotingLinks(request router.RouterRequest) {
 			if err != nil {
 				log.Infof("send validation links to %d members, skipped %d invalid IDs and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), len(errors), entityID, errors)
 				log.Errorf("error creating Pending tag:  %v", err)
-				m.Router.SendError(request, "sent emails but could not assign tag")
-				return
+				return nil, fmt.Errorf("sent emails but could not assign tag")
 			}
 		} else {
 			log.Infof("send validation links to %d members, skipped %d invalid IDs and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), len(errors), entityID, errors)
 			log.Errorf("error retreiving Pending tag:  %v", err)
-			m.Router.SendError(request, "sent emails but could not assign tag")
-			return
+			return nil, fmt.Errorf("sent emails but could not assign tag")
 		}
 	}
 	_, _, err = m.db.AddTagToMembers(entityID, successUUIDs, tag.ID)
 	if err != nil {
 		log.Infof("send validation links to %d members, skipped %d invalid IDs and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), len(errors), entityID, errors)
 		log.Errorf("error assinging Pending tag:  %v", err)
-		m.Router.SendError(request, "sent emails but could not assign tag")
+		return nil, fmt.Errorf("sent emails but could not assign tag")
 	}
 
 	log.Infof("send validation links to %d members, skipped %d invalid IDs and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), len(errors), entityID, errors)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) addCensus(request router.RouterRequest) {
+func (m *Manager) addCensus(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	if len(request.TargetID) == 0 {
 		log.Debugf("invalid target id %q for %x", request.TargetID.String(), request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid target id")
-		return
+		return nil, fmt.Errorf("invalid target id")
 	}
 
 	if len(request.CensusID) == 0 {
 		log.Debugf("invalid census id %q for %x", request.CensusID, request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid census id")
-		return
+		return nil, fmt.Errorf("invalid census id")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey)
 	if err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	var censusID []byte
 	if censusID, err = util.DecodeCensusID(request.CensusID, request.SignaturePublicKey); err != nil {
-		m.Router.SendError(request, err.Error())
-		return
+		return nil, fmt.Errorf(err.Error())
 	}
 
 	// size, err := m.db.AddCensusWithMembers(entityID, censusID, request.TargetID, request.Census)
 	if err := m.db.AddCensus(entityID, censusID, request.TargetID, request.Census); err != nil {
 		log.Errorf("cannot add census %q  for: %q: (%v)", request.CensusID, entityID, err)
-		m.Router.SendError(request, "cannot add census")
-		return
+		return nil, fmt.Errorf("cannot add census")
 	}
 
 	log.Debugf("Entity: %x addCensus: %s  ", entityID, request.CensusID)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) updateCensus(request router.RouterRequest) {
+func (m *Manager) updateCensus(request *types.APIrequest) (*types.APIresponse, error) {
 	// TODO Handle invalid claims
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	if len(request.CensusID) == 0 {
 		log.Debugf("invalid census id %q for %x", request.CensusID, request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid census id")
-		return
+		return nil, fmt.Errorf("invalid census id")
 	}
 
 	if request.Census == nil {
 		log.Debugf("invalid census info for census %q for entity %x", request.CensusID, request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid census info")
-		return
+		return nil, fmt.Errorf("invalid census info")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey)
 	if err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	var censusID []byte
 	if censusID, err = util.DecodeCensusID(request.CensusID, request.SignaturePublicKey); err != nil {
-		m.Router.SendError(request, err.Error())
-		return
+		return nil, fmt.Errorf(err.Error())
 	}
 
 	if request.InvalidClaims != nil && len(request.InvalidClaims) > 0 {
@@ -1065,124 +830,110 @@ func (m *Manager) updateCensus(request router.RouterRequest) {
 
 	if response.Count, err = m.db.UpdateCensus(entityID, censusID, request.Census); err != nil {
 		log.Errorf("cannot update census %q for %x: (%v)", request.CensusID, entityID, err)
-		m.Router.SendError(request, "cannot update census")
-		return
+		return nil, fmt.Errorf("cannot update census")
 	}
 
 	log.Debugf("Entity: %x updateCensus: %s \n %v", entityID, request.CensusID, request.Census)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) getCensus(request router.RouterRequest) {
+func (m *Manager) getCensus(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	if len(request.CensusID) == 0 {
 		log.Debugf("invalid census id %q for %s", request.CensusID, request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid census id")
-		return
+		return nil, fmt.Errorf("invalid census id")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey)
 	if err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	var censusID []byte
 	if censusID, err = util.DecodeCensusID(request.CensusID, request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot decode census id %s for %x", request.CensusID, request.SignaturePublicKey)
-		m.Router.SendError(request, "cannot decode census id")
-		return
+		return nil, fmt.Errorf("cannot decode census id")
 	}
 
 	response.Census, err = m.db.Census(entityID, censusID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Debugf("census %q not found for %x", request.CensusID, request.SignaturePublicKey)
-			m.Router.SendError(request, "census not found")
-			return
+			return nil, fmt.Errorf("census not found")
 		}
 		log.Errorf("error in retrieving censuses for entity %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot query for censuses")
-		return
+		return nil, fmt.Errorf("cannot query for censuses")
 	}
 
 	response.Target, err = m.db.Target(entityID, &response.Census.TargetID)
 	if err != nil {
 		log.Warn("census target not found")
-		m.Router.SendError(request, "census target not found")
-		return
+		return nil, fmt.Errorf("census target not found")
 	}
 
 	log.Debugf("Entity: %x getCensus:%s", request.SignaturePublicKey, request.CensusID)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) countCensus(request router.RouterRequest) {
+func (m *Manager) countCensus(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	// Query for members
 	if response.Count, err = m.db.CountCensus(entityID); err != nil {
 		log.Errorf("cannot count censuses for %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot count censuses")
-		return
+		return nil, fmt.Errorf("cannot count censuses")
 	}
 
 	log.Debugf("Entity %x countCensus: %d censuses", request.SignaturePublicKey, response.Count)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) listCensus(request router.RouterRequest) {
+func (m *Manager) listCensus(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey)
 	if err != nil {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// check filter
 	if err := checkOptions(request.ListOptions, request.Method); err != nil {
 		log.Warnf("invalid filter options %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "invalid filter options")
-		return
+		return nil, fmt.Errorf("invalid filter options")
 	}
 
 	// Query for members
@@ -1190,102 +941,90 @@ func (m *Manager) listCensus(request router.RouterRequest) {
 	response.Censuses, err = m.db.ListCensus(entityID, request.ListOptions)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			m.Router.SendError(request, "no censuses found")
-			return
+			return nil, fmt.Errorf("no censuses found")
 		}
 		log.Errorf("error in retrieving censuses for entity %x: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot query for censuses")
-		return
+		return nil, fmt.Errorf("cannot query for censuses")
 	}
 	log.Debugf("Entity: %x listCensuses: %d censuses", request.SignaturePublicKey, len(response.Censuses))
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) deleteCensus(request router.RouterRequest) {
+func (m *Manager) deleteCensus(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	if len(request.CensusID) == 0 {
 		log.Debugf("invalid census id %q for %x", request.CensusID, request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid census id")
-		return
+		return nil, fmt.Errorf("invalid census id")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey)
 	if err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	var censusID []byte
 	if censusID, err = util.DecodeCensusID(request.CensusID, request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot decode census id %x for %s", request.CensusID, request.SignaturePublicKey)
-		m.Router.SendError(request, "cannot decode census id")
-		return
+		return nil, fmt.Errorf("cannot decode census id")
 	}
 
 	err = m.db.DeleteCensus(entityID, censusID)
 	if err != nil && err != sql.ErrNoRows {
 		log.Errorf("error deleting census %s for entity %x: (%v)", request.CensusID, entityID, err)
-		m.Router.SendError(request, "cannot delete census")
-		return
+		return nil, fmt.Errorf("cannot delete census")
 	}
 
 	log.Debugf("Entity: %x deleteCensus:%s", entityID, request.CensusID)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) sendValidationLinks(request router.RouterRequest) {
+func (m *Manager) sendValidationLinks(request *types.APIrequest) (*types.APIresponse, error) {
 
 	if len(request.MemberID) == 0 {
-		m.Router.SendError(request, "invalid arguments")
-		return
+		return nil, fmt.Errorf("invalid arguments")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	entityID, err := util.PubKeyToEntityID(request.SignaturePublicKey)
 	if err != nil {
 		log.Errorf("cannot recover %x entityID from public key: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID from public key")
-		return
+		return nil, fmt.Errorf("cannot recover entityID from public key")
 	}
 
 	entity, err := m.db.Entity(entityID)
 	if err != nil {
 		log.Errorf("cannot recover %x entity: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entity from public key")
-		return
+		return nil, fmt.Errorf("cannot recover entity from public key")
 	}
 
-	var response types.MetaResponse
+	var response types.APIresponse
 	var members []types.Member
 	members, response.InvalidIDs, err = m.db.Members(entityID, request.MemberIDs)
 	if err != nil {
 		log.Errorf("cannot retrieve members for entity %x: (%v)", entityID, err)
-		m.Router.SendError(request, "cannot retrieve member")
-		return
+		return nil, fmt.Errorf("cannot retrieve member")
 	}
 
 	if len(members) == 0 {
 		response.Count = 0
-		m.send(&request, &response)
+		return &response, nil
 	}
 	// send concurrently emails
 	var wg sync.WaitGroup
@@ -1298,13 +1037,11 @@ func (m *Manager) sendValidationLinks(request router.RouterRequest) {
 				log.Errorf("member %s is already validated at  %s", member.ID.String(), member.Verified)
 				ec <- fmt.Errorf("member %s is already validated at  %s", member.ID.String(), member.Verified)
 				wg.Done()
-				return
 			}
 			if err := m.smtp.SendValidationLink(&member, entity); err != nil {
 				log.Errorf("could not send validation link for member %q entity: (%v)", member.ID, err)
 				ec <- fmt.Errorf("member %s error  %v", member.ID, err)
 				wg.Done()
-				return
 			}
 			sc <- member.ID
 			wg.Done()
@@ -1325,12 +1062,11 @@ func (m *Manager) sendValidationLinks(request router.RouterRequest) {
 	}
 	if len(errors)+response.Count != len(members) {
 		log.Errorf("inconsistency in number of sent emails and errors")
-		m.Router.SendError(request, "inconsistency in number of sent emails and errors")
+		return nil, fmt.Errorf("inconsistency in number of sent emails and errors")
 	}
 	if len(errors) == len(members) {
 		log.Errorf("no validation email was sent %v", errors)
-		m.Router.SendError(request, "could not send emails")
-		return
+		return nil, fmt.Errorf("could not send emails")
 	}
 	if len(errors) > 0 {
 		response.Message = fmt.Sprintf("%d where found:\n%v", len(errors), errors)
@@ -1347,50 +1083,45 @@ func (m *Manager) sendValidationLinks(request router.RouterRequest) {
 			if err != nil {
 				log.Infof("send validation links to %d members, skipped %d invalid IDs, %d duplicates and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), duplicates, len(errors), entityID, errors)
 				log.Errorf("error creating Pending tag:  %v", err)
-				m.Router.SendError(request, "sent emails but could not assign tag")
-				return
+				return nil, fmt.Errorf("sent emails but could not assign tag")
 			}
 		} else {
 			log.Infof("send validation links to %d members, skipped %d invalid IDs, %d duplicates and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), duplicates, len(errors), entityID, errors)
 			log.Errorf("error retreiving Pending tag:  %v", err)
-			m.Router.SendError(request, "sent emails but could not assign tag")
-			return
+			return nil, fmt.Errorf("sent emails but could not assign tag")
 		}
 	}
 	_, _, err = m.db.AddTagToMembers(entityID, successUUIDs, tag.ID)
 	if err != nil {
 		log.Infof("send validation links to %d members, skipped %d invalid IDs, %d duplicates and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), duplicates, len(errors), entityID, errors)
 		log.Errorf("error assinging Pending tag:  %v", err)
-		m.Router.SendError(request, "sent emails but could not assign tag")
+		return nil, fmt.Errorf("sent emails but could not assign tag")
 	}
 
 	log.Infof("send validation links to %d members, skipped %d invalid IDs, %d duplicates and %d errors , for Entity %x\nErrors: %v", response.Count, len(response.InvalidIDs), duplicates, len(errors), entityID, errors)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) createTag(request router.RouterRequest) {
+func (m *Manager) createTag(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	if request.TagName == "" {
 		log.Debug("createTag with empty tag")
-		m.Router.SendError(request, "invalid tag name")
-		return
+		return nil, fmt.Errorf("invalid tag name")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	response.Tag = &types.Tag{
@@ -1399,218 +1130,193 @@ func (m *Manager) createTag(request router.RouterRequest) {
 
 	if response.Tag.ID, err = m.db.AddTag(entityID, request.TagName); err != nil {
 		log.Errorf("cannot create tag '%s' for entity %x: (%v)", request.TagName, entityID, err)
-		m.Router.SendError(request, "cannot create tag ")
-		return
+		return nil, fmt.Errorf("cannot create tag ")
 	}
 
 	log.Infof("created tag with id %d and name '%s' for Entity %x", response.Tag.ID, response.Tag.Name, entityID)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) listTags(request router.RouterRequest) {
+func (m *Manager) listTags(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	// Query for members
 	if response.Tags, err = m.db.ListTags(entityID); err != nil {
 		if err == sql.ErrNoRows {
-			m.Router.SendError(request, "no tags found")
-			return
+			return nil, fmt.Errorf("no tags found")
 		}
 		log.Errorf("cannot retrieve tags of %x: (%v)", entityID, err)
-		m.Router.SendError(request, "cannot retrieve tags")
-		return
+		return nil, fmt.Errorf("cannot retrieve tags")
 	}
 
 	log.Debugf("Entity: %x list %d tags", entityID, len(response.Tags))
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) deleteTag(request router.RouterRequest) {
+func (m *Manager) deleteTag(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	if request.TagID == 0 {
 		log.Debug("deleteTag with empty tag")
-		m.Router.SendError(request, "invalid tag id")
-		return
+		return nil, fmt.Errorf("invalid tag id")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	if err = m.db.DeleteTag(entityID, request.TagID); err != nil {
 		log.Errorf("cannot delete tag %d for entity %x: (%v)", request.TagID, entityID, err)
-		m.Router.SendError(request, "cannot delete tag ")
-		return
+		return nil, fmt.Errorf("cannot delete tag ")
 	}
 
 	log.Infof("delete tag with id %d for Entity %x", request.TagID, entityID)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) addTag(request router.RouterRequest) {
+func (m *Manager) addTag(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	if request.TagID == 0 || len(request.MemberIDs) == 0 {
 		log.Debug("addTag invalid arguments")
-		m.Router.SendError(request, "invalid arguments")
-		return
+		return nil, fmt.Errorf("invalid arguments")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	response.Count, response.InvalidIDs, err = m.db.AddTagToMembers(entityID, request.MemberIDs, request.TagID)
 	if err != nil {
 		log.Errorf("cannot add tag %d to members for entity %x: (%v)", request.TagID, entityID, err)
-		m.Router.SendError(request, "cannot add tag ")
-		return
+		return nil, fmt.Errorf("cannot add tag ")
 	}
 
 	log.Infof("added tag with id %d to %d, with %d invalid IDs, members of Entity %x", request.TagID, response.Count, len(response.InvalidIDs), entityID)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) removeTag(request router.RouterRequest) {
+func (m *Manager) removeTag(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	if request.TagID == 0 || len(request.MemberIDs) == 0 {
 		log.Debug("removeTag invalid arguments")
-		m.Router.SendError(request, "invalid arguments")
-		return
+		return nil, fmt.Errorf("invalid arguments")
 	}
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	response.Count, response.InvalidIDs, err = m.db.RemoveTagFromMembers(entityID, request.MemberIDs, request.TagID)
 	if err != nil {
 		log.Errorf("cannot remove tag %d from members for entity %x: (%v)", request.TagID, entityID, err)
-		m.Router.SendError(request, "cannot remove tag ")
-		return
+		return nil, fmt.Errorf("cannot remove tag ")
 	}
 
 	log.Infof("removed tag with id %d from %d members, with %d invalid IDs, of Entity %x", request.TagID, response.Count, len(response.InvalidIDs), entityID)
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) adminEntityList(request router.RouterRequest) {
+func (m *Manager) adminEntityList(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// check public key length
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %x", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %x entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 	log.Debugf("%s", ethcommon.BytesToAddress((entityID)).String())
 	if ethcommon.BytesToAddress((entityID)).String() != "0xCc41C6545234ac63F11c47bC282f89Ca77aB9945" {
 		log.Warnf("invalid auth: (%v)", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid auth")
-		return
+		return nil, fmt.Errorf("invalid auth")
 	}
 
 	// Query for members
 	if response.Entities, err = m.db.AdminEntityList(); err != nil {
 		if err == sql.ErrNoRows {
-			m.Router.SendError(request, "no entities found")
-			return
+			return nil, fmt.Errorf("no entities found")
 		}
 		log.Errorf("cannot retrieve entities: (%v)", err)
-		m.Router.SendError(request, "cannot retrieve entities")
-		return
+		return nil, fmt.Errorf("cannot retrieve entities")
 	}
 
 	log.Debugf("Entity: %x adminEntityList %d entities", request.SignaturePublicKey, len(response.Entities))
-	m.send(&request, &response)
+	return &response, nil
 }
 
-func (m *Manager) requestGas(request router.RouterRequest) {
+func (m *Manager) requestGas(request *types.APIrequest) (*types.APIresponse, error) {
 	var entityID []byte
 	var err error
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	if m.eth == nil {
 		log.Errorf("cannot request for tokens, ethereum client is nil")
-		m.Router.SendError(request, "internal error")
-		return
+		return nil, fmt.Errorf("internal error")
 	}
 	// check public key length
 	// dvoteutil.IsHexEncodedStringWithLength
 	if len(request.SignaturePublicKey) != ethereum.PubKeyLengthBytes {
 		log.Warnf("invalid public key: %s", request.SignaturePublicKey)
-		m.Router.SendError(request, "invalid public key")
-		return
+		return nil, fmt.Errorf("invalid public key")
 	}
 
 	// retrieve entity ID
 	if entityID, err = util.PubKeyToEntityID(request.SignaturePublicKey); err != nil {
 		log.Errorf("cannot recover %q entityID: (%v)", request.SignaturePublicKey, err)
-		m.Router.SendError(request, "cannot recover entityID")
-		return
+		return nil, fmt.Errorf("cannot recover entityID")
 	}
 
 	entityAddress := ethcommon.BytesToAddress(entityID)
@@ -1619,23 +1325,20 @@ func (m *Manager) requestGas(request router.RouterRequest) {
 	if _, err := m.db.Entity(entityID); err != nil {
 		if err == sql.ErrNoRows {
 			log.Errorf("entity not found")
-			m.Router.SendError(request, "entity not found")
-			return
+			return nil, fmt.Errorf("entity not found")
 		}
 		log.Errorf("cannot retrieve details of entity %x: (%v)", entityID, err)
-		m.Router.SendError(request, "cannot retrieve entity")
-		return
+		return nil, fmt.Errorf("cannot retrieve entity")
 	}
 
 	sent, err := m.eth.SendTokens(context.Background(), entityAddress, 0, 0)
 	if err != nil {
 		log.Errorf("error sending tokens to entity %s : %v", entityAddress.String(), err)
-		m.Router.SendError(request, "error sending tokens")
-		return
+		return nil, fmt.Errorf("error sending tokens")
 	}
 
 	response.Count = int(sent.Int64())
-	m.send(&request, &response)
+	return &response, nil
 }
 
 func checkOptions(filter *types.ListOptions, method string) error {

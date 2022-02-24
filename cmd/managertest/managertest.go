@@ -56,7 +56,7 @@ func NewHTTPapiConnection(addr string) (*APIConnection, error) {
 }
 
 // Request makes a request to the previously connected endpoint
-func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys) *types.MetaResponse {
+func (r *APIConnection) Request(req types.APIrequest, signer *ethereum.SignKeys) *types.APIresponse {
 	method := req.Method
 
 	req.Timestamp = int32(time.Now().Unix())
@@ -66,16 +66,16 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	}
 	var signature types.HexBytes
 	if signer != nil {
-		signature, err = signer.Sign(reqInner)
+		signature, err = signer.SignVocdoniMsg(reqInner)
 		if err != nil {
 			log.Fatalf("%s: %v", method, err)
 		}
 	}
 
 	reqOuter := types.RequestMessage{
-		ID:          fmt.Sprintf("%d", rand.Intn(1000)),
-		Signature:   signature,
-		MetaRequest: reqInner,
+		ID:         fmt.Sprintf("%d", rand.Intn(1000)),
+		Signature:  signature,
+		MessageAPI: reqInner,
 	}
 	reqBody, err := json.Marshal(reqOuter)
 	if err != nil {
@@ -116,8 +116,8 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	if len(respOuter.Signature) == 0 {
 		log.Fatalf("%s: empty signature in response: %s", method, message)
 	}
-	var respInner types.MetaResponse
-	if err := json.Unmarshal(respOuter.MetaResponse, &respInner); err != nil {
+	var respInner types.APIresponse
+	if err := json.Unmarshal(respOuter.MessageAPI, &respInner); err != nil {
 		log.Fatalf("%s: %v", method, err)
 	}
 	return &respInner
@@ -346,7 +346,7 @@ func generateTokens(c *APIConnection, n int, entityKey, dir string) []string {
 		pub, priv := signer.HexString()
 		log.Infof("entity pub key: %s\n entity priv key", pub, priv)
 	}
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "signUp"
 	resp := c.Request(req, signer)
 	if !resp.Ok {
@@ -379,7 +379,7 @@ func generateTokens(c *APIConnection, n int, entityKey, dir string) []string {
 }
 
 func registrationStatus(eid []byte, privKeyList []string, c *APIConnection) error {
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "registrationStatus"
 	req.EntityID = eid
 	s := ethereum.NewSignKeys()
@@ -394,7 +394,7 @@ func registrationStatus(eid []byte, privKeyList []string, c *APIConnection) erro
 }
 
 func validateToken(eid []byte, tokenList, privKeyList []string, c *APIConnection) error {
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "validateToken"
 	req.EntityID = eid
 	s := ethereum.NewSignKeys()
@@ -422,7 +422,7 @@ func validateToken(eid []byte, tokenList, privKeyList []string, c *APIConnection
 }
 
 func registerFlow(eid []byte, tokenList, privKeyList []string, c *APIConnection) error {
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.EntityID = eid
 	s := ethereum.NewSignKeys()
 	for idx, t := range tokenList {

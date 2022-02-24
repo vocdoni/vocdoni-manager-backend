@@ -60,14 +60,14 @@ func TestAuthentication(t *testing.T) {
 		t.Fatalf("cannot create uuids: %s", err)
 	}
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 
 	// 1. Correct request should succeed
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "status"
 	req.EntityID = entities[0].ID
 	req.Token = membersUids[0].String()
@@ -128,7 +128,7 @@ func TestAuthentication(t *testing.T) {
 func TestGenerate(t *testing.T) {
 	c := qt.New(t)
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -141,7 +141,7 @@ func TestGenerate(t *testing.T) {
 		t.Fatalf("cannot add created entity into DB: %s", err)
 	}
 	// create and make request
-	var req types.MetaRequest
+	var req types.APIrequest
 	randAmount := rand.Intn(100)
 	req.EntityID = entities[0].ID
 	req.Amount = randAmount
@@ -179,13 +179,13 @@ func TestStatus(t *testing.T) {
 		t.Fatalf("cannot create uuids: %s", err)
 	}
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// 0. Existing unused uuid should return available
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "status"
 	req.EntityID = entities[0].ID
 	req.Token = membersUids[0].String()
@@ -280,13 +280,13 @@ func TestRevoke(t *testing.T) {
 		t.Fatalf("cannot create uuids: %s", err)
 	}
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// 0. Existing uuid should return get revoked successfully
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "revoke"
 	req.EntityID = entities[0].ID
 	req.Token = membersUids[0].String()
@@ -358,13 +358,13 @@ func TestImportKeysBulk(t *testing.T) {
 		keysString[i] = fmt.Sprintf("%x", pubBytes)
 	}
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
 	}
 	// 0. Importing new keys should succeed
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "importKeysBulk"
 	req.Keys = keysString
 	req.EntityID = entities[0].ID
@@ -404,7 +404,7 @@ func TestImportKeysBulk(t *testing.T) {
 func TestListKeys(t *testing.T) {
 	c := qt.New(t)
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -427,7 +427,7 @@ func TestListKeys(t *testing.T) {
 	}
 
 	// 1. Test request with default values
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "listKeys"
 	req.ListOptions = &types.ListOptions{}
 	req.EntityID = entities[0].ID
@@ -488,7 +488,7 @@ func TestListKeys(t *testing.T) {
 func TestDeleteKeys(t *testing.T) {
 	c := qt.New(t)
 	// connect to endpoint
-	wsc, err := testcommon.NewHTTPapiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/token", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -519,7 +519,7 @@ func TestDeleteKeys(t *testing.T) {
 	}
 
 	// 1. Test request with default values
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "deleteKeys"
 	req.Keys = membersKeys[:5]
 	req.EntityID = entities[0].ID

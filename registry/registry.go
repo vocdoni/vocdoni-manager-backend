@@ -14,76 +14,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/log"
-	"go.vocdoni.io/dvote/metrics"
-	"go.vocdoni.io/dvote/multirpc/transports"
 
-	"go.vocdoni.io/manager/database"
-	"go.vocdoni.io/manager/router"
 	"go.vocdoni.io/manager/types"
 )
 
-type Registry struct {
-	Router *router.Router
-	db     database.Database
-	ma     *metrics.Agent
-}
-
-// NewRegistry creates a new registry handler for the Router
-func NewRegistry(r *router.Router, d database.Database, ma *metrics.Agent) *Registry {
-	return &Registry{Router: r, db: d, ma: ma}
-}
-
-// RegisterMethods registers all registry methods behind the given path
-func (r *Registry) RegisterMethods(path string) error {
-	var transport transports.Transport
-	if tr, ok := r.Router.Transports["httpws"]; ok {
-		transport = tr
-	} else if tr, ok = r.Router.Transports["http"]; ok {
-		transport = tr
-	} else if tr, ok = r.Router.Transports["ws"]; ok {
-		transport = tr
-	} else {
-		return fmt.Errorf("no compatible transports found (ws or http)")
-	}
-
-	log.Infof("adding namespace registry %s", path+"/registry")
-	transport.AddNamespace(path + "/registry")
-	if err := r.Router.AddHandler("register", path+"/registry", r.register, false, false); err != nil {
-		return err
-	}
-	if err := r.Router.AddHandler("validateToken", path+"/registry", r.validateToken, false, false); err != nil {
-		return err
-	}
-	if err := r.Router.AddHandler("registrationStatus", path+"/registry", r.registrationStatus, false, false); err != nil {
-		return err
-	}
-	if err := r.Router.AddHandler("subscribe", path+"/registry", r.subscribe, false, false); err != nil {
-		return err
-	}
-	if err := r.Router.AddHandler("unsubscribe", path+"/registry", r.unsubscribe, false, false); err != nil {
-		return err
-	}
-	if err := r.Router.AddHandler("listSubscriptions", path+"/registry", r.listSubscriptions, false, false); err != nil {
-		return err
-	}
-	r.registerMetrics()
-	return nil
-}
-
-func (r *Registry) send(req *router.RouterRequest, resp *types.MetaResponse) {
-	if req == nil || req.MessageContext == nil || resp == nil {
-		log.Errorf("message context or request is nil, cannot send reply message")
-		return
-	}
-	req.Send(r.Router.BuildReply(req, resp))
-}
-
-func (r *Registry) register(request router.RouterRequest) {
+func (r *Registry) register(request *types.APIrequest) (*types.APIresponse, error) {
 	var err error
 	var member *types.Member
 	var user types.User
 	var uid uuid.UUID
-	var response types.MetaResponse
+	var response types.APIresponse
 	// increase stats counter
 	RegistryRequests.With(prometheus.Labels{"method": "register"}).Inc()
 
@@ -94,37 +34,34 @@ func (r *Registry) register(request router.RouterRequest) {
 	if _, err := r.db.Entity(request.EntityID); err != nil {
 		if err == sql.ErrNoRows {
 			log.Warnf("register: invalid entity ID %x", entityID)
-			r.Router.SendError(request, "invalid entityID")
-			return
+			return nil, fmt.Errorf("invalid entityID")
 		}
 		log.Errorf("register: error retrieving entity %x", entityID)
-		r.Router.SendError(request, "error retrieving entity")
-		return
+		return nil, fmt.Errorf("error retrieving entity")
 	}
 
 	// either token or valid member info should be valid
 	if !checkMemberInfo(request.MemberInfo) {
 		log.Warnf("register: invalid member info %v", request.MemberInfo)
-		r.Router.SendError(request, "invalid member info")
-		return
+		return nil, fmt.Errorf("invalid member info")
 	}
 	if uid, err = r.db.AddMember(entityID, user.PubKey, request.MemberInfo); err != nil {
 		log.Error(err)
-		r.Router.SendError(request, fmt.Sprintf("cannot create member: (%s)", err))
-		return
+		return nil, fmt.Errorf(fmt.Sprintf("cannot create member: (%s)", err))
 	}
 	member = &types.Member{ID: uid, PubKey: user.PubKey, EntityID: entityID, MemberInfo: *request.MemberInfo}
 
 	log.Infof("new member added %+v for entity %s", *member, request.EntityID)
-	r.send(&request, &response)
-
 	// increase stats counter
 	RegistryRequests.With(prometheus.Labels{"method": "register_success"}).Inc()
+
+	return &response, nil
+
 }
 
-func (r *Registry) validateToken(request router.RouterRequest) {
+func (r *Registry) validateToken(request *types.APIrequest) (*types.APIresponse, error) {
 	var uid uuid.UUID
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// increase stats counter
 	RegistryRequests.With(prometheus.Labels{"method": "validateToken"}).Inc()
@@ -133,14 +70,12 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	// either token or valid member info should be valid
 	if len(request.Token) == 0 {
 		log.Warnf("empty token validation for entity %s", request.EntityID)
-		r.Router.SendError(request, "invalid token")
-		return
+		return nil, fmt.Errorf("invalid token")
 	}
 	var err error
 	if uid, err = uuid.Parse(request.Token); err != nil {
 		log.Warnf("invalid token id format %s for entity %s: (%v)", request.Token, request.EntityID, err)
-		r.Router.SendError(request, "invalid token format")
-		return
+		return nil, fmt.Errorf("invalid token format")
 	}
 	// check entityId exists
 	entity, err := r.db.Entity(request.EntityID)
@@ -148,38 +83,32 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		if err == sql.ErrNoRows {
 			RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_entity"}).Inc()
 			log.Warnf("trying to validate token  %s for non-existing combination entity %s", request.Token, request.EntityID)
-			r.Router.SendError(request, "invalid entity id")
-			return
+			return nil, fmt.Errorf("invalid entity id")
 
 		}
 		log.Warnf("error retrieving entity (%q) to validate token (%q): (%q)", request.EntityID, request.Token, err)
-		r.Router.SendError(request, "error retrieving entity")
-		return
+		return nil, fmt.Errorf("error retrieving entity")
 	}
 	member, err := r.db.Member(request.EntityID, &uid)
 	if err != nil {
 		if err == sql.ErrNoRows { // token does not exist
 			RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_invalid_token"}).Inc()
 			log.Warnf("using non-existing combination of token  %s and entity %s: (%v)", request.Token, request.EntityID, err)
-			r.Router.SendError(request, "invalid token id")
-			return
+			return nil, fmt.Errorf("invalid token id")
 		}
 		log.Warnf("error retrieving member (%q) for entity (%q): (%q)", request.Token, request.EntityID, err)
-		r.Router.SendError(request, "error retrieving token")
-		return
+		return nil, fmt.Errorf("error retrieving token")
 	}
 
 	// 1.
 	if bytes.Equal(member.PubKey, request.SignaturePublicKey) {
 		RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_already_registered"}).Inc()
 		log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
-		r.Router.SendError(request, "duplicate user already registered")
-		return
+		return nil, fmt.Errorf("duplicate user already registered")
 	} else if len(member.PubKey) != 0 {
 		RegistryRequests.With(prometheus.Labels{"method": "validateToken_error_reused_token"}).Inc()
 		log.Warnf("pubKey (%q) with token  (%q)  already registered for entity (%q): (%q)", fmt.Sprintf("%x", member.PubKey), request.Token, request.EntityID, err)
-		r.Router.SendError(request, "invalid token")
-		return
+		return nil, fmt.Errorf("invalid token")
 	}
 
 	// if len(member.PubKey) != 0 {
@@ -218,8 +147,7 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 		// if err.Error() == "duplicate user" {
 		// 	msg = "duplicate user"
 		// }
-		r.Router.SendError(request, msg)
-		return
+		return nil, fmt.Errorf(msg)
 	}
 	log.Debugf("new user registered with pubKey: %x", request.SignaturePublicKey)
 
@@ -245,10 +173,11 @@ func (r *Registry) validateToken(request router.RouterRequest) {
 	}
 
 	log.Infof("token %s validated for Entity %x", request.Token, request.EntityID)
-	r.send(&request, &response)
-
 	// increase stats counter
 	RegistryRequests.With(prometheus.Labels{"method": "validateToken_sucess"}).Inc()
+
+	return &response, nil
+
 }
 
 // callback: /callback?authHash={AUTH}&event={EVENT}&ts={TIMESTAMP}&token={TOKEN}
@@ -269,9 +198,9 @@ func callback(callbackURL, secret, event string, uid uuid.UUID) error {
 	return err
 }
 
-func (r *Registry) registrationStatus(request router.RouterRequest) {
+func (r *Registry) registrationStatus(request *types.APIrequest) (*types.APIresponse, error) {
 	var member *types.Member
-	var response types.MetaResponse
+	var response types.APIresponse
 
 	// increase stats counter
 	RegistryRequests.With(prometheus.Labels{"method": "status"}).Inc()
@@ -280,9 +209,8 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 	// check if entity exists
 	if _, err := r.db.Entity(request.EntityID); err != nil {
 		log.Warn(err)
-		r.Router.SendError(request, "entity does not exist")
-		RegistryRequests.With(prometheus.Labels{"method": "status_error_entity"}).Inc()
-		return
+
+		return nil, fmt.Errorf("entity does not exist")
 	}
 
 	// check if user is a member
@@ -295,12 +223,10 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 				NeedsUpdate: false,
 			}
 			RegistryRequests.With(prometheus.Labels{"method": "status_not_registered"}).Inc()
-			request.Send(r.Router.BuildReply(&request, &response))
-			return
+			return &response, nil
 		}
 		log.Warn(err)
-		r.Router.SendError(request, "cannot query for member")
-		return
+		return nil, fmt.Errorf("cannot query for member")
 	}
 	// user exists and is member
 	if member != nil {
@@ -311,12 +237,12 @@ func (r *Registry) registrationStatus(request router.RouterRequest) {
 			NeedsUpdate: false,
 		}
 	}
-	request.Send(r.Router.BuildReply(&request, &response))
+	return &response, nil
 }
 
-func (r *Registry) subscribe(request router.RouterRequest) {
+func (r *Registry) subscribe(request *types.APIrequest) (*types.APIresponse, error) {
 	/*
-		var response types.MetaResponse
+		var response types.APIresponse
 		var err error
 		var token []byte
 		var uid uuid.UUID
@@ -324,12 +250,12 @@ func (r *Registry) subscribe(request router.RouterRequest) {
 		var user *types.User
 		if token, err = hex.DecodeString(request.Token); err != nil {
 			log.Warn(err)
-			r.Router.SendError(request, "invalid token hexstring")
+			return nil, fmt.Errorf("invalid token hexstring")
 			return
 		}
 		if uid, err = uuid.FromBytes(token); err != nil {
 			log.Warn(err)
-			r.Router.SendError(request, "invalid token")
+			return nil, fmt.Errorf("invalid token")
 			return
 		}
 
@@ -337,9 +263,9 @@ func (r *Registry) subscribe(request router.RouterRequest) {
 		if user, err = r.db.User([]byte(request.SignaturePublicKey)); err != nil {
 			log.Error(err)
 			if err.Error() == "sql: no rows in result set" {
-				r.Router.SendError(request, "user does not exist")
+				return nil, fmt.Errorf("user does not exist")
 			} else {
-				r.Router.SendError(request, "cannot query for user")
+				return nil, fmt.Errorf("cannot query for user")
 			}
 			return
 		}
@@ -348,13 +274,13 @@ func (r *Registry) subscribe(request router.RouterRequest) {
 		entityID, err := hex.DecodeString(request.EntityID)
 		if err != nil {
 			log.Warn(err)
-			r.Router.SendError(request, "invalid entityId")
+			return nil, fmt.Errorf("invalid entityId")
 			return
 		}
 		// check if entity exists
 		if _, err := r.db.Entity(entityID); err != nil {
 			log.Warn(err)
-			r.Router.SendError(request, "entity does not exist")
+			return nil, fmt.Errorf("entity does not exist")
 			return
 		}
 
@@ -366,7 +292,7 @@ func (r *Registry) subscribe(request router.RouterRequest) {
 				return
 			}
 			log.Error(err)
-			r.Router.SendError(request, "cannot query for member")
+			return nil, fmt.Errorf("cannot query for member")
 			return
 		}
 
@@ -382,14 +308,16 @@ func (r *Registry) subscribe(request router.RouterRequest) {
 			return
 		}
 		// already subscribed
-		r.Router.SendError(request, "already subscribed")
+		return nil, fmt.Errorf("already subscribed")
 	*/
-	r.send(&request, &types.MetaResponse{Ok: true})
+	return &types.APIresponse{
+		Ok: true,
+	}, nil
 }
 
-func (r *Registry) unsubscribe(request router.RouterRequest) {
+func (r *Registry) unsubscribe(request *types.APIrequest) (*types.APIresponse, error) {
 	/*
-		var response types.MetaResponse
+		var response types.APIresponse
 		var err error
 		var token []byte
 		var uid uuid.UUID
@@ -397,12 +325,12 @@ func (r *Registry) unsubscribe(request router.RouterRequest) {
 		var user *types.User
 		if token, err = hex.DecodeString(request.Token); err != nil {
 			log.Warn(err)
-			r.Router.SendError(request, "invalid token hexstring")
+			return nil, fmt.Errorf("invalid token hexstring")
 			return
 		}
 		if uid, err = uuid.FromBytes(token); err != nil {
 			log.Warn(err)
-			r.Router.SendError(request, "invalid token")
+			return nil, fmt.Errorf("invalid token")
 			return
 		}
 
@@ -410,9 +338,9 @@ func (r *Registry) unsubscribe(request router.RouterRequest) {
 		if user, err = r.db.User([]byte(request.SignaturePublicKey)); err != nil {
 			log.Error(err)
 			if err.Error() == "sql: no rows in result set" {
-				r.Router.SendError(request, "user does not exist")
+				return nil, fmt.Errorf("user does not exist")
 			} else {
-				r.Router.SendError(request, "cannot query for user")
+				return nil, fmt.Errorf("cannot query for user")
 			}
 			return
 		}
@@ -421,13 +349,13 @@ func (r *Registry) unsubscribe(request router.RouterRequest) {
 		entityID, err := hex.DecodeString(request.EntityID)
 		if err != nil {
 			log.Warn(err)
-			r.Router.SendError(request, "invalid entityId")
+			return nil, fmt.Errorf("invalid entityId")
 			return
 		}
 		// check if entity exists
 		if _, err := r.db.Entity(entityID); err != nil {
 			log.Warn(err)
-			r.Router.SendError(request, "entity does not exist")
+			return nil, fmt.Errorf("entity does not exist")
 			return
 		}
 
@@ -439,7 +367,7 @@ func (r *Registry) unsubscribe(request router.RouterRequest) {
 				return
 			}
 			log.Error(err)
-			r.Router.SendError(request, "cannot query for member")
+			return nil, fmt.Errorf("cannot query for member")
 			return
 		}
 
@@ -448,14 +376,17 @@ func (r *Registry) unsubscribe(request router.RouterRequest) {
 			// TBD: DELETE MEMBER QUERY ?
 		}
 		// not subscribed
-		r.Router.SendError(request, "not subscribed")
+		return nil, fmt.Errorf("not subscribed")
 	*/
-	r.send(&request, &types.MetaResponse{Ok: true})
+	return &types.APIresponse{
+		Ok: true,
+	}, nil
 }
 
-func (r *Registry) listSubscriptions(request router.RouterRequest) {
-	var response types.MetaResponse
-	request.Send(r.Router.BuildReply(&request, &response))
+func (r *Registry) listSubscriptions(request *types.APIrequest) (*types.APIresponse, error) {
+	return &types.APIresponse{
+		Ok: true,
+	}, nil
 }
 
 // ===== helpers =======

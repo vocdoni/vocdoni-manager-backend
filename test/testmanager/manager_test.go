@@ -16,7 +16,6 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	qt "github.com/frankban/quicktest"
 	"github.com/google/uuid"
-	"go.vocdoni.io/dvote/crypto"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/util"
 	"go.vocdoni.io/manager/config"
@@ -50,7 +49,7 @@ func TestMain(m *testing.M) {
 
 func TestSignUp(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -58,7 +57,7 @@ func TestSignUp(t *testing.T) {
 	// create entity
 	signers, entities := testcommon.CreateEntities(2)
 	// create and make simple request
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "signUp"
 	resp := wsc.Request(req, signers[0])
 	if !resp.Ok {
@@ -92,7 +91,7 @@ func TestSignUp(t *testing.T) {
 
 func TestGetEntity(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -105,7 +104,7 @@ func TestGetEntity(t *testing.T) {
 	}
 
 	// create and make request
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "getEntity"
 	resp := wsc.Request(req, entitySigners[0])
 	if !resp.Ok {
@@ -124,7 +123,7 @@ func TestGetEntity(t *testing.T) {
 
 func TestUpdateEntity(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -136,7 +135,7 @@ func TestUpdateEntity(t *testing.T) {
 		t.Fatalf("cannot add created entity into database: %s", err)
 	}
 	// update without data should fail
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "updateEntity"
 	resp := wsc.Request(req, signers[0])
 	if resp.Ok {
@@ -185,7 +184,7 @@ func TestUpdateEntity(t *testing.T) {
 
 func TestListMembers(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -207,7 +206,7 @@ func TestListMembers(t *testing.T) {
 		t.Fatalf("cannot add members into database: %s", err)
 	}
 	// create and make request
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "listMembers"
 	req.ListOptions = &types.ListOptions{
 		Count:  10,
@@ -301,7 +300,7 @@ func TestListMembers(t *testing.T) {
 
 func TestGetMember(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -327,7 +326,7 @@ func TestGetMember(t *testing.T) {
 	}
 
 	// create and make request
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "getMember"
 	req.MemberID = &memberID
 	resp := wsc.Request(req, entitySigners[0])
@@ -341,7 +340,7 @@ func TestGetMember(t *testing.T) {
 func TestUpdateMember(t *testing.T) {
 	c := qt.New(t)
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -380,7 +379,7 @@ func TestUpdateMember(t *testing.T) {
 	newMember.StreetAddress = ""
 
 	// create and make request
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "updateMember"
 	req.Member = newMember
 	resp := wsc.Request(req, entitySigners[0])
@@ -411,7 +410,7 @@ func TestUpdateMember(t *testing.T) {
 
 func TestDeleteMembers(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -445,7 +444,7 @@ func TestDeleteMembers(t *testing.T) {
 	}
 
 	// 1. request without uuids fails
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "deleteMembers"
 	req.MemberIDs = []uuid.UUID{}
 	resp := wsc.Request(req, entitySigners[0])
@@ -510,7 +509,7 @@ func TestDeleteMembers(t *testing.T) {
 
 func TestGenerateTokens(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -522,7 +521,7 @@ func TestGenerateTokens(t *testing.T) {
 		t.Fatalf("cannot add created entity into DB: %s", err)
 	}
 	// create and make request
-	var req types.MetaRequest
+	var req types.APIrequest
 	randAmount := rand.Intn(100)
 	req.Amount = randAmount
 	req.Method = "generateTokens"
@@ -539,7 +538,7 @@ func TestGenerateTokens(t *testing.T) {
 
 func TestExportTokens(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -562,7 +561,7 @@ func TestExportTokens(t *testing.T) {
 	}
 
 	// Test that members with public keys are not
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "exportTokens"
 	resp := wsc.Request(req, entitySigners[0])
 	if !resp.Ok {
@@ -596,7 +595,7 @@ func TestExportTokens(t *testing.T) {
 func TestGetTarget(t *testing.T) {
 	var targetID uuid.UUID
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -615,7 +614,7 @@ func TestGetTarget(t *testing.T) {
 		t.Fatalf("cannot add created target into database: %s", err)
 	}
 	// create and make request
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "getTarget"
 	req.TargetID = &targetID
 	resp := wsc.Request(req, entitySigners[0])
@@ -629,7 +628,7 @@ func TestGetTarget(t *testing.T) {
 func TestListTargets(t *testing.T) {
 	var targetID uuid.UUID
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -647,7 +646,7 @@ func TestListTargets(t *testing.T) {
 		t.Fatalf("cannot add created target into database: %s", err)
 	}
 	// create and make request
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "listTargets"
 	resp := wsc.Request(req, entitySigners[0])
 	t.Log(resp)
@@ -661,7 +660,7 @@ func TestDumpTarget(t *testing.T) {
 	var targetID uuid.UUID
 	n := 3 // number of members
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -690,7 +689,7 @@ func TestDumpTarget(t *testing.T) {
 		t.Fatalf("cannot add created target into database: %s", err)
 	}
 	// create and make request
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "dumpTarget"
 	req.TargetID = &targetID
 	resp := wsc.Request(req, entitySigners[0])
@@ -705,7 +704,7 @@ func TestDumpCensus(t *testing.T) {
 	c := qt.New(t)
 	var targetID uuid.UUID
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -741,7 +740,7 @@ func TestDumpCensus(t *testing.T) {
 	}
 
 	// Test only webpoll census
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "dumpCensus"
 	req.CensusID = id
 	resp := wsc.Request(req, entitySigners[0])
@@ -871,7 +870,7 @@ func TestDumpCensus(t *testing.T) {
 func TestSendVotingLinks(t *testing.T) {
 	c := qt.New(t)
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -929,7 +928,7 @@ func TestSendVotingLinks(t *testing.T) {
 		t.Fatalf("cannot dump census claims: (%v)", err)
 	}
 	// Valid request for unverified member should succeed
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "sendVotingLinks"
 	req.ProcessID = processID
 	req.CensusID = censusID
@@ -995,7 +994,7 @@ func TestSendVotingLinks(t *testing.T) {
 
 func TestImportMembers(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -1020,7 +1019,7 @@ func TestImportMembers(t *testing.T) {
 	// 	t.Fatalf("cannot add members into database: %s", err)
 	// }
 	// create and make request
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.MembersInfo = make([]types.MemberInfo, len(members))
 	req.Method = "importMembers"
 	for idx, mem := range members {
@@ -1034,12 +1033,12 @@ func TestImportMembers(t *testing.T) {
 }
 
 func TestAddCensus(t *testing.T) {
-	var req types.MetaRequest
+	var req types.APIrequest
 	var censusInfo *types.CensusInfo
 	var root, idBytes []byte
 	var err error
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -1142,7 +1141,7 @@ func TestAddCensus(t *testing.T) {
 
 func TestUpdateCensus(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -1178,7 +1177,7 @@ func TestUpdateCensus(t *testing.T) {
 	}
 
 	// update without data should fail
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.CensusID = id
 	req.Method = "updateCensus"
 	resp := wsc.Request(req, signers[0])
@@ -1225,12 +1224,12 @@ func TestUpdateCensus(t *testing.T) {
 }
 
 func TestGetCensus(t *testing.T) {
-	var req types.MetaRequest
+	var req types.APIrequest
 	var censusInfo *types.CensusInfo
 	var root, idBytes []byte
 	var err error
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -1297,12 +1296,12 @@ func TestGetCensus(t *testing.T) {
 }
 
 func TestListCensus(t *testing.T) {
-	var req types.MetaRequest
+	var req types.APIrequest
 	var censusInfo *types.CensusInfo
 	var root, idBytes []byte
 	var err error
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -1410,12 +1409,12 @@ func TestListCensus(t *testing.T) {
 }
 
 func TestDeleteCensus(t *testing.T) {
-	var req types.MetaRequest
+	var req types.APIrequest
 	var censusInfo *types.CensusInfo
 	var root, idBytes []byte
 	var err error
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -1503,7 +1502,7 @@ func TestDeleteCensus(t *testing.T) {
 
 func TestSendValidationLinks(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -1541,7 +1540,7 @@ func TestSendValidationLinks(t *testing.T) {
 	memberIDUnverified := dbMembers[1].ID
 
 	// Valid request for unverified member should succeed
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "sendValidationLinks"
 	req.MemberIDs = []uuid.UUID{memberIDUnverified}
 	resp := wsc.Request(req, entitySigners[0])
@@ -1590,7 +1589,7 @@ func TestSendValidationLinks(t *testing.T) {
 
 func TestCreateTag(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -1616,7 +1615,7 @@ func TestCreateTag(t *testing.T) {
 	name := "TestTag"
 
 	//Test simple add tag
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "createTag"
 	req.TagName = name
 
@@ -1650,10 +1649,10 @@ func TestCreateTag(t *testing.T) {
 }
 
 func TestListTags(t *testing.T) {
-	var req types.MetaRequest
+	var req types.APIrequest
 	var err error
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -1688,7 +1687,7 @@ func TestListTags(t *testing.T) {
 
 func TestDeleteTag(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -1730,7 +1729,7 @@ func TestDeleteTag(t *testing.T) {
 	}
 
 	// Test cannnot delete tag of another entity
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "deleteTag"
 	req.TagID = tag.ID
 	resp := wsc.Request(req, entitySigners[1])
@@ -1774,7 +1773,7 @@ func TestDeleteTag(t *testing.T) {
 
 func TestAddTag(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -1814,7 +1813,7 @@ func TestAddTag(t *testing.T) {
 	}
 
 	// Test add tags to members
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "addTag"
 	req.TagID = tag.ID
 	req.MemberIDs = memberIDs
@@ -1882,7 +1881,7 @@ func TestAddTag(t *testing.T) {
 
 func TestRemoveTag(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatalf("unable to connect with endpoint :%s", err)
@@ -1925,7 +1924,7 @@ func TestRemoveTag(t *testing.T) {
 		t.Fatalf("failed to add tag to members: %s", err)
 	}
 
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "removeTag"
 	req.TagID = tag.ID
 	req.MemberIDs = memberIDs
@@ -2005,21 +2004,27 @@ func TestRemoveTag(t *testing.T) {
 
 func TestDvoteJSSignature(t *testing.T) {
 	signer := ethereum.NewSignKeys()
-	signer.AddHexKey("c6446f24d08a34fdefc2501d6177b25e8a1d0f589b7a06f5a0131e9a8d0307e4")
+	signer.AddHexKey("8d7d56a9efa4158d232edbeaae601021eb3477ad77b5f3c720601fd74e8e04bb")
 	test := struct {
-		A string `json:"a"`
+		A string `json:"method"`
+		B int    `json:"timestamp"`
 	}{
-		A: "1",
+		A: "getVisibility",
+		B: 1582196988554,
 	}
-	a, err := crypto.SortedMarshalJSON(test)
+	// a, err := crypto.SortedMarshalJSON(test)
+	// if err != nil {
+	// 	t.Fatalf("%v", err)
+	// }
+	a, err := json.Marshal(test)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	signature, err := signer.Sign(a)
+	signature, err := signer.SignVocdoniMsg(a)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	expectedSignature := "361d97d64186bc85cf41d918c9f4bb4ffa08cd756cfb57ab9fe2508808eabfdd5ab16092e419bb17840db104f07ee5452e0551ba61aa6b458e177bae224ee5ad00"
+	expectedSignature := "2aab382d8cf025f55d8c3f7597e83dc878939ef63f1a27b818fa0814d79e91d66dc8d8112fbdcc89d2355d58a74ad227a2a9603ef7eb2321283a8ea93fb90ee11b"
 	if fmt.Sprintf("%x", signature) != expectedSignature {
 		t.Fatalf("expected signature %s but got %s", expectedSignature, signature)
 	}

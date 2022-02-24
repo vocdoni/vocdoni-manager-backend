@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -20,13 +19,11 @@ import (
 	"go.vocdoni.io/dvote/log"
 	dvotetypes "go.vocdoni.io/dvote/types"
 	"go.vocdoni.io/manager/types"
-	"nhooyr.io/websocket"
 )
 
 // APIConnection holds an API websocket connection
 type APIConnection struct {
 	Addr string
-	WS   *websocket.Conn
 	HTTP *http.Client
 }
 
@@ -34,32 +31,20 @@ type APIConnection struct {
 // connection is closed automatically when the test or benchmark finishes.
 func NewAPIConnection(addr string) *APIConnection {
 	r := &APIConnection{Addr: addr}
-	var err error
-	if strings.HasPrefix(addr, "ws") {
-		r.WS, _, err = websocket.Dial(context.TODO(), addr, nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-		return r
-	} else if strings.HasPrefix(addr, "http") {
-		tr := &http.Transport{
-			MaxIdleConns:       10,
-			IdleConnTimeout:    10 * time.Second,
-			DisableCompression: false,
-		}
-		r.HTTP = &http.Client{Transport: tr, Timeout: time.Second * 20}
-	} else {
-		log.Fatalf("address is not websockets nor http: %s", addr)
+
+	tr := &http.Transport{
+		MaxIdleConns:       10,
+		IdleConnTimeout:    10 * time.Second,
+		DisableCompression: false,
 	}
+	r.HTTP = &http.Client{Transport: tr, Timeout: time.Second * 20}
+
 	log.Info("client ready")
 	return r
 }
 
 func (r *APIConnection) Close() error {
 	var err error
-	if r.WS != nil {
-		err = r.WS.Close(websocket.StatusNormalClosure, "")
-	}
 	if r.HTTP != nil {
 		r.HTTP.CloseIdleConnections()
 	}
@@ -67,7 +52,7 @@ func (r *APIConnection) Close() error {
 }
 
 // Request makes a request to the previously connected endpoint
-func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys) *types.MetaResponse {
+func (r *APIConnection) Request(req types.APIrequest, signer *ethereum.SignKeys) *types.APIresponse {
 	method := req.Method
 
 	req.Timestamp = int32(time.Now().Unix())
@@ -77,50 +62,33 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	}
 	var signature dvotetypes.HexBytes
 	if signer != nil {
-		signature, err = signer.Sign(reqInner)
+		signature, err = signer.SignVocdoniMsg(reqInner)
 		if err != nil {
 			log.Fatalf("%s: %v", method, err)
 		}
 	}
 
 	reqOuter := types.RequestMessage{
-		ID:          fmt.Sprintf("%d", rand.Intn(1000)),
-		Signature:   signature,
-		MetaRequest: reqInner,
+		ID:         fmt.Sprintf("%d", rand.Intn(1000)),
+		Signature:  signature,
+		MessageAPI: reqInner,
 	}
 	reqBody, err := json.Marshal(reqOuter)
 	if err != nil {
 		log.Fatalf("%s: %v", method, err)
 	}
 	log.Infof("sending: %s", reqBody)
-	message := []byte{}
-	if r.WS != nil {
-		tctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-		defer cancel()
-		if err := r.WS.Write(tctx, websocket.MessageText, reqBody); err != nil {
-			log.Fatalf("%s: %v", method, err)
-		}
-		_, message, err = r.WS.Read(tctx)
-		if err != nil {
-			log.Fatalf("%s: %v", method, err)
-		}
+	resp, err := r.HTTP.Post(r.Addr, "application/json", bytes.NewBuffer(reqBody))
+	if err != nil {
+		log.Fatalf(err.Error())
 	}
-	if r.HTTP != nil {
-		resp, err := r.HTTP.Post(r.Addr, "application/json", bytes.NewBuffer(reqBody))
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-		message, err = io.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatalf(err.Error())
+	message, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalf(err.Error())
 
-		}
-		resp.Body.Close()
 	}
-	// if err := r.Conn.Write(context.TODO(), websocket.MessageText, reqBody); err != nil {
-	// 	log.Fatalf("%s: %v", method, err)
-	// }
-	// _, message, err := r.Conn.Read(context.TODO())
+	resp.Body.Close()
+
 	log.Infof("received: %s", message)
 	if err != nil {
 		log.Fatalf("%s: %v", method, err)
@@ -135,14 +103,14 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	if len(respOuter.Signature) == 0 {
 		log.Fatalf("%s: empty signature in response: %s", method, message)
 	}
-	var respInner types.MetaResponse
-	if err := json.Unmarshal(respOuter.MetaResponse, &respInner); err != nil {
+	var respInner types.APIresponse
+	if err := json.Unmarshal(respOuter.MessageAPI, &respInner); err != nil {
 		log.Fatalf("%s: %v", method, err)
 	}
 	return &respInner
 }
 
-func printNice(resp *types.MetaResponse) {
+func printNice(resp *types.APIresponse) {
 	v := reflect.ValueOf(*resp)
 	typeOfS := v.Type()
 	output := "\n"
@@ -160,8 +128,8 @@ func printNice(resp *types.MetaResponse) {
 	fmt.Print(output + "\n")
 }
 
-func processLine(input []byte) types.MetaRequest {
-	var req types.MetaRequest
+func processLine(input []byte) types.APIrequest {
+	var req types.APIrequest
 	err := json.Unmarshal(input, &req)
 	if err != nil {
 		panic(err)
@@ -190,7 +158,7 @@ func main() {
 	log.Infof("connecting to %s", *host)
 	c := NewAPIConnection(*host)
 	defer c.Close()
-	var req types.MetaRequest
+	var req types.APIrequest
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		line, _, err := reader.ReadLine()

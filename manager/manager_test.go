@@ -8,11 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"go.vocdoni.io/dvote/crypto/ethereum"
-	"go.vocdoni.io/dvote/multirpc/transports"
-	"go.vocdoni.io/dvote/multirpc/transports/mhttp"
 	"go.vocdoni.io/manager/database/testdb"
-	"go.vocdoni.io/manager/manager"
-	"go.vocdoni.io/manager/router"
 	"go.vocdoni.io/manager/test/testcommon"
 	"go.vocdoni.io/manager/types"
 )
@@ -25,65 +21,20 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestNewManager(t *testing.T) {
-	if mgr := manager.NewManager(api.EP.Router, nil, nil, nil); mgr == nil {
-		t.Fatal("cannot create manager")
-	}
-}
-
-func TestRegisterMethods(t *testing.T) {
-	// create signer
-	signer := ethereum.NewSignKeys()
-	if err := signer.Generate(); err != nil {
-		t.Fatalf("cannot generate signer: %v", err)
-	}
-	// create proxy
-	pxy := mhttp.NewProxy()
-	pxy.Conn.Address = "127.0.0.1"
-	pxy.Conn.Port = 0
-	// init proxy
-	if err := pxy.Init(); err != nil {
-		t.Fatalf("cannot init proxy: %v", err)
-	}
-	// create router channel
-	listenerOutput := make(chan transports.Message)
-	// create ws
-	ws := new(mhttp.WebsocketHandle)
-	ws.Init(new(transports.Connection))
-	ws.SetProxy(pxy)
-	// create transports map
-	ts := make(map[string]transports.Transport)
-	ts["ws"] = ws
-	// init router
-	r := router.InitRouter(listenerOutput, ts, signer)
-	// create database
-	db, err := testdb.New()
-	if err != nil {
-		t.Fatalf("cannot create DB: %v", err)
-	}
-	// create manager
-	manager := manager.NewManager(r, db, nil, nil)
-	// register methods
-	if err := manager.RegisterMethods(""); err != nil {
-		t.Fatalf("cannot register methods: %v", err)
-
-	}
-}
-
 func TestSend(t *testing.T) {
 	// nothing to test here, router layer
 }
 
 func TestSignUp(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// should fail if addEntity fails
-	var req types.MetaRequest
+	var req types.APIrequest
 	// generate signing keys
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
@@ -98,7 +49,7 @@ func TestSignUp(t *testing.T) {
 	}
 
 	// should fail if AddTarget fails
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	// generate signing keys
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
@@ -114,7 +65,7 @@ func TestSignUp(t *testing.T) {
 
 	// should success if entity and target can be added
 	// should fail if AddTarget fails
-	var req3 types.MetaRequest
+	var req3 types.APIrequest
 	// generate signing keys
 	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
@@ -131,14 +82,14 @@ func TestSignUp(t *testing.T) {
 
 func TestGetEntity(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// should fail if Entity fails
-	var req types.MetaRequest
+	var req types.APIrequest
 	// generate signing keys
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
@@ -154,7 +105,7 @@ func TestGetEntity(t *testing.T) {
 
 	// should success if entity and target can be added
 	// should fail if AddTarget fails
-	var req3 types.MetaRequest
+	var req3 types.APIrequest
 	// generate signing keys
 	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
@@ -171,7 +122,7 @@ func TestGetEntity(t *testing.T) {
 
 func TestListMembers(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -180,7 +131,7 @@ func TestListMembers(t *testing.T) {
 	// should fail if checkOptions returns an error when order invalid
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "listMembers"
 	req.ListOptions = &types.ListOptions{
 		Count:  10,
@@ -198,7 +149,7 @@ func TestListMembers(t *testing.T) {
 	// should fail db list members does not return any row
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "listMembers"
 	req2.ListOptions = &types.ListOptions{
 		Count:  10,
@@ -214,7 +165,7 @@ func TestListMembers(t *testing.T) {
 	}
 
 	// should fail db list members fails
-	var req3 types.MetaRequest
+	var req3 types.APIrequest
 	req3.Method = "listMembers"
 	req3.ListOptions = &types.ListOptions{
 		Count:  10,
@@ -232,7 +183,7 @@ func TestListMembers(t *testing.T) {
 	// should success if all correct
 	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[3].Priv)
-	var req4 types.MetaRequest
+	var req4 types.APIrequest
 	req4.Method = "listMembers"
 	req4.ListOptions = &types.ListOptions{
 		Count:  10,
@@ -250,7 +201,7 @@ func TestListMembers(t *testing.T) {
 
 func TestGetMember(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -259,7 +210,7 @@ func TestGetMember(t *testing.T) {
 	// should fail if no member found
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[1].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "getMember"
 	u := uuid.New()
 	req.MemberID = &u
@@ -273,7 +224,7 @@ func TestGetMember(t *testing.T) {
 	// should fail if cannot get member from db
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[0].Priv)
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "getMember"
 	u = uuid.New()
 	req2.MemberID = &u
@@ -289,7 +240,7 @@ func TestGetMember(t *testing.T) {
 	s3.AddHexKey(testdb.Signers[2].Priv)
 	//eid, err := util.PubKeyToEntityID(testdb.Signers[2].Pub)
 	//t.Fatalf("%s", hex.EncodeToString(eid))
-	var req3 types.MetaRequest
+	var req3 types.APIrequest
 	req3.Method = "getMember"
 	u = uuid.New()
 	req3.MemberID = &u
@@ -303,7 +254,7 @@ func TestGetMember(t *testing.T) {
 	// should fail if listTargets fail
 	s4 := ethereum.NewSignKeys()
 	s4.AddHexKey(testdb.Signers[3].Priv)
-	var req4 types.MetaRequest
+	var req4 types.APIrequest
 	req4.Method = "getMember"
 	u = uuid.New()
 	req4.MemberID = &u
@@ -317,7 +268,7 @@ func TestGetMember(t *testing.T) {
 	// should success if previous succesful
 	s5 := ethereum.NewSignKeys()
 	s5.Generate()
-	var req5 types.MetaRequest
+	var req5 types.APIrequest
 	req5.Method = "getMember"
 	u = uuid.New()
 	req5.MemberID = &u
@@ -331,7 +282,7 @@ func TestGetMember(t *testing.T) {
 
 func TestUpdateMember(t *testing.T) {
 	// connect to endpoint
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -340,7 +291,7 @@ func TestUpdateMember(t *testing.T) {
 	// should fail if no member found
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "updateMember"
 	req.Member = &types.Member{}
 	// make request
@@ -353,7 +304,7 @@ func TestUpdateMember(t *testing.T) {
 	// should update member
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "updateMember"
 	req2.Member = &types.Member{}
 	// make request
@@ -365,7 +316,7 @@ func TestUpdateMember(t *testing.T) {
 }
 
 func TestDeleteMembers(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -374,7 +325,7 @@ func TestDeleteMembers(t *testing.T) {
 	// should fail if db delete member fails
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "deleteMembers"
 	req.MemberIDs = []uuid.UUID{uuid.New()}
 	// *req.MemberID = uuid.New()
@@ -388,7 +339,7 @@ func TestDeleteMembers(t *testing.T) {
 	// otherwise should success
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "deleteMembers"
 	req2.MemberIDs = []uuid.UUID{uuid.New()}
 	// make request
@@ -400,7 +351,7 @@ func TestDeleteMembers(t *testing.T) {
 }
 
 func TestCountMembers(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -409,7 +360,7 @@ func TestCountMembers(t *testing.T) {
 	// should fail if db count members fails
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "countMembers"
 	// make request
 	resp := wsc.Request(req, s)
@@ -421,7 +372,7 @@ func TestCountMembers(t *testing.T) {
 	// otherwise should success
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "countMembers"
 	// make request
 	resp2 := wsc.Request(req2, s2)
@@ -432,7 +383,7 @@ func TestCountMembers(t *testing.T) {
 }
 
 func TestGenerateTokens(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -441,7 +392,7 @@ func TestGenerateTokens(t *testing.T) {
 	// should fail if amount is less or equal to 0
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "generateTokens"
 	req.Amount = 0
 	// make request
@@ -454,7 +405,7 @@ func TestGenerateTokens(t *testing.T) {
 	// should fail if cannot generate members with tokens
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "generateTokens"
 	req2.Amount = 2
 	// make request
@@ -467,7 +418,7 @@ func TestGenerateTokens(t *testing.T) {
 	// otherwise should success
 	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
-	var req3 types.MetaRequest
+	var req3 types.APIrequest
 	req3.Method = "generateTokens"
 	req3.Amount = 2
 	// make request
@@ -479,7 +430,7 @@ func TestGenerateTokens(t *testing.T) {
 }
 
 func TestExportTokens(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -488,7 +439,7 @@ func TestExportTokens(t *testing.T) {
 	// should fail if db MembersTokensEmails fails
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "exportTokens"
 	// make request
 	resp := wsc.Request(req, s)
@@ -500,7 +451,7 @@ func TestExportTokens(t *testing.T) {
 	// should fail if no rows returned from db MembersTokensEmails
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "exportTokens"
 	// make request
 	resp2 := wsc.Request(req2, s2)
@@ -513,7 +464,7 @@ func TestExportTokens(t *testing.T) {
 	// should fail if db MembersTokensEmails fails
 	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
-	var req3 types.MetaRequest
+	var req3 types.APIrequest
 	req3.Method = "exportTokens"
 	// make request
 	resp3 := wsc.Request(req3, s3)
@@ -524,7 +475,7 @@ func TestExportTokens(t *testing.T) {
 }
 
 func TestImportMembers(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -533,7 +484,7 @@ func TestImportMembers(t *testing.T) {
 	// should fail if members info < 1
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "importMembers"
 	req.MembersInfo = []types.MemberInfo{}
 	// make request
@@ -546,7 +497,7 @@ func TestImportMembers(t *testing.T) {
 	// should fail if db import members fails
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "importMembers"
 	req2.MembersInfo = make([]types.MemberInfo, 2)
 	// make request
@@ -557,7 +508,7 @@ func TestImportMembers(t *testing.T) {
 	}
 
 	// otherwise should success
-	var req3 types.MetaRequest
+	var req3 types.APIrequest
 	req3.Method = "importMembers"
 	req3.MembersInfo = make([]types.MemberInfo, 2)
 	// make request
@@ -569,7 +520,7 @@ func TestImportMembers(t *testing.T) {
 }
 
 func TestCountTargets(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -578,7 +529,7 @@ func TestCountTargets(t *testing.T) {
 	// should fail if db countTargets fails
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "countTargets"
 	// make request
 	resp := wsc.Request(req, s)
@@ -590,7 +541,7 @@ func TestCountTargets(t *testing.T) {
 	// otherwise should success
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "countTargets"
 	// make request
 	resp2 := wsc.Request(req2, s2)
@@ -601,7 +552,7 @@ func TestCountTargets(t *testing.T) {
 }
 
 func TestListTargets(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -610,7 +561,7 @@ func TestListTargets(t *testing.T) {
 	// should fail if invalid list options
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "listTargets"
 	req.ListOptions = &types.ListOptions{
 		Count:  10,
@@ -628,7 +579,7 @@ func TestListTargets(t *testing.T) {
 	// should fail if listTargets returns no rows
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "listTargets"
 	req2.ListOptions = &types.ListOptions{
 		Count:  10,
@@ -645,7 +596,7 @@ func TestListTargets(t *testing.T) {
 
 	// should fail if db listTargets fails
 	// should fail db list members fails
-	var req3 types.MetaRequest
+	var req3 types.APIrequest
 	req3.Method = "listTargets"
 	req3.ListOptions = &types.ListOptions{
 		Count:  10,
@@ -663,7 +614,7 @@ func TestListTargets(t *testing.T) {
 }
 
 func TestGetTarget(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -672,7 +623,7 @@ func TestGetTarget(t *testing.T) {
 	// should fail if target not found
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "getTarget"
 	req.TargetID = new(uuid.UUID)
 	*req.TargetID = uuid.New()
@@ -686,7 +637,7 @@ func TestGetTarget(t *testing.T) {
 	// should fail if db targetMembers fail
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[1].Priv)
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "getTarget"
 	req2.TargetID = new(uuid.UUID)
 	*req2.TargetID = uuid.New()
@@ -700,7 +651,7 @@ func TestGetTarget(t *testing.T) {
 	// otherwise should success
 	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
-	var req3 types.MetaRequest
+	var req3 types.APIrequest
 	req3.Method = "getTarget"
 	req3.TargetID = new(uuid.UUID)
 	*req3.TargetID = uuid.New()
@@ -713,7 +664,7 @@ func TestGetTarget(t *testing.T) {
 }
 
 func TestDumpTarget(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -722,7 +673,7 @@ func TestDumpTarget(t *testing.T) {
 	// should fail if db target fails
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "dumpTarget"
 	req.TargetID = new(uuid.UUID)
 	*req.TargetID = uuid.New()
@@ -737,7 +688,7 @@ func TestDumpTarget(t *testing.T) {
 	/*
 		s2 := ethereum.NewSignKeys()
 		s2.AddHexKey(testdb.Signers[1].Priv)
-		var req2 types.MetaRequest
+		var req2 types.APIrequest
 		req2.Method = "dumpTarget"
 		req2.TargetID = uuid.New()
 		// make request
@@ -752,7 +703,7 @@ func TestDumpTarget(t *testing.T) {
 	/*
 		s3 := ethereum.NewSignKeys()
 		s3.AddHexKey(testdb.Signers[2].Priv)
-		var req3 types.MetaRequest
+		var req3 types.APIrequest
 		req3.Method = "dumpTarget"
 		req3.TargetID = uuid.New()
 		// make request
@@ -765,7 +716,7 @@ func TestDumpTarget(t *testing.T) {
 }
 
 func TestAddCensus(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -774,7 +725,7 @@ func TestAddCensus(t *testing.T) {
 	// should fail if len(targetID) == 0
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "addCensus"
 	req.TargetID = new(uuid.UUID)
 	*req.TargetID = uuid.Nil
@@ -786,7 +737,7 @@ func TestAddCensus(t *testing.T) {
 	}
 
 	// should fail if len(censusID) == 0
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "addCensus"
 	req2.TargetID = new(uuid.UUID)
 	*req2.TargetID = uuid.New()
@@ -799,7 +750,7 @@ func TestAddCensus(t *testing.T) {
 	}
 
 	// should fail if cannot decode censusID
-	var req3 types.MetaRequest
+	var req3 types.APIrequest
 	req3.Method = "addCensus"
 	req3.TargetID = new(uuid.UUID)
 	*req3.TargetID = uuid.New()
@@ -813,7 +764,7 @@ func TestAddCensus(t *testing.T) {
 
 	// TODO  Enable when targets implemented
 	// should fail if db Target() fails
-	// var req4 types.MetaRequest
+	// var req4 types.APIrequest
 	// s2 := ethereum.NewSignKeys()
 	// s2.AddHexKey(testdb.Signers[3].Priv)
 	// req4.Method = "addCensus"
@@ -827,7 +778,7 @@ func TestAddCensus(t *testing.T) {
 	// }
 
 	// should fail if addCensus fails
-	var req5 types.MetaRequest
+	var req5 types.APIrequest
 	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
 	req5.Method = "addCensus"
@@ -842,7 +793,7 @@ func TestAddCensus(t *testing.T) {
 	}
 
 	// otherwise should success
-	var req6 types.MetaRequest
+	var req6 types.APIrequest
 	req6.Method = "addCensus"
 	req6.TargetID = new(uuid.UUID)
 	*req6.TargetID = uuid.New()
@@ -856,7 +807,7 @@ func TestAddCensus(t *testing.T) {
 }
 
 func TestGetCensus(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -864,7 +815,7 @@ func TestGetCensus(t *testing.T) {
 	// should fail if len(censusID) == 0
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[0].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "getCensus"
 	req.CensusID = ""
 	// make request
@@ -875,7 +826,7 @@ func TestGetCensus(t *testing.T) {
 	}
 
 	// should fail if cannot decode census id
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "getCensus"
 	req2.TargetID = new(uuid.UUID)
 	*req2.TargetID = uuid.New()
@@ -888,7 +839,7 @@ func TestGetCensus(t *testing.T) {
 	}
 
 	// should fail if db Census() fails
-	var req3 types.MetaRequest
+	var req3 types.APIrequest
 	req3.Method = "getCensus"
 	req3.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
 	// make request
@@ -899,7 +850,7 @@ func TestGetCensus(t *testing.T) {
 	}
 
 	// otherwise should success
-	var req4 types.MetaRequest
+	var req4 types.APIrequest
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[2].Priv)
 	req4.Method = "getCensus"
@@ -913,7 +864,7 @@ func TestGetCensus(t *testing.T) {
 }
 
 func TestCountCensus(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -921,7 +872,7 @@ func TestCountCensus(t *testing.T) {
 	// should fail if db CountCensus() fails
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[1].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "countCensus"
 	req.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
 	// make request
@@ -934,7 +885,7 @@ func TestCountCensus(t *testing.T) {
 	// otherwise should success
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[0].Priv)
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "countCensus"
 	req2.CensusID = "d67fb28849af7543f2b0b6bf01bde17613bf7ada"
 	// make request
@@ -946,7 +897,7 @@ func TestCountCensus(t *testing.T) {
 }
 
 func TestListCensus(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -954,7 +905,7 @@ func TestListCensus(t *testing.T) {
 	// should fail if checkOptions fails
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[1].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "listCensus"
 	req.ListOptions = &types.ListOptions{
 		Count:  10,
@@ -970,7 +921,7 @@ func TestListCensus(t *testing.T) {
 	}
 
 	// should fail if db ListCensus returns no rows
-	var req2 types.MetaRequest
+	var req2 types.APIrequest
 	req2.Method = "listCensus"
 	req2.ListOptions = &types.ListOptions{
 		Count:  10,
@@ -987,7 +938,7 @@ func TestListCensus(t *testing.T) {
 	// should fail if db ListCensus fails
 	s2 := ethereum.NewSignKeys()
 	s2.AddHexKey(testdb.Signers[0].Priv)
-	var req3 types.MetaRequest
+	var req3 types.APIrequest
 	req3.Method = "listCensus"
 	req3.ListOptions = &types.ListOptions{
 		Count:  10,
@@ -1005,7 +956,7 @@ func TestListCensus(t *testing.T) {
 	// otherwise should success
 	s3 := ethereum.NewSignKeys()
 	s3.AddHexKey(testdb.Signers[2].Priv)
-	var req4 types.MetaRequest
+	var req4 types.APIrequest
 	req4.Method = "listCensus"
 	req4.ListOptions = &types.ListOptions{
 		Count:  10,
@@ -1022,7 +973,7 @@ func TestListCensus(t *testing.T) {
 }
 
 func TestRequestGas(t *testing.T) {
-	wsc, err := testcommon.NewAPIConnection(fmt.Sprintf("ws://127.0.0.1:%d/api/manager", api.Port), t)
+	wsc, err := testcommon.NewApiConnection(fmt.Sprintf("http://127.0.0.1:%d/api/manager", api.Port), t)
 	// check connected successfully
 	if err != nil {
 		t.Fatal(err)
@@ -1030,7 +981,7 @@ func TestRequestGas(t *testing.T) {
 
 	s := ethereum.NewSignKeys()
 	s.AddHexKey(testdb.Signers[1].Priv)
-	var req types.MetaRequest
+	var req types.APIrequest
 	req.Method = "requestGas"
 	// make request
 	resp := wsc.Request(req, s)

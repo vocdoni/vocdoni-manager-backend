@@ -26,22 +26,9 @@ type APIConnection struct {
 	Address string
 }
 
-// NewAPIConnection starts a connection with the given endpoint address. The
+// NewApiConnection starts a connection with the given endpoint address. The
 // connection is closed automatically when the test or benchmark finishes.
-func NewAPIConnection(addr string, tb testing.TB) (*APIConnection, error) {
-	r := &APIConnection{tb: tb, Address: addr}
-	var err error
-	r.WS, _, err = websocket.Dial(context.TODO(), addr, nil)
-	if err != nil {
-		return nil, err
-	}
-	r.tb.Cleanup(func() { r.WS.Close(websocket.StatusNormalClosure, "") })
-	return r, nil
-}
-
-// NewHTTPapiConnection starts a connection with the given endpoint address. The
-// connection is closed automatically when the test or benchmark finishes.
-func NewHTTPapiConnection(addr string, tb testing.TB) (*APIConnection, error) {
+func NewApiConnection(addr string, tb testing.TB) (*APIConnection, error) {
 	tr := &http.Transport{
 		MaxIdleConns:       10,
 		IdleConnTimeout:    10 * time.Second,
@@ -54,7 +41,7 @@ func NewHTTPapiConnection(addr string, tb testing.TB) (*APIConnection, error) {
 }
 
 // Request makes a request to the previously connected endpoint
-func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys) *types.MetaResponse {
+func (r *APIConnection) Request(req types.APIrequest, signer *ethereum.SignKeys) *types.APIresponse {
 	r.tb.Helper()
 	method := req.Method
 
@@ -65,16 +52,16 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	}
 	var signature types.HexBytes
 	if signer != nil {
-		signature, err = signer.Sign(reqInner)
+		signature, err = signer.SignVocdoniMsg(reqInner)
 		if err != nil {
 			r.tb.Fatalf("%s: %v", method, err)
 		}
 	}
 
 	reqOuter := types.RequestMessage{
-		ID:          fmt.Sprintf("%d", rand.Intn(1000)),
-		Signature:   signature,
-		MetaRequest: reqInner,
+		ID:         fmt.Sprintf("%d", rand.Intn(1000)),
+		Signature:  signature,
+		MessageAPI: reqInner,
 	}
 	reqBody, err := json.Marshal(reqOuter)
 	if err != nil {
@@ -114,8 +101,8 @@ func (r *APIConnection) Request(req types.MetaRequest, signer *ethereum.SignKeys
 	if len(respOuter.Signature) == 0 {
 		r.tb.Fatalf("%s: empty signature in response: %s", method, message)
 	}
-	var respInner types.MetaResponse
-	if err := json.Unmarshal(respOuter.MetaResponse, &respInner); err != nil {
+	var respInner types.APIresponse
+	if err := json.Unmarshal(respOuter.MessageAPI, &respInner); err != nil {
 		r.tb.Fatalf("%s: %v", method, err)
 	}
 	return &respInner
