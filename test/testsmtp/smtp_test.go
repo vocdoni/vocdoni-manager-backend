@@ -27,13 +27,13 @@ func TestMain(m *testing.M) {
 	//melisa.oberbrunner48@ethereal.email
 	//ExFmyARM3dCtaFJfcQ
 	smtpConfig = &config.SMTP{
-		User:          "coby.rippin@ethereal.email",
-		Password:      "HmjWVQ86X3Q6nKBR3u",
+		User:          "raleigh.vonrueden86@ethereal.email",
+		Password:      "hwwRUTXSUhC5Yczg1c",
 		Host:          "smtp.ethereal.email",
 		Port:          587,
 		ValidationURL: "https://vocdoni.link/validation",
 		WebpollURL:    "https://webpoll.vocdoni.net",
-		Sender:        "coby.rippin@ethereal.email",
+		Sender:        "raleigh.vonrueden86@ethereal.email",
 		Timeout:       7,
 		PoolSize:      4,
 	}
@@ -157,7 +157,7 @@ func TestValidationLink(t *testing.T) {
 		MemberInfo: types.MemberInfo{
 			FirstName: "Manos",
 			LastName:  "Voc",
-			Email:     "coby.rippin@ethereal.email",
+			Email:     "raleigh.vonrueden86@ethereal.email",
 		},
 	}
 	id, err := hex.DecodeString("1026d682dc423d984abf6c086eca923245a33f45e5d1e06e069ac2663e5fff07")
@@ -183,7 +183,7 @@ func TestVotingLink(t *testing.T) {
 		ID:        uuid.New(),
 		FirstName: "Manos",
 		LastName:  "Voc",
-		Email:     "coby.rippin@ethereal.email",
+		Email:     "raleigh.vonrueden86@ethereal.email",
 		PrivKey:   privKey,
 	}
 

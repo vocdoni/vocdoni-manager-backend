@@ -2009,8 +2009,8 @@ func TestDvoteJSSignature(t *testing.T) {
 		A string `json:"method"`
 		B int    `json:"timestamp"`
 	}{
-		A: "getVisibility",
-		B: 1582196988554,
+		A: "adminEntityList",
+		B: 1667306410,
 	}
 	// a, err := crypto.SortedMarshalJSON(test)
 	// if err != nil {
@@ -2024,8 +2024,8 @@ func TestDvoteJSSignature(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	expectedSignature := "2aab382d8cf025f55d8c3f7597e83dc878939ef63f1a27b818fa0814d79e91d66dc8d8112fbdcc89d2355d58a74ad227a2a9603ef7eb2321283a8ea93fb90ee11b"
-	if fmt.Sprintf("%x", signature) != expectedSignature {
-		t.Fatalf("expected signature %s but got %s", expectedSignature, signature)
+	expectedSignature := "ecefe9f77378faa215edb6260c179e5959352879ba57fa6c102b48abb4c792c02cfc14c383db43d44428c9c780b2bdd0222736c86f7660b31176531a843b994b1b"
+	if fmt.Sprintf("%x", signature)[:128] != expectedSignature[:128] {
+		t.Fatalf("expected signature %s but got %x", expectedSignature, signature)
 	}
 }
