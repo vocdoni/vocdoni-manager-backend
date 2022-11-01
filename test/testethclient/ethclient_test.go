@@ -18,7 +18,7 @@ var signer *ethereum.SignKeys
 
 var testNetworks = []config.EthNetwork{
 	{Name: "xdai", Provider: "https://xdai1.vocdoni.net", Timeout: 60},
-	{Name: "goerli", Provider: "https://goerli.vocdoni.net", Timeout: 60},
+	{Name: "goerli", Provider: "https://goerli.eth.aragon.network", Timeout: 60},
 }
 
 func TestMain(m *testing.M) {
