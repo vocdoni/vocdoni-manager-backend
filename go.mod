@@ -21,7 +21,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.1
 	go.vocdoni.io/dvote v1.0.4-0.20220211105926-f7b9ba93074c
-	golang.org/x/sys v0.0.0-20220222172238-00053529121e // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	nhooyr.io/websocket v1.8.7
 )
 
