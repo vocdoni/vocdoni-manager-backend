@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/badoux/checkmail v0.0.0-20181210160741-9661bd69e9ad
-	github.com/ethereum/go-ethereum v1.10.13
+	github.com/ethereum/go-ethereum v1.10.22
 	github.com/frankban/quicktest v1.14.0
 	github.com/google/uuid v1.3.0
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
@@ -21,7 +21,6 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.1
 	go.vocdoni.io/dvote v1.0.4-0.20220211105926-f7b9ba93074c
-	golang.org/x/sys v0.0.0-20220222172238-00053529121e // indirect
 	nhooyr.io/websocket v1.8.7
 )
 
